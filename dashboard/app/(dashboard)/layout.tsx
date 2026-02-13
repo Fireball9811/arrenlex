@@ -32,6 +32,12 @@ export default function DashboardLayout({
         <DashboardNav />
 
         <div className="space-y-2 border-t border-gray-700 p-4">
+          <Link
+            href="/cambio-contrasena"
+            className="block rounded p-2 text-left text-sm text-white transition hover:bg-gray-800"
+          >
+            Cambio de contraseña
+          </Link>
           <AdjuntarDocumentos sidebar />
           <SignOutButton>Cerrar sesión</SignOutButton>
         </div>

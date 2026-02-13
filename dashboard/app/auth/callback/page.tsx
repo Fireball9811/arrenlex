@@ -29,7 +29,7 @@ function AuthCallbackContent() {
             setTimeout(() => router.replace("/login?error=auth"), 2000)
           } else {
             setStatus("success")
-            router.replace("/crear-contrasena?next=/dashboard")
+            router.replace("/cambio-contrasena?next=/dashboard")
           }
         })
         .catch(() => {
@@ -55,7 +55,7 @@ function AuthCallbackContent() {
               setTimeout(() => router.replace("/login?error=auth"), 2000)
             } else {
               setStatus("success")
-              router.replace("/crear-contrasena?next=/dashboard")
+              router.replace("/cambio-contrasena?next=/dashboard")
             }
           })
           .catch(() => {
