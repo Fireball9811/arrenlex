@@ -1,207 +1,269 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import { useRouter } from "next/navigation"
+import { useEffect, useState } from "react"
+import Link from "next/link"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card"
 
-export default function CrearUsuariosPage() {
-  const router = useRouter()
-  const [authorized, setAuthorized] = useState<boolean | null>(null)
-  const [accessDenied, setAccessDenied] = useState(false)
-  const [userEmail, setUserEmail] = useState<string | null>(null)
-  const [email, setEmail] = useState("")
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [success, setSuccess] = useState(false)
+interface Usuario {
+  id: string
+  email: string
+  role: "admin" | "propietario" | "inquilino"
+  nombre?: string
+  active: boolean
+  blocked: boolean
+  created_at: string
+}
+
+export default function UsuariosSistemaPage() {
+  const [usuarios, setUsuarios] = useState<Usuario[]>([])
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     fetch("/api/admin/usuarios")
-      .then((res) => {
-        if (res.status === 401) {
-          router.replace("/login")
-          return
-        }
-        if (res.status === 403) {
-          res.json().then((data: { userEmail?: string }) => {
-            setUserEmail(data.userEmail ?? null)
-            setAccessDenied(true)
-            setAuthorized(false)
-          })
-          return
-        }
-        if (res.ok) {
-          res.json().then(() => {
-            setAuthorized(true)
-          })
+      .then((res) => res.json())
+      .then(setUsuarios)
+      .finally(() => setLoading(false))
+  }, [])
+
+  const formatPeso = (n: number) =>
+    new Intl.NumberFormat("es-CO", { style: "currency", currency: "COP" }).format(n)
+
+  function toggleActivo(usuario: Usuario) {
+    const accion = usuario.activo ? "desactivar" : "activar"
+
+    fetch(`/api/admin/usuarios/${usuario.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ accion }),
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.error) {
+          alert(data.error)
         } else {
-          setAuthorized(false)
-          setError("Error al verificar permisos. Intenta de nuevo.")
+          fetch("/api/admin/usuarios")
+            .then((res) => res.json())
+            .then(setUsuarios)
         }
       })
-      .catch(() => {
-        setAuthorized(false)
-        setError("No se pudo verificar permisos. Revisa que el servidor esté corriendo.")
+      .catch((err) => alert("Error: " + err.message))
+  }
+
+  function toggleBloqueo(usuario: Usuario) {
+    const accion = usuario.bloqueado ? "desbloquear" : "bloquear"
+    const confirmMsg = usuario.bloqueado
+      ? `Desbloquear a ${usuario.email}?`
+      : `Bloquear definitivamente a ${usuario.email}?`
+
+    if (!confirm(confirmMsg)) return
+
+    fetch(`/api/admin/usuarios/${usuario.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ accion }),
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.error) {
+          alert(data.error)
+        } else {
+          alert(data.mensaje || "Accion completada")
+          fetch("/api/admin/usuarios")
+            .then((res) => res.json())
+            .then(setUsuarios)
+        }
       })
-  }, [router])
+      .catch((err) => alert("Error: " + err.message))
+  }
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault()
-    setError(null)
-    setSuccess(false)
-    setLoading(true)
-
-    try {
-      const res = await fetch("/api/admin/usuarios", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          email: email.trim(),
-        }),
-      })
-
-      const data = await res.json()
-
-      if (!res.ok) {
-        throw new Error(data.error ?? "Error al crear usuario")
-      }
-
-      setSuccess(true)
-      setEmail("")
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Error desconocido")
-    } finally {
-      setLoading(false)
+  const roleClass = (role: string) => {
+    switch (role) {
+      case "admin": return "bg-purple-100 text-purple-800"
+      case "propietario": return "bg-blue-100 text-blue-800"
+      case "inquilino": return "bg-green-100 text-green-800"
+      default: return "bg-gray-100 text-gray-800"
     }
   }
 
-  if (authorized === null) {
-    return (
-      <div className="flex items-center gap-2 text-muted-foreground">
-        <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
-        Verificando permisos...
-      </div>
-    )
-  }
-
-  if (authorized === false && !accessDenied && error) {
-    return (
-      <div>
-        <h1 className="mb-6 text-3xl font-bold">Crear usuario</h1>
-        <Card>
-          <CardContent className="pt-6">
-            <p className="text-destructive">{error}</p>
-            <Button variant="outline" className="mt-4" onClick={() => router.push("/dashboard")}>
-              Volver al dashboard
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
-    )
-  }
-
-  if (accessDenied) {
-    const envLine = userEmail ? `ADMIN_EMAILS=${userEmail}` : "ADMIN_EMAILS=tu-correo@ejemplo.com"
-
-    return (
-      <div>
-        <h1 className="mb-6 text-3xl font-bold">Crear usuario</h1>
-        <Card className="max-w-xl">
-          <CardHeader>
-            <CardTitle>Acceso denegado</CardTitle>
-            <CardDescription>
-              Solo los administradores pueden crear usuarios. Agrega tu correo en la variable{" "}
-              <code className="rounded bg-muted px-1 py-0.5 text-sm">ADMIN_EMAILS</code> del archivo{" "}
-              <code className="rounded bg-muted px-1 py-0.5 text-sm">.env.local</code>.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {userEmail && (
-              <div className="rounded-md bg-muted p-3">
-                <p className="mb-1 text-sm font-medium">Tu correo actual:</p>
-                <code className="break-all text-sm">{userEmail}</code>
-                <p className="mt-2 text-xs text-muted-foreground">Copia esta línea en .env.local:</p>
-                <code className="mt-1 block break-all rounded bg-background p-2 text-xs">
-                  {envLine}
-                </code>
-              </div>
-            )}
-            <p className="text-sm">Pasos:</p>
-            <ol className="list-inside list-decimal space-y-1 text-sm text-muted-foreground">
-              <li>Abre <code className="rounded bg-muted px-1">dashboard/.env.local</code></li>
-              <li>Reemplaza la línea de ADMIN_EMAILS por la de arriba (o tu correo)</li>
-              <li>Configura SUPABASE_SERVICE_ROLE_KEY en Supabase → Settings → API</li>
-              <li>Reinicia el servidor (Ctrl+C y luego npm run dev)</li>
-            </ol>
-          </CardContent>
-          <CardFooter>
-            <Button variant="outline" onClick={() => router.push("/dashboard")}>
-              Volver al dashboard
-            </Button>
-          </CardFooter>
-        </Card>
-      </div>
-    )
+  const roleLabel = (role: string) => {
+    switch (role) {
+      case "admin": return "🔴 Administrador"
+      case "propietario": return "🏠 Propietario"
+      case "inquilino": return "👤 Inquilino"
+      default: return role
+    }
   }
 
   return (
     <div>
-      <h1 className="mb-6 text-3xl font-bold">Crear usuario</h1>
+      <div className="mb-6">
+        <h1 className="mt-2 text-3xl font-bold">Usuarios del Sistema</h1>
+        <p className="text-muted-foreground">
+          Gestiona usuarios, roles, permisos y estados de acceso
+        </p>
+      </div>
 
-      <Card className="max-w-xl">
-        <form onSubmit={handleSubmit}>
+      {/* Resumen */}
+      <div className="mb-6 grid gap-4 md:grid-cols-4">
+        <Card>
           <CardHeader>
-            <CardTitle>Nuevo usuario</CardTitle>
-            <CardDescription>
-              Envíe una invitación por correo. La persona recibirá un enlace para crear su contraseña y acceder al sistema.
-            </CardDescription>
+            <CardTitle className="text-sm">Total Usuarios</CardTitle>
           </CardHeader>
-
-          <CardContent className="space-y-4">
-            <div>
-              <label htmlFor="email" className="mb-1 block text-sm font-medium">
-                Correo electrónico
-              </label>
-              <Input
-                id="email"
-                type="email"
-                placeholder="Ej: usuario@arrenlex.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-              />
-            </div>
-
-            <p className="text-sm text-muted-foreground">
-              Se enviará un correo con un enlace para que la persona cree su contraseña e ingrese.
-              Puedes reenviar la invitación cuantas veces sea necesario si no la reciben o el correo estaba mal.
-            </p>
-
-            {error && (
-              <p className="text-sm text-destructive">{error}</p>
-            )}
-
-            {success && (
-              <p className="text-sm font-medium text-green-600">
-                ¡Invitación enviada! La persona recibirá un correo con un enlace para crear su contraseña e ingresar.
-              </p>
-            )}
+          <CardContent>
+            <p className="text-2xl font-bold">{usuarios.length}</p>
           </CardContent>
+        </Card>
 
-          <CardFooter>
-            <Button type="submit" disabled={loading}>
-              {loading ? "Creando..." : "Crear usuario"}
-            </Button>
-          </CardFooter>
-        </form>
+        <Card className="bg-green-50 border-green-200">
+          <CardHeader>
+            <CardTitle className="text-sm">✅ Activos</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-2xl font-bold">{usuarios.filter(u => u.activo).length}</p>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-amber-50 border-amber-200">
+          <CardHeader>
+            <CardTitle className="text-sm">⏸ Inactivos</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-2xl font-bold">{usuarios.filter(u => !u.activo && !u.bloqueado).length}</p>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-red-50 border-red-200">
+          <CardHeader>
+            <CardTitle className="text-sm">🚫 Bloqueados</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-2xl font-bold">{usuarios.filter(u => u.bloqueado).length}</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Tabla de usuarios */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Lista de Usuarios</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {loading ? (
+            <p className="text-muted-foreground">Cargando usuarios...</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b bg-gray-50">
+                    <th className="p-3 text-left">Usuario</th>
+                    <th className="p-3 text-left">Rol</th>
+                    <th className="p-3 text-center">Estado</th>
+                    <th className="p-3 text-center">Activar/Inactivar</th>
+                    <th className="p-3 text-center">Bloquear</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {usuarios.map((usuario) => (
+                    <tr key={usuario.id} className={`border-b ${usuario.bloqueado ? "bg-red-50" : ""}`}>
+                      {/* Usuario */}
+                      <td className="p-3">
+                        <div>
+                          <p className="font-medium">{usuario.nombre || usuario.email}</p>
+                          <p className="text-xs text-muted-foreground">{usuario.email}</p>
+                        </div>
+                      </td>
+
+                      {/* Rol */}
+                      <td className="p-3">
+                        <span className={`rounded px-2 py-1 text-xs font-medium ${roleClass(usuario.role)}`}>
+                          {roleLabel(usuario.role)}
+                        </span>
+                      </td>
+
+                      {/* Estado */}
+                      <td className="p-3 text-center">
+                        {usuario.bloqueado ? (
+                          <span className="rounded-full bg-red-100 px-2 py-1 text-xs font-medium text-red-800">
+                            🚫 Bloqueado
+                          </span>
+                        ) : usuario.activo ? (
+                          <span className="rounded-full bg-green-100 px-2 py-1 text-xs font-medium text-green-800">
+                            ✅ Activo
+                          </span>
+                        ) : (
+                          <span className="rounded-full bg-amber-100 px-2 py-1 text-xs font-medium text-amber-800">
+                            ⏸ Inactivo
+                          </span>
+                        )}
+                      </td>
+
+                      {/* Activar/Inactivar */}
+                      <td className="p-3 text-center">
+                        <label className="inline-flex items-center gap-2">
+                          <input
+                            type="checkbox"
+                            checked={usuario.activo && !usuario.bloqueado}
+                            disabled={usuario.bloqueado}
+                            onChange={() => toggleActivo(usuario)}
+                            className="h-4 w-4 rounded border-gray-300"
+                          />
+                          <span className="text-xs text-muted-foreground">
+                            {usuario.activo ? "Activo" : "Inactivo"}
+                          </span>
+                        </label>
+                      </td>
+
+                      {/* Bloquear */}
+                      <td className="p-3 text-center">
+                        <Button
+                          size="sm"
+                          variant={usuario.bloqueado ? "outline" : "destructive"}
+                          onClick={() => toggleBloqueo(usuario)}
+                        >
+                          {usuario.bloqueado ? "🔓 Desbloquear" : "🚫 Bloquear"}
+                        </Button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Leyenda */}
+      <Card className="mt-4 bg-gray-50">
+        <CardContent className="pt-4">
+          <p className="text-sm font-semibold mb-2">Leyenda:</p>
+          <div className="grid gap-2 text-sm md:grid-cols-2">
+            <div className="flex items-center gap-2">
+              <span className="rounded-full bg-green-100 px-2 py-1 text-xs font-medium text-green-800">
+                ✅ Activo
+              </span>
+              <span className="text-muted-foreground">- Puede acceder a la plataforma</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="rounded-full bg-amber-100 px-2 py-1 text-xs font-medium text-amber-800">
+                ⏸ Inactivo
+              </span>
+              <span className="text-muted-foreground">- No puede acceder temporalmente</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="rounded-full bg-red-100 px-2 py-1 text-xs font-medium text-red-800">
+                🚫 Bloqueado
+              </span>
+              <span className="text-muted-foreground">- Bloqueado definitivamente</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="rounded px-2 py-1 text-xs font-medium bg-purple-100 text-purple-800">
+                🔴 Administrador
+              </span>
+              <span className="text-muted-foreground">- Acceso total al sistema</span>
+            </div>
+          </div>
+        </CardContent>
       </Card>
     </div>
   )
