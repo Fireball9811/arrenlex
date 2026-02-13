@@ -58,22 +58,23 @@ export function DashboardNav() {
         </Link>
       )}
 
+      {/* Contratos - para implementar */}
       {(isAdmin || isPropietario) && (
-        <>
-          <Link
-            href="#"
-            className="block rounded p-2 transition hover:bg-gray-800"
-          >
-            Contratos
-          </Link>
-          <Link
-            href="#"
-            className="block rounded p-2 transition hover:bg-gray-800"
-          >
-            Reportes
-          </Link>
-        </>
+        <Link
+          href="#"
+          className="block rounded p-2 transition hover:bg-gray-800"
+        >
+          Contratos
+        </Link>
       )}
+
+      {/* Reportes - diferente nombre para inquilinos */}
+      <Link
+        href={isInquilino ? "/reportes/mis-pagos" : "/reportes"}
+        className="block rounded p-2 transition hover:bg-gray-800"
+      >
+        {isInquilino ? "Mis Pagos" : "Reportes"}
+      </Link>
     </nav>
   )
 }
