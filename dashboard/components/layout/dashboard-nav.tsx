@@ -49,10 +49,10 @@ export function DashboardNav() {
         </Link>
       )}
 
-      {/* Contratos - para implementar */}
+      {/* Contratos */}
       {(isAdmin || isPropietario) && (
         <Link
-          href="#"
+          href="/contratos"
           className="block rounded p-2 transition hover:bg-gray-800"
         >
           Contratos
