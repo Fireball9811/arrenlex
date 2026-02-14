@@ -13,7 +13,6 @@ export default function AdminReportesPropiedadesPage() {
       </div>
       <Card>
         <CardHeader><CardTitle>Propiedades</CardTitle><CardDescription>Estado de propiedades.</CardDescription></CardHeader>
-        <CardContent><Link href="/reportes/propiedades" className="text-sm text-primary hover:underline">Ver versión anterior</Link></CardContent>
       </Card>
     </div>
   )

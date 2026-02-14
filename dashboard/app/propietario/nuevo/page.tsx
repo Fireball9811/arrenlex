@@ -1,7 +1,6 @@
 "use client"
 
-import Link from "next/link"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 
 export default function PropietarioNuevoPage() {
   return (
@@ -12,9 +11,6 @@ export default function PropietarioNuevoPage() {
           <CardTitle>Nuevo Arrendatario</CardTitle>
           <CardDescription>Registrar nuevo arrendatario. Contenido en construcción.</CardDescription>
         </CardHeader>
-        <CardContent>
-          <Link href="/nuevo" className="text-sm text-primary hover:underline">Ver versión anterior (nuevo)</Link>
-        </CardContent>
       </Card>
     </div>
   )

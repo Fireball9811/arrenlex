@@ -13,7 +13,6 @@ export default function AdminReportesPersonasPage() {
       </div>
       <Card>
         <CardHeader><CardTitle>Personas</CardTitle><CardDescription>Reportes de inquilinos y usuarios.</CardDescription></CardHeader>
-        <CardContent><Link href="/reportes/personas" className="text-sm text-primary hover:underline">Ver versión anterior</Link></CardContent>
       </Card>
     </div>
   )

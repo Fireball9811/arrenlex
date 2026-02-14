@@ -16,9 +16,6 @@ export default function PropietarioGestionPagosPage() {
           <CardTitle>Gestión de Pagos</CardTitle>
           <CardDescription>Ver todos los pagos del sistema.</CardDescription>
         </CardHeader>
-        <CardContent>
-          <Link href="/reportes/gestion-pagos" className="text-sm text-primary hover:underline">Ver versión anterior</Link>
-        </CardContent>
       </Card>
     </div>
   )

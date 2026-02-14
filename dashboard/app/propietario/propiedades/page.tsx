@@ -1,7 +1,6 @@
 "use client"
 
-import Link from "next/link"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 
 export default function PropietarioPropiedadesPage() {
   return (
@@ -12,9 +11,6 @@ export default function PropietarioPropiedadesPage() {
           <CardTitle>Propiedades</CardTitle>
           <CardDescription>Gestiona tus propiedades. Contenido en construcción.</CardDescription>
         </CardHeader>
-        <CardContent>
-          <Link href="/propiedades" className="text-sm text-primary hover:underline">Ver versión anterior (propiedades)</Link>
-        </CardContent>
       </Card>
     </div>
   )

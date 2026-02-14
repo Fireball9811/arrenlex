@@ -13,7 +13,6 @@ export default function AdminReportesFinancieroPage() {
       </div>
       <Card>
         <CardHeader><CardTitle>Financiero</CardTitle><CardDescription>Reportes de ingresos y pagos.</CardDescription></CardHeader>
-        <CardContent><Link href="/reportes/financiero" className="text-sm text-primary hover:underline">Ver versión anterior</Link></CardContent>
       </Card>
     </div>
   )
