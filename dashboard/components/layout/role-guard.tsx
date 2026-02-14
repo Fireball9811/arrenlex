@@ -5,8 +5,11 @@ import { usePathname, useRouter } from "next/navigation"
 import type { UserRole } from "@/lib/auth/role"
 import { useState } from "react"
 
-const INQUILINO_FORBIDDEN = ["/usuarios", "/propiedades", "/dashboard"]
-const INQUILINO_REDIRECT = "/nuevo"
+// Rutas que los inquilinos NO pueden acceder
+const INQUILINO_FORBIDDEN = ["/usuarios", "/propiedades"]
+// Rutas permitidas para inquilinos: /inquilino/* y /dashboard (redirección central)
+const INQUILINO_ALLOWED = ["/inquilino", "/dashboard"]
+const INQUILINO_REDIRECT = "/inquilino/dashboard"
 
 export function RoleGuard({ children }: { children: React.ReactNode }) {
   const router = useRouter()
@@ -19,8 +22,13 @@ export function RoleGuard({ children }: { children: React.ReactNode }) {
       .then((data: { role?: UserRole } | null) => {
         const r = data?.role ?? "inquilino"
         setRole(r)
-        if (r === "inquilino" && INQUILINO_FORBIDDEN.some((p) => pathname.startsWith(p))) {
-          router.replace(INQUILINO_REDIRECT)
+
+        if (r === "inquilino") {
+          if (INQUILINO_FORBIDDEN.some((p) => pathname.startsWith(p))) {
+            if (!INQUILINO_ALLOWED.some((p) => pathname.startsWith(p))) {
+              router.replace(INQUILINO_REDIRECT)
+            }
+          }
         }
       })
       .catch(() => setRole("inquilino"))

@@ -40,6 +40,25 @@ export function DashboardNav() {
         {isInquilino ? "Mis datos" : "Nuevo Arrendatario"}
       </Link>
 
+      {/* Opciones para inquilinos */}
+      {isInquilino && (
+        <Link
+          href="/mis-contratos"
+          className="block rounded p-2 transition hover:bg-gray-800"
+        >
+          📄 Mis Contratos
+        </Link>
+      )}
+
+      {isInquilino && (
+        <Link
+          href="/catalogo"
+          className="block rounded p-2 transition hover:bg-gray-800"
+        >
+          🏠 Ver Propiedades
+        </Link>
+      )}
+
       {(isAdmin || isPropietario) && (
         <Link
           href="/propiedades"
@@ -56,6 +75,16 @@ export function DashboardNav() {
           className="block rounded p-2 transition hover:bg-gray-800"
         >
           Contratos
+        </Link>
+      )}
+
+      {/* Invitaciones - solo para admins y propietarios */}
+      {(isAdmin || isPropietario) && (
+        <Link
+          href="/invitaciones"
+          className="block rounded p-2 transition hover:bg-gray-800"
+        >
+          ✉️ Invitaciones
         </Link>
       )}
 

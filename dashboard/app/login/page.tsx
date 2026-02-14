@@ -50,8 +50,14 @@ function LoginContent() {
     }
 
     if (data.user) {
-      const redirect = searchParams.get("redirect") ?? "/dashboard"
-      router.push(redirect)
+      const explicitRedirect = searchParams.get("redirect")
+      if (explicitRedirect && explicitRedirect.startsWith("/")) {
+        router.push(explicitRedirect)
+      } else {
+        const res = await fetch("/api/auth/dashboard")
+        const json = await res.json().catch(() => ({}))
+        router.push(json.redirect || "/inquilino/dashboard")
+      }
       router.refresh()
     }
     setLoading(false)

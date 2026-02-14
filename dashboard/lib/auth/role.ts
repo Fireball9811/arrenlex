@@ -3,10 +3,23 @@ import { isAdmin } from "@/lib/supabase/admin"
 
 export type UserRole = "admin" | "propietario" | "inquilino"
 
+const VALID_ROLES: UserRole[] = ["admin", "propietario", "inquilino"]
+
 export async function getUserRole(
   supabase: SupabaseClient,
   user: { id: string; email?: string; user_metadata?: Record<string, unknown> }
 ): Promise<UserRole> {
+  // Fuente de verdad: tabla perfiles (por user_id = auth.users.id)
+  const { data: perfil } = await supabase
+    .from("perfiles")
+    .select("role")
+    .eq("id", user.id)
+    .maybeSingle()
+
+  const roleFromDb = perfil?.role as UserRole | undefined
+  if (roleFromDb && VALID_ROLES.includes(roleFromDb)) return roleFromDb
+
+  // Fallback: lista de admins por env (solo si no hay perfil o rol no definido)
   if (isAdmin(user.email)) return "admin"
 
   const meta = user.user_metadata as Record<string, unknown> | undefined
