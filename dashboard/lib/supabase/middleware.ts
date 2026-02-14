@@ -46,6 +46,8 @@ export async function updateSession(request: NextRequest) {
     request.nextUrl.pathname.startsWith("/propiedades") ||
     request.nextUrl.pathname.startsWith("/usuarios") ||
     request.nextUrl.pathname.startsWith("/contratos") ||
+    request.nextUrl.pathname.startsWith("/reportes") ||
+    request.nextUrl.pathname.startsWith("/contratos") ||
     request.nextUrl.pathname.startsWith("/reportes")
 
   if (!user && isProtectedRoute) {

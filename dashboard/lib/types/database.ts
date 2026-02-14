@@ -20,3 +20,14 @@ export type Arrendatario = {
   telefono: string
   created_at: string
 }
+
+export type Perfil = {
+  id: string
+  email: string
+  nombre?: string | null
+  role: "admin" | "propietario" | "inquilino"
+  activo: boolean
+  bloqueado: boolean
+  creado_en: string
+  actualizado_en: string
+}

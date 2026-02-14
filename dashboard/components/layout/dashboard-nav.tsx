@@ -49,14 +49,12 @@ export function DashboardNav() {
         </Link>
       )}
 
-      {isAdmin && (
-        <Link
-          href="/usuarios"
-          className="block rounded p-2 transition hover:bg-gray-800"
-        >
-          Crear usuarios
-        </Link>
-      )}
+      <Link
+        href="/usuarios"
+        className="block rounded p-2 transition hover:bg-gray-800"
+      >
+        Usuarios
+      </Link>
 
       {/* Contratos - para implementar */}
       {(isAdmin || isPropietario) && (

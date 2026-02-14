@@ -30,7 +30,7 @@ export default function UsuariosSistemaPage() {
     new Intl.NumberFormat("es-CO", { style: "currency", currency: "COP" }).format(n)
 
   function toggleActivo(usuario: Usuario) {
-    const accion = usuario.activo ? "desactivar" : "activar"
+    const accion = usuario.active ? "desactivar" : "activar"
 
     fetch(`/api/admin/usuarios/${usuario.id}`, {
       method: "PATCH",
@@ -51,8 +51,8 @@ export default function UsuariosSistemaPage() {
   }
 
   function toggleBloqueo(usuario: Usuario) {
-    const accion = usuario.bloqueado ? "desbloquear" : "bloquear"
-    const confirmMsg = usuario.bloqueado
+    const accion = usuario.blocked ? "desbloquear" : "bloquear"
+    const confirmMsg = usuario.blocked
       ? `Desbloquear a ${usuario.email}?`
       : `Bloquear definitivamente a ${usuario.email}?`
 
@@ -120,7 +120,7 @@ export default function UsuariosSistemaPage() {
             <CardTitle className="text-sm">✅ Activos</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold">{usuarios.filter(u => u.activo).length}</p>
+            <p className="text-2xl font-bold">{usuarios.filter(u => u.active).length}</p>
           </CardContent>
         </Card>
 
@@ -129,7 +129,7 @@ export default function UsuariosSistemaPage() {
             <CardTitle className="text-sm">⏸ Inactivos</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold">{usuarios.filter(u => !u.activo && !u.bloqueado).length}</p>
+            <p className="text-2xl font-bold">{usuarios.filter(u => !u.active && !u.blocked).length}</p>
           </CardContent>
         </Card>
 
@@ -138,7 +138,7 @@ export default function UsuariosSistemaPage() {
             <CardTitle className="text-sm">🚫 Bloqueados</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold">{usuarios.filter(u => u.bloqueado).length}</p>
+            <p className="text-2xl font-bold">{usuarios.filter(u => u.blocked).length}</p>
           </CardContent>
         </Card>
       </div>
@@ -165,7 +165,7 @@ export default function UsuariosSistemaPage() {
                 </thead>
                 <tbody>
                   {usuarios.map((usuario) => (
-                    <tr key={usuario.id} className={`border-b ${usuario.bloqueado ? "bg-red-50" : ""}`}>
+                    <tr key={usuario.id} className={`border-b ${usuario.blocked ? "bg-red-50" : ""}`}>
                       {/* Usuario */}
                       <td className="p-3">
                         <div>
@@ -183,11 +183,11 @@ export default function UsuariosSistemaPage() {
 
                       {/* Estado */}
                       <td className="p-3 text-center">
-                        {usuario.bloqueado ? (
+                        {usuario.blocked ? (
                           <span className="rounded-full bg-red-100 px-2 py-1 text-xs font-medium text-red-800">
                             🚫 Bloqueado
                           </span>
-                        ) : usuario.activo ? (
+                        ) : usuario.active ? (
                           <span className="rounded-full bg-green-100 px-2 py-1 text-xs font-medium text-green-800">
                             ✅ Activo
                           </span>
@@ -203,13 +203,13 @@ export default function UsuariosSistemaPage() {
                         <label className="inline-flex items-center gap-2">
                           <input
                             type="checkbox"
-                            checked={usuario.activo && !usuario.bloqueado}
-                            disabled={usuario.bloqueado}
+                            checked={usuario.active && !usuario.blocked}
+                            disabled={usuario.blocked}
                             onChange={() => toggleActivo(usuario)}
                             className="h-4 w-4 rounded border-gray-300"
                           />
                           <span className="text-xs text-muted-foreground">
-                            {usuario.activo ? "Activo" : "Inactivo"}
+                            {usuario.active ? "Activo" : "Inactivo"}
                           </span>
                         </label>
                       </td>
@@ -218,10 +218,10 @@ export default function UsuariosSistemaPage() {
                       <td className="p-3 text-center">
                         <Button
                           size="sm"
-                          variant={usuario.bloqueado ? "outline" : "destructive"}
+                          variant={usuario.blocked ? "outline" : "destructive"}
                           onClick={() => toggleBloqueo(usuario)}
                         >
-                          {usuario.bloqueado ? "🔓 Desbloquear" : "🚫 Bloquear"}
+                          {usuario.blocked ? "🔓 Desbloquear" : "🚫 Bloquear"}
                         </Button>
                       </td>
                     </tr>
