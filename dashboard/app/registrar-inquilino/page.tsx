@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { Suspense, useEffect, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import {
@@ -191,8 +191,8 @@ function RegistrarInquilinoContent() {
 
 export default function RegistrarInquilinoPage() {
   return (
-    <>
+    <Suspense fallback={<div className="flex min-h-screen items-center justify-center">Cargando...</div>}>
       <RegistrarInquilinoContent />
-    </>
+    </Suspense>
   )
 }

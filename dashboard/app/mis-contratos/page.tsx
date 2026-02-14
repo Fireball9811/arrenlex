@@ -15,7 +15,9 @@ import Link from "next/link"
 
 type Contrato = {
   id: string
+  propiedad_id: string
   propiedades: {
+    id: string
     direccion: string
     ciudad: string
     barrio: string
@@ -45,7 +47,7 @@ export default function MisContratosPage() {
           .from("contratos")
           .select(`
             *,
-            propiedades (direccion, ciudad, barrio),
+            propiedades (id, direccion, ciudad, barrio),
             arrendatarios (nombre, cedula)
           `)
           .or(`arrendatarios.cedula.eq.${user.email}`)
@@ -153,7 +155,7 @@ export default function MisContratosPage() {
 
                 <div className="pt-2">
                   <Button variant="outline" size="sm" className="w-full" asChild>
-                    <Link href={`/catalogo/propiedades/${c.propiedades?.id || c.id}`}>
+                    <Link href={`/catalogo/propiedades/${c.propiedades?.id ?? c.propiedad_id}`}>
                       Ver Propiedad
                     </Link>
                   </Button>

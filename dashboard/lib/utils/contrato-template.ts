@@ -23,7 +23,7 @@ TIPO DE CUENTA: {{PROPIEDAD_CUENTA_TIPO}}
 No. DE CUENTA: {{PROPIEDAD_CUENTA_NUMERO}}
 TITULAR DE LA CUENTA: {{PROPIEDAD_CUENTA_TITULAR}}
 
-El canon mensual de arrendamiento se fija en ${{CONTRATO_CANON}} COP, que debera ser cancelado dentro de los cinco (5) primeros dias calendario de cada mes.
+El canon mensual de arrendamiento se fija en {{CONTRATO_CANON_COP}} COP, que debera ser cancelado dentro de los cinco (5) primeros dias calendario de cada mes.
 
 PARAGRAFO: La mera tolerancia de EL ARRENDADOR en aceptar el pago del precio con posterioridad a los cinco (5) dias citados no se entendera como animo de modificar esta clausula.
 
@@ -206,7 +206,7 @@ export function llenarPlantillaContrato(datos: DatosContrato): string {
   contrato = contrato.replace(/\{\{PROPIEDAD_CUENTA_TITULAR\}\}/g, datos.propiedad_cuenta_titular || '________________________')
 
   // Datos del contrato
-  contrato = contrato.replace(/\{\{CONTRATO_CANON\}\}/g, formatearMoneda(datos.contrato_canon_mensual))
+  contrato = contrato.replace(/\{\{CONTRATO_CANON_COP\}\}/g, "$" + formatearMoneda(datos.contrato_canon_mensual))
   contrato = contrato.replace(/\{\{CONTRATO_DURACION_MESES\}\}/g, datos.contrato_duracion_meses.toString())
   contrato = contrato.replace(/\{\{CONTRATO_DURACION_MESES_EN_LETRAS\}\}/g, numeroALetras(datos.contrato_duracion_meses))
   contrato = contrato.replace(/\{\{CONTRATO_FECHA_INICIO_DIA\}\}/g, fechaInicio.dia)

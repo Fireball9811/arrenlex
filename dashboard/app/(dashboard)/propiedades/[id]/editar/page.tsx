@@ -13,7 +13,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
-import { GaleriaImagenes } from "@/components/propiedades/galeria-imagenes"
+import { GaleríaImagenes as GaleriaImagenes } from "@/components/propiedades/galeria-imagenes"
 import type { PropiedadImagen } from "@/lib/types/database"
 
 const CIUDADES = ["Bogotá", "Medellín", "Cali", "Barranquilla", "Cartagena"]
