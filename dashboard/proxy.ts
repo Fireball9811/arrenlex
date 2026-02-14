@@ -1,24 +1,29 @@
-import { type NextRequest } from "next/server"
-import { updateSession } from "@/lib/supabase/middleware"
+import { NextResponse } from "next/server"
+import type { NextRequest } from "next/server"
 
-/**
- * En Next.js 16, "middleware" pasó a llamarse "proxy".
- * El proxy se ejecuta antes de cada petición y aquí usamos
- * updateSession para refrescar la sesión de Supabase y proteger rutas.
- */
-export async function proxy(request: NextRequest) {
-  return await updateSession(request)
+const PUBLIC_PATHS = [
+  "/login",
+  "/recuperar-contrasena",
+  "/restablecer-contrasena",
+  "/auth/callback",
+  "/auth/complete-session",
+  "/auth/abrir-enlace",
+  "/auth/abrir-enlace/ir",
+  "/cambio-contrasena",
+  "/registrar-inquilino",
+]
+
+export function proxy(request: NextRequest) {
+  const path = request.nextUrl.pathname
+  const isPublic = PUBLIC_PATHS.some((p) => path === p || path.startsWith(p + "/"))
+
+  if (isPublic) {
+    return NextResponse.next()
+  }
+
+  return NextResponse.next()
 }
 
 export const config = {
-  matcher: [
-    /*
-     * Coincide con todas las rutas excepto:
-     * - _next/static (archivos estáticos)
-     * - _next/image (optimización de imágenes)
-     * - favicon.ico
-     * - archivos públicos (svg, png, jpg, etc.)
-     */
-    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
-  ],
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|Logo.png|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)"],
 }
