@@ -1,8 +1,10 @@
 import { NextResponse } from "next/server"
-import { createClient } from "@/lib/supabase/client"
+import { createClient } from "@/lib/supabase/server"
 import { createAdminClient, isAdmin } from "@/lib/supabase/admin"
 
-// PATCH - Actualizar estado de usuario (blocked/desblocked, active/desactive)
+const VALID_ROLES = ["admin", "propietario", "inquilino"] as const
+
+// PATCH - Actualizar estado (bloquear/activar) y/o rol de usuario
 export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
@@ -22,44 +24,48 @@ export async function PATCH(
 
   const { id } = await params
   const body = await request.json()
-  const { accion } = body
+  const { accion, role: newRole } = body
 
-  if (!accion) {
-    return NextResponse.json({ error: "Acción no especificada" }, { status: 400 })
+  if (!accion && newRole === undefined) {
+    return NextResponse.json({ error: "Indica accion o role" }, { status: 400 })
   }
 
-  // No permitir bloquear/desbloquear a uno mismo
-  if (id === user?.id) {
-    return NextResponse.json({ error: "No puedes modificar tu propio usuario" }, { status: 400 })
+  if (id === user?.id && (accion === "bloquear" || accion === "desactivar")) {
+    return NextResponse.json({ error: "No puedes desactivar o bloquear tu propio usuario" }, { status: 400 })
   }
 
   const admin = createAdminClient()
 
-  let updates: Record<string, boolean> = {}
-  let mensaje = ""
+  const updates: Record<string, boolean | string> = {}
 
-  switch (accion) {
-    case "bloquear":
-      updates = { bloqueado: true, activo: false }
-      mensaje = "Usuario bloqueado correctamente"
-      break
-    case "desbloquear":
-      updates = { bloqueado: false, activo: true }
-      mensaje = "Usuario desbloqueado correctamente"
-      break
-    case "activar":
-      updates = { activo: true }
-      mensaje = "Usuario activado correctamente"
-      break
-    case "desactivar":
-      updates = { activo: false }
-      mensaje = "Usuario desactivado correctamente"
-      break
-    default:
-      return NextResponse.json({ error: "Acción no válida" }, { status: 400 })
+  if (newRole !== undefined) {
+    if (!VALID_ROLES.includes(newRole)) {
+      return NextResponse.json({ error: "Rol no válido" }, { status: 400 })
+    }
+    updates.role = newRole
   }
 
-  // Actualizar el perfil
+  if (accion) {
+    switch (accion) {
+      case "bloquear":
+        updates.bloqueado = true
+        updates.activo = false
+        break
+      case "desbloquear":
+        updates.bloqueado = false
+        updates.activo = true
+        break
+      case "activar":
+        updates.activo = true
+        break
+      case "desactivar":
+        updates.activo = false
+        break
+      default:
+        return NextResponse.json({ error: "Acción no válida" }, { status: 400 })
+    }
+  }
+
   const { data, error } = await admin
     .from("perfiles")
     .update(updates)
@@ -75,8 +81,5 @@ export async function PATCH(
     return NextResponse.json({ error: "Usuario no encontrado" }, { status: 404 })
   }
 
-  // Nota: El bloqueo se maneja a nivel de aplicación con la tabla perfiles
-  // No es necesario bloquear a nivel de auth since tenemos el control en la app
-
-  return NextResponse.json({ ...data, mensaje })
+  return NextResponse.json(data)
 }
