@@ -1,0 +1,35 @@
+en el apartado e propiedades solo los propietraios tienem acceso a EL BOTON DE NUEVA PROPIeDAD y botones de edtar  eliminar LOS INqUILINOS Y LAS DEMAS PERSONAS EN EL PAGNIA PRINCIPAL PODRAN VER LAS PROPIEDADES DE ACUERdo a la ciudad y solo las que estan dispopnibles. asi mismo en la caja Tambien se debe ver el apartado de descripcion 
+
+en el cja de cada apartamento debe haber una foto principla para esa propiedad y solo la podra subir o editar los propietarios o el administrador 
+
+en la gestion de pagos se debe 
+
+el menu para admninistradopres debe ser Tambien el de ingresar nuevos usuarios como propietarios y debe poder editar los antiguos, alli es mandatorio que fuera de los datos personales basicos deba ingresar banco cuenta bancaria, tipo de cuenta numero de cuenta y titular d ela cuenta asi como celular, cedula, direccion etc..
+
+
+debes cambiar el dropdown de las iudades colombianas o si son muchas deja el dropdown a las ciudades que estan ya con propiedades pero permite que Tambien que s epuedan ingresar nuevas asi pues tenemos las ciudades que nosotros ingresamos o que estamos con proiedades dentro e la base de datos .
+
+
+Es importante que en el contrato que se llena automatica mente llecve el logo en la cabecera del contrato asi la marca estara en los documentos que vamos a entregar.,
+
+en el menu de Invitacion ,para administradores debe aparecer el formualrio de enviar el msnnaje apra lo inquilinos eso ya lo teniamos, asi mismo el nuevo arrendatario para los inquilinos debe aprecer al igual que para el propietwrio y administardor.
+
+Gestionar con tusdatos.com para obtener los datos de cada inquilino y hacer un soporte en la pagina.
+
+Se debe tener un portal para enviar documentacion a seguros que nos ayuden a gestionar los seguros de los aptos(erich)
+
+Se debe teneer un canal de documentacion que diga abogados para poder comunciar las pormenosres d los propietarios con los inquilinos, esto es solo para propietarios y administardores.
+
+colcoar un modulo de vencimientos de seguros y de servicios publicos, para generar envois de correo y de envoi a celulares de se esta venciendo el servicio de luz del apto tal,
+
+
+git restore .
+
+
+http://localhost:3000/auth/https://dsaycjsoodznzkewbmun.supabase.co/auth/v1/verify?token=pkce_b539165e8e0bce8e797b7c351123f3a4bf2eaa3abd11c1820e62e05f&type=magiclink&redirect_to=http://localhost:3000/auth/callback
+
+
+contrasena de google correo 
+
+aggm lfks enmb odwh
+

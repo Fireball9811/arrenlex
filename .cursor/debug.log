@@ -1,9 +1,4 @@
-{"location":"api/invitaciones:POST","message":"sending OTP redirectTo","data":{"redirectTo":"http://localhost:3000/auth/callback","siteUrl":"http://localhost:3000"},"timestamp":1771084420444,"hypothesisId":"H1"}
-{"location":"app/auth/callback/route.ts:GET","message":"callback GET received","data":{"hasCode":true,"hasError":false,"origin":"http://localhost:3000"},"timestamp":1771084427865,"hypothesisId":"H1-H4"}
-{"location":"app/auth/callback/route.ts:after_exchange","message":"after exchangeCodeForSession","data":{"exchangeError":null},"timestamp":1771084428093,"hypothesisId":"H2"}
-{"location":"cambio-contrasena:before_getUser","message":"checkSession started","data":{"href":"http://localhost:3000/cambio-contrasena"},"timestamp":1771084430144,"hypothesisId":"H3"}
-{"location":"cambio-contrasena:before_getUser","message":"checkSession started","data":{"href":"http://localhost:3000/cambio-contrasena"},"timestamp":1771084430148,"hypothesisId":"H3"}
-{"location":"cambio-contrasena:after_getUser","message":"getUser response","data":{"hasUser":true},"timestamp":1771084430543,"hypothesisId":"H3"}
-{"location":"cambio-contrasena:finally","message":"checkSession finally","data":{},"timestamp":1771084430543,"hypothesisId":"H3"}
-{"location":"cambio-contrasena:after_getUser","message":"getUser response","data":{"hasUser":true},"timestamp":1771084430793,"hypothesisId":"H3"}
-{"location":"cambio-contrasena:finally","message":"checkSession finally","data":{},"timestamp":1771084430793,"hypothesisId":"H3"}
+{"location":"cambio-contrasena:before_getUser","message":"checkSession started","data":{"href":"http://localhost:3001/cambio-contrasena?next=%2Finquilino%2Fdashboard"},"timestamp":1771103507289,"hypothesisId":"H3"}
+{"location":"cambio-contrasena:before_getUser","message":"checkSession started","data":{"href":"http://localhost:3001/cambio-contrasena?next=%2Finquilino%2Fdashboard"},"timestamp":1771103507290,"hypothesisId":"H3"}
+{"location":"cambio-contrasena:after_getUser","message":"getUser response","data":{"hasUser":true},"timestamp":1771103507523,"hypothesisId":"H3"}
+{"location":"cambio-contrasena:after_getUser","message":"getUser response","data":{"hasUser":true},"timestamp":1771103507648,"hypothesisId":"H3"}

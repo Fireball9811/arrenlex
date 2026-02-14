@@ -1,7 +1,13 @@
 import { NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
+import { createAdminClient } from "@/lib/supabase/admin"
+import { generateTempPassword } from "@/lib/auth/temp-password"
+import { sendInvitationEmail } from "@/lib/email/send-invitation"
 
-// POST - Enviar invitación por correo
+const EXPIRY_DAYS =
+  parseInt(process.env.INVITATION_TEMP_PASSWORD_EXPIRY_DAYS ?? "7", 10) || 7
+
+// POST - Invitar usuario con contraseña temporal
 export async function POST(request: Request) {
   const supabase = await createClient()
   const {
@@ -23,45 +29,142 @@ export async function POST(request: Request) {
       )
     }
 
-    // Validar formato de email
+    const emailTrimmed = email.trim().toLowerCase()
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-    if (!emailRegex.test(email)) {
+    if (!emailRegex.test(emailTrimmed)) {
       return NextResponse.json(
         { error: "Formato de email inválido" },
         { status: 400 }
       )
     }
 
-    // redirect_to debe coincidir EXACTAMENTE con Supabase → Redirect URLs (sin barra final, http en local).
-    const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000").replace(/\/$/, "")
-    const redirectTo = `${siteUrl}/auth/callback`
-    // #region agent log
-    fetch("http://127.0.0.1:7242/ingest/ff442eb1-c8fb-4919-a950-d18bdf14310b", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        location: "api/invitaciones:POST",
-        message: "sending OTP redirectTo",
-        data: { redirectTo, siteUrl },
-        timestamp: Date.now(),
-        hypothesisId: "H1",
-      }),
-    }).catch(() => {})
-    // #endregion
-    if (!siteUrl.startsWith("http://") && siteUrl.includes("localhost")) {
-      console.warn("[invitaciones] Para local, usa http://localhost:3000, no https.")
+    let admin
+    try {
+      admin = createAdminClient()
+    } catch {
+      return NextResponse.json(
+        { error: "SUPABASE_SERVICE_ROLE_KEY no configurada. Revisa las variables de entorno." },
+        { status: 500 }
+      )
     }
-    const { error } = await supabase.auth.signInWithOtp({
-      email,
-      options: {
-        emailRedirectTo: redirectTo,
-      },
+
+    const tempPassword = generateTempPassword()
+    const tempPasswordExpiresAt =
+      Date.now() + EXPIRY_DAYS * 24 * 60 * 60 * 1000
+
+    const { data: newUser, error: createError } =
+      await admin.auth.admin.createUser({
+        email: emailTrimmed,
+        password: tempPassword,
+        email_confirm: true,
+        user_metadata: {
+          must_change_password: true,
+          temp_password_expires_at: tempPasswordExpiresAt,
+        },
+      })
+
+    if (createError) {
+      const isAlreadyRegistered =
+        createError.message?.toLowerCase().includes("already") ||
+        createError.message?.toLowerCase().includes("registered")
+
+      if (isAlreadyRegistered) {
+        const { data: listData } = await admin.auth.admin.listUsers({ perPage: 1000 })
+        const existingUser = listData.users.find(
+          (u) => u.email?.toLowerCase() === emailTrimmed
+        )
+        if (!existingUser) {
+          return NextResponse.json(
+            { error: "Este correo ya tiene cuenta" },
+            { status: 400 }
+          )
+        }
+
+        const { error: updateError } = await admin.auth.admin.updateUserById(
+          existingUser.id,
+          {
+            password: tempPassword,
+            user_metadata: {
+              must_change_password: true,
+              temp_password_expires_at: tempPasswordExpiresAt,
+            },
+          }
+        )
+        if (updateError) {
+          console.error("[invitaciones] Error actualizando usuario:", updateError)
+          return NextResponse.json(
+            { error: updateError.message || "Error al actualizar usuario" },
+            { status: 500 }
+          )
+        }
+
+        const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000").replace(/\/$/, "")
+        const loginUrl = `${siteUrl}/login`
+        const emailResult = await sendInvitationEmail({
+          to: emailTrimmed,
+          tempPassword,
+          loginUrl,
+          expiresInDays: EXPIRY_DAYS,
+        })
+        if (!emailResult.success) {
+          console.error("[invitaciones] Error enviando email:", emailResult.error)
+          return NextResponse.json(
+            { error: emailResult.error || "Contraseña actualizada pero no se pudo enviar el correo" },
+            { status: 500 }
+          )
+        }
+        return NextResponse.json({
+          success: true,
+          message: "Re-invitación enviada exitosamente",
+          email: emailTrimmed,
+        })
+      }
+
+      console.error("[invitaciones] Error creando usuario:", createError)
+      return NextResponse.json(
+        { error: createError.message || "Error al crear usuario" },
+        { status: 500 }
+      )
+    }
+
+    if (!newUser.user) {
+      return NextResponse.json(
+        { error: "Error al crear usuario" },
+        { status: 500 }
+      )
+    }
+
+    const { error: perfilError } = await admin
+      .from("perfiles")
+      .insert({
+        id: newUser.user.id,
+        email: newUser.user.email!,
+        nombre: newUser.user.email?.split("@")[0] || "Inquilino",
+        role: "inquilino",
+        activo: true,
+        bloqueado: false,
+      })
+
+    if (perfilError) {
+      console.error("[invitaciones] Error insertando perfil:", perfilError)
+    }
+
+    const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000").replace(
+      /\/$/,
+      ""
+    )
+    const loginUrl = `${siteUrl}/login`
+    const emailResult = await sendInvitationEmail({
+      to: emailTrimmed,
+      tempPassword,
+      loginUrl,
+      expiresInDays: EXPIRY_DAYS,
     })
 
-    if (error) {
-      console.error("Error enviando invitación:", error)
+    if (!emailResult.success) {
+      console.error("[invitaciones] Error enviando email:", emailResult.error)
       return NextResponse.json(
-        { error: error.message || "Error al enviar invitación" },
+        { error: emailResult.error || "Usuario creado pero no se pudo enviar el correo" },
         { status: 500 }
       )
     }
@@ -69,7 +172,7 @@ export async function POST(request: Request) {
     return NextResponse.json({
       success: true,
       message: "Invitación enviada exitosamente",
-      email,
+      email: emailTrimmed,
     })
   } catch (error) {
     console.error("Error en API de invitaciones:", error)

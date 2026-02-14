@@ -50,6 +50,26 @@ function LoginContent() {
     }
 
     if (data.user) {
+      const metadata = data.user.user_metadata ?? {}
+      const mustChange = metadata.must_change_password === true
+      const expiresAt = metadata.temp_password_expires_at as number | undefined
+
+      if (mustChange && expiresAt && Date.now() > expiresAt) {
+        await supabase.auth.signOut()
+        setError("La contraseña temporal ha expirado. Contacta al administrador para una nueva invitación.")
+        setLoading(false)
+        return
+      }
+
+      if (mustChange) {
+        const next = searchParams.get("next")
+        const nextPath = next && next.startsWith("/") ? next : "/inquilino/dashboard"
+        router.push(`/cambio-contrasena?next=${encodeURIComponent(nextPath)}`)
+        router.refresh()
+        setLoading(false)
+        return
+      }
+
       const explicitRedirect = searchParams.get("redirect")
       if (explicitRedirect && explicitRedirect.startsWith("/")) {
         router.push(explicitRedirect)

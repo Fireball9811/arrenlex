@@ -43,7 +43,7 @@ export default function PropietarioInvitacionesPage() {
             <Mail className="h-5 w-5" />
             Enviar Invitación
           </CardTitle>
-          <CardDescription>El inquilino recibirá un correo con un enlace para registrarse.</CardDescription>
+          <CardDescription>El inquilino recibirá un correo con sus credenciales de acceso (email y contraseña temporal) para entrar y crear su contraseña definitiva.</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={sendInvitation} className="space-y-4">

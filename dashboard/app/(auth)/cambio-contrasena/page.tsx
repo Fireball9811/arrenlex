@@ -95,19 +95,6 @@ function CambioContrasenaContent() {
         setCheckState("ready")
       } catch (err) {
         checkStateResolvedRef.current = true
-        // #region agent log
-        fetch("http://127.0.0.1:7242/ingest/ff442eb1-c8fb-4919-a950-d18bdf14310b", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            location: "cambio-contrasena:getUser_catch",
-            message: "getUser error or timeout",
-            data: { err: String(err) },
-            timestamp: Date.now(),
-            hypothesisId: "H3",
-          }),
-        }).catch(() => {})
-        // #endregion
 
         if (!mountedRef.current) return
 
@@ -122,21 +109,6 @@ function CambioContrasenaContent() {
           setError("No se pudo verificar la sesión.")
           setCheckState("error")
         }
-        // #region agent log
-        if (mountedRef.current) {
-          fetch("http://127.0.0.1:7242/ingest/ff442eb1-c8fb-4919-a950-d18bdf14310b", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              location: "cambio-contrasena:finally",
-              message: "checkSession finally",
-              data: {},
-              timestamp: Date.now(),
-              hypothesisId: "H3",
-            }),
-          }).catch(() => {})
-        }
-        // #endregion
       }
     }
 
@@ -165,7 +137,13 @@ function CambioContrasenaContent() {
     const supabase = createClient()
 
     try {
-      const { error: updateError } = await supabase.auth.updateUser({ password })
+      const { error: updateError } = await supabase.auth.updateUser({
+        password,
+        data: {
+          must_change_password: false,
+          temp_password_expires_at: null,
+        },
+      })
 
       if (updateError) {
         setError(updateError.message)
