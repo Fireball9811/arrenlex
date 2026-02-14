@@ -1,4 +1,0 @@
-{"location":"cambio-contrasena:before_getUser","message":"checkSession started","data":{"href":"http://localhost:3001/cambio-contrasena?next=%2Finquilino%2Fdashboard"},"timestamp":1771103507289,"hypothesisId":"H3"}
-{"location":"cambio-contrasena:before_getUser","message":"checkSession started","data":{"href":"http://localhost:3001/cambio-contrasena?next=%2Finquilino%2Fdashboard"},"timestamp":1771103507290,"hypothesisId":"H3"}
-{"location":"cambio-contrasena:after_getUser","message":"getUser response","data":{"hasUser":true},"timestamp":1771103507523,"hypothesisId":"H3"}
-{"location":"cambio-contrasena:after_getUser","message":"getUser response","data":{"hasUser":true},"timestamp":1771103507648,"hypothesisId":"H3"}

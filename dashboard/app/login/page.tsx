@@ -42,6 +42,22 @@ function LoginContent() {
     })
 
     if (signInError) {
+      // #region agent log
+      fetch("http://127.0.0.1:7242/ingest/ff442eb1-c8fb-4919-a950-d18bdf14310b", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          location: "login/page.tsx:signInError",
+          message: "Error en login",
+          data: {
+            errorMessage: signInError.message,
+            email: usuario.trim().toLowerCase(),
+            hypothesisId: "H2",
+          },
+          timestamp: Date.now(),
+        }),
+      }).catch(() => {})
+      // #endregion
       setError(signInError.message === "Invalid login credentials"
         ? "Correo o contraseña incorrectos"
         : signInError.message)
