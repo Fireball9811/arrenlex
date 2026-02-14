@@ -40,19 +40,19 @@ export async function PATCH(
 
   switch (accion) {
     case "bloquear":
-      updates = { blocked: true, active: false }
+      updates = { bloqueado: true, activo: false }
       mensaje = "Usuario bloqueado correctamente"
       break
     case "desbloquear":
-      updates = { blocked: false, active: true }
+      updates = { bloqueado: false, activo: true }
       mensaje = "Usuario desbloqueado correctamente"
       break
     case "activar":
-      updates = { active: true }
+      updates = { activo: true }
       mensaje = "Usuario activado correctamente"
       break
     case "desactivar":
-      updates = { active: false }
+      updates = { activo: false }
       mensaje = "Usuario desactivado correctamente"
       break
     default:

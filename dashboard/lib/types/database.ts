@@ -26,8 +26,8 @@ export type Perfil = {
   email: string
   nombre?: string | null
   role: "admin" | "propietario" | "inquilino"
-  active: boolean
-  blocked: boolean
-  created_at: string
-  updated_at: string
+  activo: boolean
+  bloqueado: boolean
+  creado_en: string
+  actualizado_en: string
 }

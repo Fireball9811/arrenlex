@@ -4,37 +4,37 @@ CREATE TABLE IF NOT EXISTS public.perfiles (
   email TEXT NOT NULL UNIQUE,
   nombre TEXT,
   role TEXT NOT NULL DEFAULT 'inquilino' CHECK (role IN ('admin', 'propietario', 'inquilino')),
-  active BOOLEAN NOT NULL DEFAULT true,
-  blocked BOOLEAN NOT NULL DEFAULT false,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  activo BOOLEAN NOT NULL DEFAULT true,
+  bloqueado BOOLEAN NOT NULL DEFAULT false,
+  creado_en TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  actualizado_en TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 -- Crear indices
 CREATE INDEX IF NOT EXISTS idx_perfiles_email ON public.perfiles(email);
 CREATE INDEX IF NOT EXISTS idx_perfiles_role ON public.perfiles(role);
-CREATE INDEX IF NOT EXISTS idx_perfiles_active ON public.perfiles(active);
-CREATE INDEX IF NOT EXISTS idx_perfiles_blocked ON public.perfiles(blocked);
+CREATE INDEX IF NOT EXISTS idx_perfiles_activo ON public.perfiles(activo);
+CREATE INDEX IF NOT EXISTS idx_perfiles_bloqueado ON public.perfiles(bloqueado);
 
--- Trigger para actualizar updated_at
-CREATE OR REPLACE FUNCTION update_updated_at()
+-- Trigger para actualizar actualizado_en
+CREATE OR REPLACE FUNCTION update_actualizado_en()
 RETURNS TRIGGER AS $$
 BEGIN
-  NEW.updated_at = NOW();
+  NEW.actualizado_en = NOW();
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE TRIGGER trigger_perfiles_updated_at
+CREATE TRIGGER trigger_perfiles_actualizado_en
   BEFORE UPDATE ON public.perfiles
   FOR EACH ROW
-  EXECUTE FUNCTION update_updated_at();
+  EXECUTE FUNCTION update_actualizado_en();
 
 -- Trigger para crear perfil automaticamente cuando se crea un usuario en auth
 CREATE OR REPLACE FUNCTION crear_perfil_usuario()
 RETURNS TRIGGER AS $$
 BEGIN
-  INSERT INTO public.perfiles (id, email, role, active, blocked)
+  INSERT INTO public.perfiles (id, email, role, activo, bloqueado)
   VALUES (
     NEW.id,
     NEW.email,
@@ -71,7 +71,7 @@ CREATE POLICY "Todos pueden actualizar perfiles"
   WITH CHECK (true);
 
 -- Insertar perfil inicial para admin
-INSERT INTO public.perfiles (id, email, nombre, role, active, blocked)
+INSERT INTO public.perfiles (id, email, nombre, role, activo, bloqueado)
 SELECT id, email, 'Administrador', 'admin', true, false
 FROM auth.users
 WHERE email = 'ceo@arrenlex.com'
