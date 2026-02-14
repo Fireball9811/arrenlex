@@ -162,3 +162,21 @@ export type DatosContrato = {
   contrato_canon_mensual: number
   contrato_ciudad_firma: string
 }
+
+export type PropiedadImagen = {
+  id: string
+  propiedad_id: string
+  categoria: "sala" | "cocina" | "habitacion" | "bano" | "fachada" | "otra"
+  nombre_archivo: string
+  url_publica: string
+  orden: number
+  created_at: string
+}
+
+export type PropiedadConImagenes = Propiedad & {
+  imagenes?: PropiedadImagen[]
+}
+
+export type CiudadDisponible = {
+  ciudad: string
+}
