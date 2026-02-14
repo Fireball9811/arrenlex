@@ -48,12 +48,10 @@ export function GaleríaImagenes({ propiedadId, imagenes, onImagenesChange, read
       if (!res.ok) {
         const error = await res.json()
         alert(error.error || "Error al subir imagen")
-        continue
       }
 
       const data = await res.json()
       onImagenesChange([...imagenes, data])
-    } catch (error) {
       console.error("Error subiendo imagen:", error)
       alert("Error al subir imagen")
     } finally {
