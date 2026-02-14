@@ -66,6 +66,16 @@ export function DashboardNav() {
         </Link>
       )}
 
+      {/* Gestión de Pagos - solo para admins y propietarios */}
+      {(isAdmin || isPropietario) && (
+        <Link
+          href="/reportes/gestion-pagos"
+          className="block rounded p-2 transition hover:bg-gray-800"
+        >
+          💰 Gestión de Pagos
+        </Link>
+      )}
+
       {/* Reportes - diferente nombre para inquilinos */}
       <Link
         href={isInquilino ? "/reportes/mis-pagos" : "/reportes"}
