@@ -2,7 +2,7 @@ import { NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/client"
 import { createAdminClient, isAdmin } from "@/lib/supabase/admin"
 
-// PATCH - Actualizar estado de usuario (bloquear/desbloquear, activar/desactivar)
+// PATCH - Actualizar estado de usuario (blocked/desblocked, active/desactive)
 export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
@@ -22,39 +22,37 @@ export async function PATCH(
 
   const { id } = await params
   const body = await request.json()
-  const { accion } = body // accion: "bloquear" | "desbloquear" | "activar" | "desactivar"
+  const { accion } = body
 
   if (!accion) {
     return NextResponse.json({ error: "Acción no especificada" }, { status: 400 })
   }
 
-  const admin = createAdminClient()
-
-  // No permitir bloquear/desactivar a uno mismo
-  if (id === user.id) {
+  // No permitir bloquear/desbloquear a uno mismo
+  if (id === user?.id) {
     return NextResponse.json({ error: "No puedes modificar tu propio usuario" }, { status: 400 })
   }
+
+  const admin = createAdminClient()
 
   let updates: Record<string, boolean> = {}
   let mensaje = ""
 
   switch (accion) {
     case "bloquear":
-      updates = { bloqueado: true, activo: false }
+      updates = { blocked: true, active: false }
       mensaje = "Usuario bloqueado correctamente"
       break
     case "desbloquear":
-      updates = { bloqueado: false, activo: true }
+      updates = { blocked: false, active: true }
       mensaje = "Usuario desbloqueado correctamente"
       break
     case "activar":
-      // Solo activar si no está bloqueado
-      updates = { activo: true }
+      updates = { active: true }
       mensaje = "Usuario activado correctamente"
       break
     case "desactivar":
-      // Solo desactivar si no está bloqueado
-      updates = { activo: false }
+      updates = { active: false }
       mensaje = "Usuario desactivado correctamente"
       break
     default:
@@ -77,20 +75,8 @@ export async function PATCH(
     return NextResponse.json({ error: "Usuario no encontrado" }, { status: 404 })
   }
 
-  // Si se bloquea, también desactivar en auth
-  if (accion === "bloquear") {
-    try {
-      await admin.auth.admin.updateUserById(id, { banned: true })
-    } catch (e) {
-      console.error("Error al bloquear en auth:", e)
-    }
-  } else if (accion === "desbloquear") {
-    try {
-      await admin.auth.admin.updateUserById(id, { banned: false })
-    } catch (e) {
-      console.error("Error al desbloquear en auth:", e)
-    }
-  }
+  // Nota: El bloqueo se maneja a nivel de aplicación con la tabla perfiles
+  // No es necesario bloquear a nivel de auth since tenemos el control en la app
 
   return NextResponse.json({ ...data, mensaje })
 }
