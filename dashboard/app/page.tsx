@@ -1,84 +1,58 @@
 import Image from "next/image"
 import Link from "next/link"
-import { CiudadSelectorLanding } from "@/components/layout/ciudad-selector-landing"
+import { ChevronRight } from "lucide-react"
+import { LandingHero } from "@/components/landing/landing-hero"
 
 export default function HomePage() {
+  const currentYear = new Date().getFullYear()
+
   return (
-    <div className="relative min-h-screen overflow-hidden">
-      {/* Marca de agua de fondo */}
-      <div
-        className="fixed inset-0 -z-10 opacity-[0.06]"
-        style={{
-          backgroundImage: "url(/Logo.png)",
-          backgroundRepeat: "repeat",
-          backgroundSize: "400px",
-        }}
-        aria-hidden
-      />
-
-      {/* Header */}
+    <div className="relative min-h-screen overflow-hidden bg-white">
+      {/* Header: logo + LOG IN */}
       <header className="sticky top-0 z-50 flex h-16 items-center justify-between border-b border-gray-200/80 bg-white/90 px-6 backdrop-blur-sm">
-        <div className="flex items-center gap-8">
-          <Link href="/" className="flex items-center gap-2">
-            <Image
-              src="/Logo.png"
-              alt="Arrenlex Inmobiliaria"
-              width={140}
-              height={48}
-              priority
-              className="h-10 w-auto object-contain"
-            />
-          </Link>
-          <CiudadSelectorLanding />
-        </div>
-
+        <Link href="/" className="flex items-center gap-2">
+          <Image
+            src="/Logo.png"
+            alt="Arrenlex Inmobiliaria"
+            width={140}
+            height={48}
+            priority
+            className="h-10 w-auto object-contain"
+          />
+        </Link>
         <Link
           href="/login"
-          className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition hover:opacity-90"
+          className="rounded-lg bg-gray-900 px-4 py-2 text-sm font-medium uppercase tracking-wide text-white transition hover:bg-gray-800"
         >
-          Sign In
+          LOG IN
         </Link>
       </header>
 
-      {/* Contenido principal */}
-      <main className="container mx-auto px-6 py-12">
-        <section className="mb-16 text-center">
-          <h1 className="mb-4 text-4xl font-bold tracking-tight text-gray-900 md:text-5xl">
-            Tu hogar ideal está aquí
-          </h1>
-          <p className="mx-auto max-w-2xl text-lg text-muted-foreground">
-            Encuentra y gestiona propiedades de arrendamiento en Colombia de forma sencilla y segura.
-          </p>
-        </section>
+      {/* Hero: gradiente, marca de agua, banner central con fotos, Exclusive Estate */}
+      <LandingHero />
 
-        {/* Placeholder zona fotos */}
-        <section className="mb-16">
-          <div className="flex h-64 items-center justify-center rounded-2xl border-2 border-dashed border-gray-300 bg-gray-50/50">
-            <p className="text-gray-500">Área de fotos destacadas (próximamente)</p>
-          </div>
-        </section>
-
-        <section className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
-          <div className="rounded-xl border bg-card p-6 shadow-sm">
-            <h2 className="mb-2 font-semibold text-card-foreground">Arrendar</h2>
-            <p className="text-sm text-muted-foreground">
-              Publica y encuentra propiedades disponibles para arrendamiento.
-            </p>
-          </div>
-          <div className="rounded-xl border bg-card p-6 shadow-sm">
-            <h2 className="mb-2 font-semibold text-card-foreground">Gestionar</h2>
-            <p className="text-sm text-muted-foreground">
-              Administra contratos, pagos y documentación en un solo lugar.
-            </p>
-          </div>
-          <div className="rounded-xl border bg-card p-6 shadow-sm">
-            <h2 className="mb-2 font-semibold text-card-foreground">Confiabilidad</h2>
-            <p className="text-sm text-muted-foreground">
-              Proceso transparente y seguro para arrendadores y arrendatarios.
-            </p>
-          </div>
-        </section>
-      </main>
+      {/* Tarjeta CTA: blanco, bordes superiores redondeados; títulos y botón más arriba */}
+      <section className="relative z-20 -mt-8 rounded-t-[2rem] bg-white px-6 pb-10 pt-6 shadow-lg md:-mt-12 md:rounded-t-[3rem] md:px-12 md:pt-8">
+        <p className="mb-1 text-center text-sm font-medium uppercase tracking-[0.25em] text-cyan-600 md:text-base">
+          El hub inmobiliario líder en Colombia
+        </p>
+        <h1 className="mb-4 text-center text-3xl font-bold tracking-tight text-gray-900 md:text-4xl lg:text-5xl">
+          Encuentra tu próximo{" "}
+          <span className="text-cyan-500">futuro</span>
+        </h1>
+        <div className="mb-8 flex justify-center">
+          <Link
+            href="/catalogo"
+            className="inline-flex items-center gap-2 rounded-full bg-cyan-500 px-6 py-3 text-base font-medium uppercase tracking-wide text-white transition hover:bg-cyan-600 md:px-8 md:py-4 md:text-lg"
+          >
+            ECHAR UN VISTAZO
+            <ChevronRight className="h-5 w-5" />
+          </Link>
+        </div>
+        <p className="text-center text-xs text-gray-500 md:text-sm">
+          PROPIEDAD DE ARRENLEX INMOBILIARIA © {currentYear}
+        </p>
+      </section>
     </div>
   )
 }
