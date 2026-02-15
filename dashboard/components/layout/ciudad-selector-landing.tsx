@@ -9,8 +9,17 @@ export function CiudadSelectorLanding() {
 
   useEffect(() => {
     fetch("/api/propiedades/ciudades")
-      .then((res) => res.json())
-      .then((data: string[]) => setCiudades(Array.isArray(data) ? data : []))
+      .then((res) => {
+        if (!res.ok) {
+          setCiudades([])
+          return
+        }
+        return res.json()
+      })
+      .then((data: unknown) => {
+        if (data === undefined) return
+        setCiudades(Array.isArray(data) ? data : [])
+      })
       .catch(() => setCiudades([]))
   }, [])
 
