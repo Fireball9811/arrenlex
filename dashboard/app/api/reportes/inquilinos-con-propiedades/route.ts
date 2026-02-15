@@ -58,7 +58,27 @@ export async function GET() {
     return NextResponse.json({ error: errContratos.message }, { status: 500 })
   }
 
-  return buildResponse(client, contratos ?? [], user.id)
+  // Normalizar: Supabase puede devolver propiedad/arrendatario como array u objeto
+  type RawContrato = { id: string; user_id: string; propiedad_id: string; arrendatario_id: string; canon_mensual: number; propiedad: unknown; arrendatario: unknown }
+  const raw = (contratos ?? []) as RawContrato[]
+  const normalize = (c: RawContrato) => {
+    const prop = c.propiedad
+    const arr = c.arrendatario
+    const p = prop ? (Array.isArray(prop) ? prop[0] : prop) as Record<string, unknown> : null
+    const a = arr ? (Array.isArray(arr) ? arr[0] : arr) as Record<string, unknown> : null
+    return {
+      id: c.id,
+      user_id: c.user_id,
+      propiedad_id: c.propiedad_id,
+      arrendatario_id: c.arrendatario_id,
+      canon_mensual: Number(c.canon_mensual),
+      propiedad: p ? { id: String(p.id ?? ""), direccion: String(p.direccion ?? ""), valor_arriendo: p.valor_arriendo != null ? Number(p.valor_arriendo) : undefined } : null,
+      arrendatario: a ? { id: String(a.id ?? ""), nombre: String(a.nombre ?? "") } : null,
+    }
+  }
+  const normalized = raw.map(normalize)
+
+  return buildResponse(client, normalized, user.id)
 }
 
 async function buildResponse(

@@ -16,7 +16,7 @@ export async function GET() {
     }
 
     const raw = (data as { ciudad: string | null }[] | null) ?? []
-    const ciudades = [...new Set(raw.map((r) => r.ciudad).filter((c): c is string => Boolean(c) && c.trim() !== ""))].sort()
+    const ciudades = [...new Set(raw.map((r) => r.ciudad).filter((c): c is string => typeof c === "string" && c.trim() !== ""))].sort()
     return NextResponse.json(ciudades)
   } catch (e) {
     return NextResponse.json(

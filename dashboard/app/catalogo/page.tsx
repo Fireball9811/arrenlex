@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { Suspense, useEffect, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
@@ -19,7 +19,7 @@ type PropiedadPublica = {
   imagen_principal: string | null
 }
 
-export default function CatalogoPage() {
+function CatalogoContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const [ciudades, setCiudades] = useState<string[]>([])
@@ -148,5 +148,13 @@ export default function CatalogoPage() {
         </div>
       )}
     </div>
+  )
+}
+
+export default function CatalogoPage() {
+  return (
+    <Suspense fallback={<p className="text-muted-foreground">Cargando catálogo...</p>}>
+      <CatalogoContent />
+    </Suspense>
   )
 }

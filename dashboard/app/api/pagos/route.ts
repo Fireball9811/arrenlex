@@ -52,7 +52,8 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 
-  const raw = (data ?? []) as Array<{
+  // Normalizar: Supabase puede devolver relaciones anidadas como array u objeto
+  type RawRow = {
     id: string
     contrato_id: string
     monto: number
@@ -63,16 +64,39 @@ export async function GET(request: Request) {
     fecha_pago: string | null
     fecha_aprobacion: string | null
     created_at: string
-    contrato: {
-      propiedad_id: string
-      arrendatario_id: string
-      user_id: string
-      propiedad: { direccion?: string } | null
-      arrendatario: { nombre?: string } | null
-    } | null
-  }>
+    contrato: unknown
+  }
+  const raw = (data ?? []) as RawRow[]
 
-  const userIds = [...new Set(raw.map((p) => p.contrato?.user_id).filter(Boolean) as string[])]
+  const normalizeContrato = (c: unknown): {
+    propiedad_id: string
+    arrendatario_id: string
+    user_id: string
+    propiedad: { direccion?: string } | null
+    arrendatario: { nombre?: string } | null
+  } | null => {
+    if (!c || typeof c !== "object") return null
+    const obj = Array.isArray(c) ? c[0] : c
+    if (!obj || typeof obj !== "object") return null
+    const co = obj as Record<string, unknown>
+    const prop = co.propiedad
+    const arr = co.arrendatario
+    return {
+      propiedad_id: String(co.propiedad_id ?? ""),
+      arrendatario_id: String(co.arrendatario_id ?? ""),
+      user_id: String(co.user_id ?? ""),
+      propiedad: prop
+        ? { direccion: String((Array.isArray(prop) ? prop[0] : prop)?.direccion ?? "") }
+        : null,
+      arrendatario: arr
+        ? { nombre: String((Array.isArray(arr) ? arr[0] : arr)?.nombre ?? "") }
+        : null,
+    }
+  }
+
+  const normalized = raw.map((p) => ({ ...p, contrato: normalizeContrato(p.contrato) }))
+
+  const userIds = [...new Set(normalized.map((p) => p.contrato?.user_id).filter(Boolean) as string[])]
   const perfilesRes =
     userIds.length > 0
       ? await client.from("perfiles").select("id, nombre").in("id", userIds)
@@ -81,7 +105,7 @@ export async function GET(request: Request) {
     (perfilesRes.data ?? []).map((p) => [p.id, p.nombre ?? "Propietario"])
   )
 
-  const pagos = raw.map((p) => {
+  const pagos = normalized.map((p) => {
     const c = p.contrato
     return {
       id: p.id,
