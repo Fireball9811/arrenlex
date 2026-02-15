@@ -150,6 +150,11 @@ export default function CatalogoPage() {
                   {formatPeso(propiedad.valor_arriendo)}
                   <span className="text-sm font-normal text-muted-foreground">/mes</span>
                 </p>
+                {propiedad.descripcion && (
+                  <p className="mt-2 text-sm text-muted-foreground line-clamp-3">
+                    {propiedad.descripcion}
+                  </p>
+                )}
               </CardContent>
             </Card>
           ))}

@@ -89,6 +89,9 @@ export default function PropiedadesPage() {
                   <span>📐 {p.area} m²</span>
                 </div>
                 <p className="text-lg font-semibold">{formatPeso(p.valor_arriendo)}</p>
+                {p.descripcion && (
+                  <p className="text-sm text-muted-foreground line-clamp-3">{p.descripcion}</p>
+                )}
               </CardContent>
               <div className="flex gap-2 p-4 pt-0">
                 <Button variant="outline" size="sm" asChild>
