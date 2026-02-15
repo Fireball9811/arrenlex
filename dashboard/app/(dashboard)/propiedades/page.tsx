@@ -10,11 +10,14 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
+import { Camera } from "lucide-react"
 import type { Propiedad } from "@/lib/types/database"
 
 export default function PropiedadesPage() {
   const [propiedades, setPropiedades] = useState<Propiedad[]>([])
   const [loading, setLoading] = useState(true)
+  const [imagenPorPropiedadId, setImagenPorPropiedadId] = useState<Record<string, string | null>>({})
+  const [subiendoPorId, setSubiendoPorId] = useState<Record<string, boolean>>({})
 
   useEffect(() => {
     fetch("/api/propiedades")
@@ -23,11 +26,68 @@ export default function PropiedadesPage() {
       .finally(() => setLoading(false))
   }, [])
 
+  // Cargar primera imagen por propiedad cuando hay propiedades
+  useEffect(() => {
+    if (propiedades.length === 0) return
+
+    Promise.all(
+      propiedades.map((p) =>
+        fetch(`/api/propiedades/imagenes?propiedad_id=${p.id}`)
+          .then((res) => res.json())
+          .then((data: { url_publica?: string }[]) => ({
+            id: p.id,
+            url: data?.[0]?.url_publica ?? null,
+          }))
+      )
+    ).then((results) => {
+      const next: Record<string, string | null> = {}
+      results.forEach(({ id, url }) => {
+        next[id] = url
+      })
+      setImagenPorPropiedadId((prev) => ({ ...prev, ...next }))
+    })
+  }, [propiedades])
+
+  async function handleSubirFoto(propiedadId: string, e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    setSubiendoPorId((prev) => ({ ...prev, [propiedadId]: true }))
+
+    const formData = new FormData()
+    formData.append("propiedad_id", propiedadId)
+    formData.append("categoria", "fachada")
+    formData.append("archivo", file)
+
+    try {
+      const res = await fetch("/api/propiedades/imagenes", {
+        method: "POST",
+        body: formData,
+      })
+
+      const data = await res.json()
+      if (data.error) {
+        return
+      }
+      if (data.url_publica) {
+        setImagenPorPropiedadId((prev) => ({ ...prev, [propiedadId]: data.url_publica }))
+      }
+    } finally {
+      setSubiendoPorId((prev) => ({ ...prev, [propiedadId]: false }))
+      e.target.value = ""
+    }
+  }
+
   async function handleDelete(id: string) {
     if (!confirm("¿Eliminar esta propiedad?")) return
     const res = await fetch(`/api/propiedades/${id}`, { method: "DELETE" })
     if (res.ok) {
       setPropiedades((prev) => prev.filter((p) => p.id !== id))
+      setImagenPorPropiedadId((prev) => {
+        const next = { ...prev }
+        delete next[id]
+        return next
+      })
     }
   }
 
@@ -68,43 +128,74 @@ export default function PropiedadesPage() {
       ) : (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {propiedades.map((p) => (
-            <Card key={p.id} className="flex flex-col">
-              <CardHeader className="pb-2">
+            <Card key={p.id} className="flex flex-row overflow-hidden">
+              {/* Columna izquierda: texto */}
+              <div className="flex min-w-0 flex-1 flex-col p-4">
                 <div className="flex items-start justify-between gap-2">
                   <CardTitle className="text-lg">{p.direccion}</CardTitle>
                   <span
-                    className={`rounded px-2 py-0.5 text-xs font-medium ${estadoColors[p.estado] ?? "bg-gray-100 text-gray-800"}`}
+                    className={`shrink-0 rounded px-2 py-0.5 text-xs font-medium ${estadoColors[p.estado] ?? "bg-gray-100 text-gray-800"}`}
                   >
                     {p.estado}
                   </span>
                 </div>
-                <CardDescription>
+                <CardDescription className="mt-1">
                   {p.barrio}, {p.ciudad} · {p.tipo}
                 </CardDescription>
-              </CardHeader>
-              <CardContent className="flex-1 space-y-2">
-                <div className="flex gap-4 text-sm text-muted-foreground">
-                  <span>🛏 {p.habitaciones} hab</span>
-                  <span>🚿 {p.banos} baños</span>
-                  <span>📐 {p.area} m²</span>
+                <CardContent className="flex-1 space-y-2 p-0 pt-2">
+                  <div className="flex gap-4 text-sm text-muted-foreground">
+                    <span>🛏 {p.habitaciones} hab</span>
+                    <span>🚿 {p.banos} baños</span>
+                    <span>📐 {p.area} m²</span>
+                  </div>
+                  <p className="text-lg font-semibold">{formatPeso(p.valor_arriendo)}</p>
+                  {p.descripcion && (
+                    <p className="text-sm text-muted-foreground line-clamp-3">{p.descripcion}</p>
+                  )}
+                </CardContent>
+                <div className="flex gap-2 pt-3">
+                  <Button variant="outline" size="sm" asChild>
+                    <Link href={`/propiedades/${p.id}/editar`}>Editar</Link>
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="text-destructive hover:bg-destructive hover:text-destructive-foreground"
+                    onClick={() => handleDelete(p.id)}
+                  >
+                    Eliminar
+                  </Button>
                 </div>
-                <p className="text-lg font-semibold">{formatPeso(p.valor_arriendo)}</p>
-                {p.descripcion && (
-                  <p className="text-sm text-muted-foreground line-clamp-3">{p.descripcion}</p>
+              </div>
+              {/* Columna derecha: foto ocupa todo el alto */}
+              <div className="w-44 shrink-0 bg-muted sm:w-52">
+                {subiendoPorId[p.id] ? (
+                  <div className="flex h-full min-h-[200px] items-center justify-center">
+                    <span className="text-sm text-muted-foreground">Subiendo…</span>
+                  </div>
+                ) : (
+                  <label className="flex h-full min-h-[200px] cursor-pointer items-center justify-center transition hover:bg-muted/80">
+                    {imagenPorPropiedadId[p.id] ? (
+                      <img
+                        src={imagenPorPropiedadId[p.id]!}
+                        alt=""
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      <span className="flex flex-col items-center gap-2 p-4 text-center text-muted-foreground hover:text-foreground">
+                        <Camera className="h-10 w-10" />
+                        <span className="text-xs font-medium">Subir foto</span>
+                      </span>
+                    )}
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) => handleSubirFoto(p.id, e)}
+                      disabled={subiendoPorId[p.id]}
+                    />
+                  </label>
                 )}
-              </CardContent>
-              <div className="flex gap-2 p-4 pt-0">
-                <Button variant="outline" size="sm" asChild>
-                  <Link href={`/propiedades/${p.id}/editar`}>Editar</Link>
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="text-destructive hover:bg-destructive hover:text-destructive-foreground"
-                  onClick={() => handleDelete(p.id)}
-                >
-                  Eliminar
-                </Button>
               </div>
             </Card>
           ))}
