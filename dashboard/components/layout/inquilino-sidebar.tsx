@@ -27,6 +27,9 @@ export function InquilinoSidebar() {
         <Link href="/inquilino/pagos" className="block rounded p-2 transition hover:bg-gray-800">
           Mis Pagos
         </Link>
+        <Link href="/mantenimiento" className="block rounded p-2 transition hover:bg-gray-800">
+          Mantenimiento
+        </Link>
       </nav>
       <div className="space-y-2 border-t border-gray-700 p-4">
         <Link href="/cambio-contrasena" className="block rounded p-2 text-left text-sm text-white transition hover:bg-gray-800">

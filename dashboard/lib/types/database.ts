@@ -200,3 +200,24 @@ export type SolicitudVisitaConPropiedad = SolicitudVisita & {
     barrio?: string
   } | null
 }
+
+export type SolicitudMantenimiento = {
+  id: string
+  propiedad_id: string
+  nombre_completo: string
+  detalle: string
+  desde_cuando: string
+  responsable: string | null
+  status: "pendiente" | "ejecucion" | "completado"
+  arrendatario_id: string | null
+  created_at: string
+}
+
+export type SolicitudMantenimientoConPropiedad = SolicitudMantenimiento & {
+  propiedades: {
+    id: string
+    direccion: string
+    ciudad: string
+    barrio?: string
+  } | null
+}

@@ -3,12 +3,13 @@
 import { useEffect, useState } from "react"
 import Image from "next/image"
 import Link from "next/link"
-import { BarChart3, User, FileText, Home, Building2, FileCheck, Mail, CreditCard, MessageSquare } from "lucide-react"
+import { BarChart3, User, FileText, Home, Building2, FileCheck, Mail, CreditCard, MessageSquare, Wrench } from "lucide-react"
 import type { UserRole } from "@/lib/auth/role"
 
 export function DashboardNav() {
   const [role, setRole] = useState<UserRole | null>(null)
   const [pendientesCount, setPendientesCount] = useState<number>(0)
+  const [mantenimientoPendientesCount, setMantenimientoPendientesCount] = useState<number>(0)
 
   useEffect(() => {
     fetch("/api/auth/me")
@@ -26,6 +27,14 @@ export function DashboardNav() {
       .then((res) => (res.ok ? res.json() : { count: 0 }))
       .then((data: { count?: number }) => setPendientesCount(Number(data?.count) || 0))
       .catch(() => setPendientesCount(0))
+  }, [role])
+
+  useEffect(() => {
+    if (role !== "admin" && role !== "propietario") return
+    fetch("/api/mantenimiento/count")
+      .then((res) => (res.ok ? res.json() : { count: 0 }))
+      .then((data: { count?: number }) => setMantenimientoPendientesCount(Number(data?.count) || 0))
+      .catch(() => setMantenimientoPendientesCount(0))
   }, [role])
 
   const isAdmin = role === "admin"
@@ -94,6 +103,16 @@ export function DashboardNav() {
           )}
         </Link>
       )}
+
+      <Link href="/mantenimiento" className={linkClass}>
+        <Wrench />
+        Mantenimiento
+        {(isAdmin || isPropietario) && mantenimientoPendientesCount > 0 && (
+          <span className="ml-auto rounded-full bg-amber-500/90 px-2 py-0.5 text-xs font-medium text-white">
+            {mantenimientoPendientesCount}
+          </span>
+        )}
+      </Link>
 
       {(isAdmin || isPropietario) && (
         <Link href="/reportes/gestion-pagos" className={linkClass}>

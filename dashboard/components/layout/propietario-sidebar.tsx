@@ -9,12 +9,20 @@ import { AdjuntarDocumentos } from "@/components/layout/adjuntar-documentos"
 
 export function PropietarioSidebar() {
   const [pendientesCount, setPendientesCount] = useState(0)
+  const [mantenimientoPendientesCount, setMantenimientoPendientesCount] = useState(0)
 
   useEffect(() => {
     fetch("/api/solicitudes-visita/count")
       .then((res) => (res.ok ? res.json() : { count: 0 }))
       .then((data: { count?: number }) => setPendientesCount(Number(data?.count) || 0))
       .catch(() => setPendientesCount(0))
+  }, [])
+
+  useEffect(() => {
+    fetch("/api/mantenimiento/count")
+      .then((res) => (res.ok ? res.json() : { count: 0 }))
+      .then((data: { count?: number }) => setMantenimientoPendientesCount(Number(data?.count) || 0))
+      .catch(() => setMantenimientoPendientesCount(0))
   }, [])
 
   return (
@@ -49,6 +57,14 @@ export function PropietarioSidebar() {
           {pendientesCount > 0 && (
             <span className="rounded-full bg-amber-500/90 px-2 py-0.5 text-xs font-medium text-white">
               {pendientesCount}
+            </span>
+          )}
+        </Link>
+        <Link href="/mantenimiento" className="flex items-center justify-between rounded p-2 transition hover:bg-gray-800">
+          Mantenimiento
+          {mantenimientoPendientesCount > 0 && (
+            <span className="rounded-full bg-amber-500/90 px-2 py-0.5 text-xs font-medium text-white">
+              {mantenimientoPendientesCount}
             </span>
           )}
         </Link>
