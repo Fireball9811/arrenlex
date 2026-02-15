@@ -60,6 +60,11 @@ function CatalogoContent() {
   return (
     <div>
       <div className="mb-6">
+        <Button variant="ghost" size="sm" className="mb-4 -ml-2" asChild>
+          <Link href="/">
+            ← Volver a inicio
+          </Link>
+        </Button>
         <h1 className="text-3xl font-bold mb-6">Catálogo de Propiedades</h1>
 
         {/* Selector de ciudad */}
