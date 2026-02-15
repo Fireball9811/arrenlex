@@ -3,7 +3,7 @@ import { createAdminClient } from "@/lib/supabase/admin"
 
 /**
  * GET - Listado público de propiedades disponibles (sin auth).
- * Query: ciudad (opcional). Solo expone id, area e imagen_principal (sin dirección, precio ni propietario).
+ * Query: ciudad (opcional). Solo expone id, area, descripcion e imagen_principal (sin dirección, precio ni propietario).
  */
 export async function GET(request: Request) {
   const admin = createAdminClient()
@@ -12,7 +12,7 @@ export async function GET(request: Request) {
 
   let query = admin
     .from("propiedades")
-    .select("id, area")
+    .select("id, area, descripcion")
     .eq("estado", "disponible")
     .order("created_at", { ascending: false })
 
