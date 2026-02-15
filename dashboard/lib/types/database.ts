@@ -180,3 +180,23 @@ export type PropiedadConImagenes = Propiedad & {
 export type CiudadDisponible = {
   ciudad: string
 }
+
+export type SolicitudVisita = {
+  id: string
+  nombre_completo: string
+  celular: string
+  email: string
+  status: "pendiente" | "contestado" | "esperando"
+  propiedad_id: string
+  nota: string | null
+  created_at: string
+}
+
+export type SolicitudVisitaConPropiedad = SolicitudVisita & {
+  propiedades: {
+    id: string
+    direccion: string
+    ciudad: string
+    barrio?: string
+  } | null
+}

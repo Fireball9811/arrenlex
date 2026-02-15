@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react"
 import Image from "next/image"
 import Link from "next/link"
-import { BarChart3, User, FileText, Home, Building2, FileCheck, Mail, CreditCard } from "lucide-react"
+import { BarChart3, User, FileText, Home, Building2, FileCheck, Mail, CreditCard, MessageSquare } from "lucide-react"
 import type { UserRole } from "@/lib/auth/role"
 
 export function DashboardNav() {
@@ -71,6 +71,13 @@ export function DashboardNav() {
         <Link href="/invitaciones" className={linkClass}>
           <Mail />
           Invitaciones
+        </Link>
+      )}
+
+      {(isAdmin || isPropietario) && (
+        <Link href="/mensajes" className={linkClass}>
+          <MessageSquare />
+          Mensajes
         </Link>
       )}
 

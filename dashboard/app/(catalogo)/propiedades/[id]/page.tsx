@@ -17,6 +17,7 @@ import {
   TabsList,
   TabsTrigger,
 } from "@/components/ui/tabs"
+import { Input } from "@/components/ui/input"
 import { ArrowLeft, Calendar } from "lucide-react"
 
 type PropiedadImagenPublica = {
@@ -48,6 +49,13 @@ export default function PropiedadDetallePage() {
   const [propiedad, setPropiedad] = useState<PropiedadDetallePublico | null>(null)
   const [loading, setLoading] = useState(true)
   const [imagenActiva, setImagenActiva] = useState<string | null>(null)
+  const [modalSolicitarVisita, setModalSolicitarVisita] = useState(false)
+  const [nombreCompleto, setNombreCompleto] = useState("")
+  const [celular, setCelular] = useState("")
+  const [email, setEmail] = useState("")
+  const [nota, setNota] = useState("")
+  const [submitting, setSubmitting] = useState(false)
+  const [submitMessage, setSubmitMessage] = useState<{ type: "success" | "error"; text: string } | null>(null)
 
   useEffect(() => {
     fetch(`/api/propiedades/${params.id}/public`)
@@ -87,6 +95,52 @@ export default function PropiedadDetallePage() {
     acc[cat.value] = imagenes.filter((img) => img.categoria === cat.value)
     return acc
   }, {} as Record<string, PropiedadImagenPublica[]>)
+
+  const openModal = () => {
+    setSubmitMessage(null)
+    setModalSolicitarVisita(true)
+  }
+
+  const closeModal = () => {
+    if (!submitting) {
+      setModalSolicitarVisita(false)
+      setNombreCompleto("")
+      setCelular("")
+      setEmail("")
+      setNota("")
+      setSubmitMessage(null)
+    }
+  }
+
+  const handleSubmitSolicitud = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setSubmitting(true)
+    setSubmitMessage(null)
+    try {
+      const res = await fetch("/api/solicitudes-visita", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          nombre_completo: nombreCompleto.trim(),
+          celular: celular.trim(),
+          email: email.trim(),
+          propiedad_id: params.id,
+          nota: nota.trim() || undefined,
+        }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        setSubmitMessage({ type: "error", text: data.error ?? "Error al enviar la solicitud" })
+        return
+      }
+      setSubmitMessage({ type: "success", text: "Solicitud enviada. Nos pondremos en contacto contigo." })
+      setTimeout(() => {
+        closeModal()
+      }, 1500)
+    } finally {
+      setSubmitting(false)
+    }
+  }
 
   return (
     <div>
@@ -132,7 +186,7 @@ export default function PropiedadDetallePage() {
                 </div>
               )}
 
-              <Button size="lg" className="w-full">
+              <Button size="lg" className="w-full" onClick={openModal}>
                 <Calendar className="mr-2 h-4 w-4" />
                 Solicitar visita
               </Button>
@@ -206,6 +260,106 @@ export default function PropiedadDetallePage() {
           </Tabs>
         </CardContent>
       </Card>
+
+      {/* Modal Solicitar visita */}
+      {modalSolicitarVisita && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
+          onClick={closeModal}
+        >
+          <div
+            className="bg-background rounded-lg shadow-lg max-w-md w-full p-6"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-lg font-semibold">Solicitar visita</h2>
+              <button
+                type="button"
+                className="text-muted-foreground hover:text-foreground"
+                onClick={closeModal}
+                disabled={submitting}
+              >
+                ✕
+              </button>
+            </div>
+            <form onSubmit={handleSubmitSolicitud} className="space-y-4">
+              <div>
+                <label htmlFor="nombre" className="block text-sm font-medium mb-1">
+                  Nombre completo
+                </label>
+                <Input
+                  id="nombre"
+                  value={nombreCompleto}
+                  onChange={(e) => setNombreCompleto(e.target.value)}
+                  required
+                  placeholder="Tu nombre completo"
+                  disabled={submitting}
+                />
+              </div>
+              <div>
+                <label htmlFor="celular" className="block text-sm font-medium mb-1">
+                  Número celular
+                </label>
+                <Input
+                  id="celular"
+                  type="tel"
+                  value={celular}
+                  onChange={(e) => setCelular(e.target.value)}
+                  required
+                  placeholder="Ej. 300 123 4567"
+                  disabled={submitting}
+                />
+              </div>
+              <div>
+                <label htmlFor="email" className="block text-sm font-medium mb-1">
+                  Correo electrónico
+                </label>
+                <Input
+                  id="email"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                  placeholder="tu@correo.com"
+                  disabled={submitting}
+                />
+              </div>
+              <div>
+                <label htmlFor="nota" className="block text-sm font-medium mb-1">
+                  Nota (opcional)
+                </label>
+                <textarea
+                  id="nota"
+                  value={nota}
+                  onChange={(e) => setNota(e.target.value)}
+                  placeholder="Comentario o preferencia de horario"
+                  disabled={submitting}
+                  className="flex min-h-[80px] w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-xs placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                />
+              </div>
+              {submitMessage && (
+                <p
+                  className={
+                    submitMessage.type === "success"
+                      ? "text-sm text-green-600"
+                      : "text-sm text-destructive"
+                  }
+                >
+                  {submitMessage.text}
+                </p>
+              )}
+              <div className="flex gap-2 justify-end pt-2">
+                <Button type="button" variant="outline" onClick={closeModal} disabled={submitting}>
+                  Cancelar
+                </Button>
+                <Button type="submit" disabled={submitting}>
+                  {submitting ? "Enviando…" : "Enviar solicitud"}
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* Modal de imagen activa (lightbox) */}
       {imagenActiva && (

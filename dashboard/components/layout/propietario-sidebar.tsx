@@ -34,6 +34,9 @@ export function PropietarioSidebar() {
         <Link href="/propietario/nuevo" className="block rounded p-2 transition hover:bg-gray-800">
           Nuevo Arrendatario
         </Link>
+        <Link href="/mensajes" className="block rounded p-2 transition hover:bg-gray-800">
+          Mensajes
+        </Link>
       </nav>
       <div className="space-y-2 border-t border-gray-700 p-4">
         <Link href="/cambio-contrasena" className="block rounded p-2 text-left text-sm text-white transition hover:bg-gray-800">
