@@ -13,8 +13,8 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
+import { CIUDADES_COLOMBIA } from "@/lib/ciudades-colombia"
 
-const CIUDADES = ["Bogotá", "Medellín", "Cali", "Barranquilla", "Cartagena"]
 const TIPOS = ["apartamento", "casa", "local", "oficina", "habitación"]
 
 export default function NuevaPropiedadPage() {
@@ -94,20 +94,19 @@ export default function NuevaPropiedadPage() {
               <label htmlFor="ciudad" className="mb-1 block text-sm font-medium">
                 Ciudad
               </label>
-              <select
+              <Input
                 id="ciudad"
+                list="ciudades-colombia-nueva"
                 value={form.ciudad}
                 onChange={(e) => setForm({ ...form, ciudad: e.target.value })}
-                className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm"
+                placeholder="Ej: Bogotá, Girardot..."
                 required
-              >
-                <option value="">Seleccionar...</option>
-                {CIUDADES.map((c) => (
-                  <option key={c} value={c}>
-                    {c}
-                  </option>
+              />
+              <datalist id="ciudades-colombia-nueva">
+                {CIUDADES_COLOMBIA.map((c) => (
+                  <option key={c} value={c} />
                 ))}
-              </select>
+              </datalist>
             </div>
 
             <div>

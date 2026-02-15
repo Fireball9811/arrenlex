@@ -2,7 +2,7 @@ import { NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 import type { CiudadDisponible } from "@/lib/types/database"
 
-// GET - Obtener ciudades con propiedades disponibles
+// GET - Obtener ciudades con propiedades disponibles (solo nombres, string[])
 export async function GET() {
   const supabase = await createClient()
 
@@ -13,5 +13,7 @@ export async function GET() {
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 
-  return NextResponse.json((data as CiudadDisponible[]) ?? [])
+  const raw = (data as CiudadDisponible[] | null) ?? []
+  const ciudades = raw.map((c: { ciudad: string }) => c.ciudad)
+  return NextResponse.json(ciudades)
 }

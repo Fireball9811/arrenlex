@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import {
   Card,
@@ -18,23 +18,28 @@ type PropiedadCard = PropiedadConImagenes & {
 
 export default function CatalogoPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [ciudades, setCiudades] = useState<string[]>([])
   const [ciudadSeleccionada, setCiudadSeleccionada] = useState<string>("")
   const [propiedades, setPropiedades] = useState<PropiedadCard[]>([])
   const [loading, setLoading] = useState(true)
 
-  // Cargar ciudades disponibles
+  // Cargar ciudades disponibles y preseleccionar desde ?ciudad= si viene de la landing
   useEffect(() => {
+    const ciudadFromUrl = searchParams.get("ciudad")
     fetch("/api/propiedades/ciudades")
       .then((res) => res.json())
       .then((data: string[]) => {
-        setCiudades(data)
-        if (data.length > 0) {
-          setCiudadSeleccionada(data[0])
+        const list = Array.isArray(data) ? data : []
+        setCiudades(list)
+        if (ciudadFromUrl && list.includes(ciudadFromUrl)) {
+          setCiudadSeleccionada(ciudadFromUrl)
+        } else if (list.length > 0) {
+          setCiudadSeleccionada(list[0])
         }
       })
       .finally(() => setLoading(false))
-  }, [])
+  }, [searchParams])
 
   // Cargar propiedades cuando se selecciona ciudad
   useEffect(() => {

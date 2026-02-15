@@ -1,5 +1,6 @@
 import Image from "next/image"
 import Link from "next/link"
+import { CiudadSelectorLanding } from "@/components/layout/ciudad-selector-landing"
 
 export default function HomePage() {
   return (
@@ -28,18 +29,7 @@ export default function HomePage() {
               className="h-10 w-auto object-contain"
             />
           </Link>
-          <div className="hidden md:block">
-            <select
-              className="cursor-pointer rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-600 outline-none transition hover:border-gray-400"
-              aria-label="Selector de ciudad"
-            >
-              <option value="">Seleccionar ciudad</option>
-              <option value="bogota">Bogotá</option>
-              <option value="medellin">Medellín</option>
-              <option value="cali">Cali</option>
-              <option value="barranquilla">Barranquilla</option>
-            </select>
-          </div>
+          <CiudadSelectorLanding />
         </div>
 
         <Link

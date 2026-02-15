@@ -15,8 +15,8 @@ import {
 } from "@/components/ui/card"
 import { GaleríaImagenes as GaleriaImagenes } from "@/components/propiedades/galeria-imagenes"
 import type { PropiedadImagen } from "@/lib/types/database"
+import { CIUDADES_COLOMBIA } from "@/lib/ciudades-colombia"
 
-const CIUDADES = ["Bogotá", "Medellín", "Cali", "Barranquilla", "Cartagena"]
 const TIPOS = ["apartamento", "casa", "local", "oficina", "habitación"]
 const ESTADOS = ["disponible", "arrendado", "mantenimiento"]
 
@@ -160,20 +160,19 @@ export default function EditarPropiedadPage() {
 
                 <div>
                   <label htmlFor="ciudad" className="mb-1 block text-sm font-medium">Ciudad</label>
-                  <select
+                  <Input
                     id="ciudad"
+                    list="ciudades-colombia-editar"
                     value={form.ciudad}
                     onChange={(e) => setForm({ ...form, ciudad: e.target.value })}
-                    className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm"
+                    placeholder="Ej: Bogotá, Girardot..."
                     required
-                  >
-                    <option value="">Seleccionar...</option>
-                    {CIUDADES.map((c) => (
-                      <option key={c} value={c}>
-                        {c}
-                      </option>
+                  />
+                  <datalist id="ciudades-colombia-editar">
+                    {CIUDADES_COLOMBIA.map((c) => (
+                      <option key={c} value={c} />
                     ))}
-                  </select>
+                  </datalist>
                 </div>
 
                 <div>
