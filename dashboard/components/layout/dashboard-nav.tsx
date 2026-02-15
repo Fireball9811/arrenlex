@@ -8,6 +8,7 @@ import type { UserRole } from "@/lib/auth/role"
 
 export function DashboardNav() {
   const [role, setRole] = useState<UserRole | null>(null)
+  const [pendientesCount, setPendientesCount] = useState<number>(0)
 
   useEffect(() => {
     fetch("/api/auth/me")
@@ -18,6 +19,14 @@ export function DashboardNav() {
       })
       .catch(() => setRole("inquilino"))
   }, [])
+
+  useEffect(() => {
+    if (role !== "admin" && role !== "propietario") return
+    fetch("/api/solicitudes-visita/count")
+      .then((res) => (res.ok ? res.json() : { count: 0 }))
+      .then((data: { count?: number }) => setPendientesCount(Number(data?.count) || 0))
+      .catch(() => setPendientesCount(0))
+  }, [role])
 
   const isAdmin = role === "admin"
   const isPropietario = role === "propietario"
@@ -78,6 +87,11 @@ export function DashboardNav() {
         <Link href="/mensajes" className={linkClass}>
           <MessageSquare />
           Mensajes
+          {pendientesCount > 0 && (
+            <span className="ml-auto rounded-full bg-amber-500/90 px-2 py-0.5 text-xs font-medium text-white">
+              {pendientesCount}
+            </span>
+          )}
         </Link>
       )}
 
