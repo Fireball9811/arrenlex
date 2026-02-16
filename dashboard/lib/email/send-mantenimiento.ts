@@ -1,7 +1,7 @@
-import { getEmailTransport } from "./transport"
+import { getResendClient } from "./transport"
 
 const FROM_EMAIL =
-  process.env.EMAIL_FROM ?? `Arrenlex <${process.env.SMTP_USER ?? "noreply@example.com"}>`
+  process.env.EMAIL_FROM ?? "Arrenlex <onboarding@resend.dev>"
 
 const TO_CEO = "ceo@arrenlex.com"
 
@@ -14,13 +14,13 @@ export type SendMantenimientoParams = {
 
 /**
  * Envía email a ceo@arrenlex.com con asunto "Mantenimiento" y todo el detalle del reporte.
- * Usa el mismo transporte SMTP (nodemailer) que invitaciones y reset de contraseña.
+ * Usa Resend (API). No requiere contraseña de Microsoft ni Gmail.
  */
 export async function sendMantenimientoEmail(
   params: SendMantenimientoParams
 ): Promise<{ success: boolean; error?: string }> {
-  const transport = getEmailTransport()
-  if (!transport) {
+  const resend = getResendClient()
+  if (!resend) {
     return { success: false, error: "Servicio de email no configurado" }
   }
 
@@ -51,12 +51,16 @@ export async function sendMantenimientoEmail(
 `.trim()
 
   try {
-    await transport.sendMail({
+    const { error } = await resend.emails.send({
       from: FROM_EMAIL,
       to: TO_CEO,
       subject,
       html,
     })
+    if (error) {
+      console.error("[send-mantenimiento] Resend error:", error)
+      return { success: false, error: error.message }
+    }
     return { success: true }
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Error desconocido"

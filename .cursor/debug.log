@@ -1,0 +1,4 @@
+{"location":"transport.ts:null","message":"Transport null: user o pass vacíos","data":{"hasUser":true,"hasPass":false,"passLength":0},"hypothesisId":"H1","timestamp":1771209380322}
+{"location":"transport.ts:create","message":"Creando transporte SMTP","data":{"host":"smtp.office365.com","port":587,"hasUser":true,"hasPass":true,"passLength":16},"hypothesisId":"H1","timestamp":1771209553641}
+{"location":"transport.ts:null","message":"Transport null: user o pass vacíos","data":{"hasUser":true,"hasPass":false,"passLength":0},"hypothesisId":"H1","timestamp":1771211844821}
+{"location":"transport.ts:create","message":"Creando transporte SMTP","data":{"host":"smtp.office365.com","port":587,"hasUser":true,"hasPass":true,"passLength":11},"hypothesisId":"H1","timestamp":1771212100402}

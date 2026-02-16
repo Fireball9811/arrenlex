@@ -1,6 +1,6 @@
 # Configurar Resend para enviar correos
 
-Resend se usa para enviar invitaciones (contraseña temporal) y correos de recuperar contraseña.
+El dashboard usa **Resend** para todo el envío de correos: invitaciones (contraseña temporal), recuperar contraseña, solicitudes de visita y solicitudes de mantenimiento. **No se usa Gmail ni Microsoft** ni contraseñas de aplicación.
 
 ## Crear la API key en Resend
 
@@ -16,20 +16,38 @@ Resend se usa para enviar invitaciones (contraseña temporal) y correos de recup
 ## Configurar en el proyecto
 
 1. Abre `dashboard/.env.local`
-2. Pega la API key en la línea `RESEND_API_KEY=`:
+2. Añade o edita:
    ```
-   RESEND_API_KEY=re_xxxxxxxxxxxxxxxxxxxxxxxxxx
+   RESEND_API_KEY=re_re_BsNpCjJ6_78FsDzWRchnvyjvSSFTkPie5
+   EMAIL_FROM=Arrenlex <noreply@arrenlex.com>
    ```
 3. Guarda el archivo
 4. Reinicia el servidor (`npm run dev`)
 
-## Correo de prueba (desarrollo)
+## Dominio verificado (arrenlex.com)
 
-Por defecto se usa `onboarding@resend.dev` para enviar. Resend permite usarlo sin verificar dominio para pruebas (límite: 100 correos/día).
+Si en Resend → Domains tu dominio **arrenlex.com** está en estado **Verified**, puedes enviar desde ese dominio. Usa en `.env.local`:
 
-## Producción
-
-Para producción, verifica tu dominio en Resend (Domains) y cambia `RESEND_FROM_EMAIL`:
 ```
-RESEND_FROM_EMAIL=Arrenlex <noreply@tudominio.com>
+EMAIL_FROM=Arrenlex <noreply@arrenlex.com>
 ```
+
+(o cualquier dirección @arrenlex.com que tengas configurada en Resend).
+
+## Pruebas sin dominio verificado
+
+Si aún no has verificado el dominio, Resend permite enviar desde `onboarding@resend.dev` (límite: 100 correos/día):
+
+```
+EMAIL_FROM=Arrenlex <onboarding@resend.dev>
+```
+
+## Probar el envío
+
+Desde la carpeta `dashboard`:
+
+```bash
+node scripts/test-resend.js
+```
+
+Requiere `RESEND_API_KEY` en `.env.local`. El script envía un correo de prueba al destinatario configurado.

@@ -1,8 +1,8 @@
-import { getEmailTransport } from "./transport"
+import { getResendClient } from "./transport"
 
 const SITE_NAME = process.env.NEXT_PUBLIC_SITE_NAME ?? "Arrenlex"
 const FROM_EMAIL =
-  process.env.EMAIL_FROM ?? `Arrenlex <${process.env.SMTP_USER ?? "noreply@example.com"}>`
+  process.env.EMAIL_FROM ?? "Arrenlex <onboarding@resend.dev>"
 
 export type SendInvitationEmailParams = {
   to: string
@@ -14,7 +14,7 @@ export type SendInvitationEmailParams = {
 /**
  * Envía email con credenciales de invitación (email y contraseña temporal).
  * El usuario debe entrar por login y será redirigido a cambio de contraseña.
- * Usa Gmail SMTP (nodemailer). Sin restricciones de dominio ni destinatarios.
+ * Usa Resend (API). No requiere contraseña de Microsoft ni Gmail.
  */
 export async function sendInvitationEmail({
   to,
@@ -22,8 +22,8 @@ export async function sendInvitationEmail({
   loginUrl,
   expiresInDays,
 }: SendInvitationEmailParams): Promise<{ success: boolean; error?: string }> {
-  const transport = getEmailTransport()
-  if (!transport) {
+  const resend = getResendClient()
+  if (!resend) {
     return { success: false, error: "Servicio de email no configurado" }
   }
 
@@ -53,12 +53,16 @@ export async function sendInvitationEmail({
 `.trim()
 
   try {
-    await transport.sendMail({
+    const { error } = await resend.emails.send({
       from: FROM_EMAIL,
       to,
       subject,
       html,
     })
+    if (error) {
+      console.error("[send-invitation] Resend error:", error)
+      return { success: false, error: error.message }
+    }
     return { success: true }
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Error desconocido"

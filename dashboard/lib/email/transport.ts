@@ -1,31 +1,21 @@
-import nodemailer from "nodemailer"
+import { Resend } from "resend"
 
-let transporter: nodemailer.Transporter | null = null
+let resendClient: Resend | null = null
 
 /**
- * Crea el transporte SMTP para Gmail usando nodemailer.
- * Requiere: SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, EMAIL_FROM
- * Ver GOOGLE_SMTP_SETUP.md para configurar Google.
+ * Cliente de Resend para enviar correos (invitaciones, reset contraseña, solicitudes).
+ * Requiere: RESEND_API_KEY y EMAIL_FROM en .env.local
+ * Ver RESEND_SETUP.md. No usa contraseñas de Microsoft ni Gmail.
  */
-export function getEmailTransport(): nodemailer.Transporter | null {
-  if (transporter) return transporter
+export function getResendClient(): Resend | null {
+  if (resendClient) return resendClient
 
-  const host = process.env.SMTP_HOST ?? "smtp.gmail.com"
-  const port = parseInt(process.env.SMTP_PORT ?? "587", 10)
-  const user = process.env.SMTP_USER
-  const pass = process.env.SMTP_PASS
-
-  if (!user || !pass) {
-    console.error("[email] SMTP_USER o SMTP_PASS no configurados. Revisa .env.local y GOOGLE_SMTP_SETUP.md")
+  const apiKey = process.env.RESEND_API_KEY?.trim()
+  if (!apiKey) {
+    console.error("[email] RESEND_API_KEY no configurado. Revisa .env.local y RESEND_SETUP.md")
     return null
   }
 
-  transporter = nodemailer.createTransport({
-    host,
-    port,
-    secure: port === 465,
-    auth: { user, pass },
-  })
-
-  return transporter
+  resendClient = new Resend(apiKey)
+  return resendClient
 }
