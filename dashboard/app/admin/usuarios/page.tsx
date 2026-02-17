@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, Suspense } from "react"
 import { useSearchParams } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -25,7 +25,7 @@ const ROLES = [
   { value: "lawyer_special", label: "Legal (Especial)" },
 ] as const
 
-export default function UsuariosSistemaPage() {
+function UsuariosContent() {
   const searchParams = useSearchParams()
   const createParam = searchParams.get("create")
 
@@ -277,5 +277,13 @@ export default function UsuariosSistemaPage() {
         </CardContent>
       </Card>
     </div>
+  )
+}
+
+export default function UsuariosSistemaPage() {
+  return (
+    <Suspense fallback={<p className="text-muted-foreground">Cargando...</p>}>
+      <UsuariosContent />
+    </Suspense>
   )
 }
