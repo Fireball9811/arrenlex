@@ -85,6 +85,21 @@ export async function POST(request: Request) {
     if (error) {
       console.error("[inviteUserByEmail] Error de Supabase:", error)
       const msg = error.message.toLowerCase()
+
+      // Usuario ya registrado
+      if (
+        msg.includes("user already registered") ||
+        msg.includes("user already exists") ||
+        msg.includes("already been registered") ||
+        error.status === 400 && msg.includes("already")
+      ) {
+        return NextResponse.json(
+          { error: `El correo ${email.trim()} ya está registrado en el sistema.` },
+          { status: 400 }
+        )
+      }
+
+      // Rate limiting
       if (
         msg.includes("rate limit") ||
         msg.includes("rate_limit") ||
