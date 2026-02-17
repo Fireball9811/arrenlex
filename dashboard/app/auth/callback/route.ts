@@ -1,11 +1,13 @@
 import { createClient } from "@/lib/supabase/server"
 import { NextResponse } from "next/server"
+import { getUserRole } from "@/lib/auth/role"
+import { getDashboardPathByRole } from "@/lib/auth/redirect-by-role"
 
 /**
  * Callback de Supabase (magic link / PKCE).
- * - redirect_to debe coincidir con Supabase → Redirect URLs (ej. http://localhost:3002/auth/callback).
+ * - redirect_to debe coincidir con Supabase → Redirect URLs (ej. http://localhost:3000/auth/callback).
  * Supabase → Authentication → URL Configuration:
- * - Site URL: según entorno (ej. http://localhost:3002 en desarrollo).
+ * - Site URL: según entorno (ej. http://localhost:3000 en desarrollo).
  * - Redirect URLs: incluir /auth/callback, /cambio-contrasena y la raíz.
  * Sin code: devuelve HTML que preserva el hash y redirige en cliente a /auth/complete-session.
  */
@@ -15,10 +17,6 @@ export async function GET(request: Request) {
   const errorParam = requestUrl.searchParams.get("error")
   const nextPath = requestUrl.searchParams.get("next")
   const origin = requestUrl.origin
-  const successRedirect =
-    nextPath && nextPath.startsWith("/")
-      ? `${origin}${nextPath}`
-      : `${origin}/cambio-contrasena`
 
   // #region agent log
   fetch("http://127.0.0.1:7242/ingest/ff442eb1-c8fb-4919-a950-d18bdf14310b", {
@@ -80,6 +78,23 @@ export async function GET(request: Request) {
     if (error) {
       console.error("[auth/callback] exchangeCodeForSession error:", error.message)
       return NextResponse.redirect(`${origin}/login?error=auth`, 302)
+    }
+
+    // Obtener el rol del usuario y redirigir a su dashboard específico
+    const { data: { user } } = await supabase.auth.getUser()
+    let successRedirect = `${origin}/cambio-contrasena` // fallback
+
+    if (user) {
+      try {
+        const role = await getUserRole(supabase, user)
+        const dashboardPath = getDashboardPathByRole(role)
+        successRedirect = nextPath && nextPath.startsWith("/")
+          ? `${origin}${nextPath}`
+          : `${origin}${dashboardPath}`
+      } catch (err) {
+        console.error("[auth/callback] error getting role:", err)
+        // Si falla, usar el fallback
+      }
     }
 
     const res = NextResponse.redirect(successRedirect, 302)

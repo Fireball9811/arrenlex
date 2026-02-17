@@ -1,9 +1,9 @@
 import type { SupabaseClient } from "@supabase/supabase-js"
 import { isAdmin } from "@/lib/supabase/admin"
 
-export type UserRole = "admin" | "propietario" | "inquilino"
+export type UserRole = "admin" | "propietario" | "inquilino" | "maintenance_special" | "insurance_special" | "lawyer_special"
 
-const VALID_ROLES: UserRole[] = ["admin", "propietario", "inquilino"]
+const VALID_ROLES: UserRole[] = ["admin", "propietario", "inquilino", "maintenance_special", "insurance_special", "lawyer_special"]
 
 export async function getUserRole(
   supabase: SupabaseClient,

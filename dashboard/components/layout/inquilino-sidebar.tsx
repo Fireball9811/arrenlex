@@ -9,7 +9,7 @@ export function InquilinoSidebar() {
   return (
     <aside className="flex w-64 flex-col bg-gray-900 text-white">
       <Link href="/inquilino/dashboard" className="flex items-center gap-2 border-b border-gray-700 p-6">
-        <Image src="/Logo.png" alt="Arrenlex" width={180} height={60} className="h-12 w-auto" />
+        <Image src="/Logo.png" alt="Arrenlex" width={180} height={60} className="h-16 w-auto" />
       </Link>
       <nav className="flex-1 space-y-2 p-4">
         <Link href="/inquilino/dashboard" className="block rounded p-2 transition hover:bg-gray-800">

@@ -3,6 +3,7 @@
 import { useEffect } from "react"
 import { usePathname, useRouter } from "next/navigation"
 import type { UserRole } from "@/lib/auth/role"
+import { isSpecialRole, getAllowedRouteForSpecialRole } from "@/lib/auth/redirect-by-role"
 import { useState } from "react"
 
 // Rutas que los inquilinos NO pueden acceder
@@ -23,6 +24,16 @@ export function RoleGuard({ children }: { children: React.ReactNode }) {
         const r = data?.role ?? "inquilino"
         setRole(r)
 
+        // Redirección para roles especiales
+        if (isSpecialRole(r)) {
+          const allowedRoute = getAllowedRouteForSpecialRole(r)
+          if (!pathname.startsWith(allowedRoute)) {
+            router.replace(allowedRoute)
+          }
+          return
+        }
+
+        // Lógica existente para inquilinos
         if (r === "inquilino") {
           if (INQUILINO_FORBIDDEN.some((p) => pathname.startsWith(p))) {
             if (!INQUILINO_ALLOWED.some((p) => pathname.startsWith(p))) {
