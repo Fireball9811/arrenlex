@@ -164,17 +164,56 @@ export default function PropiedadesPage() {
       ) : (
         <div className="grid gap-4 md:grid-cols-1 lg:grid-cols-2">
           {propiedades.map((p) => (
-            <Card key={p.id} className="flex flex-row overflow-hidden">
-              {/* Columna izquierda: texto */}
-              <div className="flex min-w-0 flex-1 flex-col p-4">
-                <div className="flex items-start justify-between gap-2">
-                  <CardTitle className="text-lg">{p.direccion}</CardTitle>
-                  <span
-                    className={`shrink-0 rounded px-2 py-0.5 text-xs font-medium ${estadoColors[p.estado] ?? "bg-gray-100 text-gray-800"}`}
-                  >
-                    {p.estado}
+            <Card key={p.id} className="flex flex-row overflow-hidden relative">
+              {/* Badge de estado en esquina superior derecha */}
+              <span
+                className={`absolute top-3 right-3 z-10 rounded px-3 py-1 text-xs font-semibold shadow-sm ${
+                  estadoColors[p.estado] ?? "bg-gray-100 text-gray-800"
+                }`}
+              >
+                {p.estado}
+              </span>
+
+              {/* Columna izquierda: foto más grande */}
+              <div
+                className={`relative w-56 shrink-0 bg-muted sm:w-72 transition-all cursor-pointer ${
+                  dragOverPropiedadId === p.id ? "border-primary border-2 bg-primary/5" : ""
+                }`}
+                onDragOver={(e) => handleDragOver(e, p.id)}
+                onDragLeave={(e) => handleDragLeave(e, p.id)}
+                onDrop={(e) => handleDrop(e, p.id)}
+                onClick={() => document.getElementById(`file-input-${p.id}`)?.click()}
+              >
+                <input
+                  id={`file-input-${p.id}`}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => handleFileInputChange(p.id, e)}
+                  disabled={subiendoPorId[p.id]}
+                />
+                {subiendoPorId[p.id] ? (
+                  <div className="flex h-full min-h-[200px] items-center justify-center">
+                    <span className="text-sm text-muted-foreground">Subiendo…</span>
+                  </div>
+                ) : imagenPorPropiedadId[p.id] ? (
+                  <img
+                    src={imagenPorPropiedadId[p.id]!}
+                    alt=""
+                    className="h-full w-full object-cover"
+                  />
+                ) : (
+                  <span className="flex h-full min-h-[200px] flex-col items-center justify-center gap-2 p-4 text-center text-muted-foreground hover:text-foreground transition hover:bg-muted/80">
+                    <Camera className="h-12 w-12" />
+                    <span className="text-sm font-medium">Subir foto</span>
+                    <span className="text-xs text-muted-foreground">o arrastra aquí</span>
                   </span>
-                </div>
+                )}
+              </div>
+
+              {/* Columna derecha: texto */}
+              <div className="flex min-w-0 flex-1 flex-col p-4">
+                <CardTitle className="text-xl pr-20">{p.direccion}</CardTitle>
                 <CardDescription className="mt-1">
                   {p.barrio}, {p.ciudad} · {p.tipo}
                 </CardDescription>
@@ -207,42 +246,6 @@ export default function PropiedadesPage() {
                     Eliminar
                   </Button>
                 </div>
-              </div>
-              {/* Columna derecha: foto ocupa todo el alto */}
-              <div
-                className={`relative w-44 shrink-0 bg-muted sm:w-52 transition-all cursor-pointer ${
-                  dragOverPropiedadId === p.id ? "border-primary border-2 bg-primary/5" : ""
-                }`}
-                onDragOver={(e) => handleDragOver(e, p.id)}
-                onDragLeave={(e) => handleDragLeave(e, p.id)}
-                onDrop={(e) => handleDrop(e, p.id)}
-                onClick={() => document.getElementById(`file-input-${p.id}`)?.click()}
-              >
-                <input
-                  id={`file-input-${p.id}`}
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={(e) => handleFileInputChange(p.id, e)}
-                  disabled={subiendoPorId[p.id]}
-                />
-                {subiendoPorId[p.id] ? (
-                  <div className="flex h-full min-h-[200px] items-center justify-center">
-                    <span className="text-sm text-muted-foreground">Subiendo…</span>
-                  </div>
-                ) : imagenPorPropiedadId[p.id] ? (
-                  <img
-                    src={imagenPorPropiedadId[p.id]!}
-                    alt=""
-                    className="h-full w-full object-cover"
-                  />
-                ) : (
-                  <span className="flex h-full min-h-[200px] flex-col items-center justify-center gap-2 p-4 text-center text-muted-foreground hover:text-foreground transition hover:bg-muted/80">
-                    <Camera className="h-10 w-10" />
-                    <span className="text-xs font-medium">Subir foto</span>
-                    <span className="text-xs text-muted-foreground">o arrastra aquí</span>
-                  </span>
-                )}
               </div>
             </Card>
           ))}
