@@ -51,3 +51,37 @@ node scripts/test-resend.js
 ```
 
 Requiere `RESEND_API_KEY` en `.env.local`. El script envía un correo de prueba al destinatario configurado.
+
+## Producción (Vercel)
+
+El archivo `.env.local` **no se usa en producción**. No se despliega a Vercel (está en `.gitignore`). Las variables deben configurarse en el panel de Vercel.
+
+### Variables a configurar en Vercel
+
+1. Entra en [vercel.com](https://vercel.com) → tu proyecto → **Settings** → **Environment Variables**
+2. Añade o edita estas variables:
+
+| Variable | Valor | Environments |
+|----------|-------|--------------|
+| `RESEND_API_KEY` | Tu API key de Resend (empieza por `re_`) | Production, Preview |
+| `EMAIL_FROM` | `Arrenlex <noreply@arrenlex.com>` | Production, Preview |
+| `NEXT_PUBLIC_SITE_URL` | `https://www.arrenlex.com` | Production, Preview |
+
+- Para `EMAIL_FROM` usa el valor exacto incluyendo espacios y los caracteres `<` `>`
+- Marca **Production** y **Preview** en Environments
+- No marques **Expose to Browser** para `RESEND_API_KEY` (es secreta)
+
+### Redeploy
+
+Tras guardar las variables:
+
+1. **Deployments** → último deployment → menú (tres puntos) → **Redeploy**
+2. Confirma el redeploy
+
+Vercel no aplica variables nuevas hasta que se hace redeploy.
+
+### Probar en producción
+
+1. Ve a https://www.arrenlex.com/invitaciones
+2. Envía una invitación a un correo tuyo
+3. Revisa bandeja de entrada y carpeta de spam
