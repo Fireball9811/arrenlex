@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { UserPlus, Pencil } from "lucide-react"
+import { MetricPieChart } from "@/components/admin/pie-chart"
 
 interface Usuario {
   id: string
@@ -284,12 +285,44 @@ function UsuariosContent() {
         </Card>
       )}
 
-      {/* Tarjetas de resumen */}
-      <div className="mb-6 grid gap-4 md:grid-cols-4">
-        <Card><CardHeader><CardTitle className="text-sm">Total</CardTitle></CardHeader><CardContent><p className="text-2xl font-bold">{usuarios.length}</p></CardContent></Card>
-        <Card className="bg-green-50 border-green-200"><CardHeader><CardTitle className="text-sm">Activos</CardTitle></CardHeader><CardContent><p className="text-2xl font-bold">{usuarios.filter(u => u.activo).length}</p></CardContent></Card>
-        <Card className="bg-amber-50 border-amber-200"><CardHeader><CardTitle className="text-sm">Inactivos</CardTitle></CardHeader><CardContent><p className="text-2xl font-bold">{usuarios.filter(u => !u.activo && !u.bloqueado).length}</p></CardContent></Card>
-        <Card className="bg-red-50 border-red-200"><CardHeader><CardTitle className="text-sm">Bloqueados</CardTitle></CardHeader><CardContent><p className="text-2xl font-bold">{usuarios.filter(u => u.bloqueado).length}</p></CardContent></Card>
+      {/* Tarjetas de resumen con gráficos */}
+      <div className="mb-6 grid gap-6 md:grid-cols-2">
+        {/* Gráfico de Estados */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Estados de Usuarios</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <MetricPieChart
+              data={[
+                { name: 'Activos', value: usuarios.filter(u => u.activo && !u.bloqueado).length, color: '#10b981' },
+                { name: 'Inactivos', value: usuarios.filter(u => !u.activo && !u.bloqueado).length, color: '#f59e0b' },
+                { name: 'Bloqueados', value: usuarios.filter(u => u.bloqueado).length, color: '#ef4444' },
+              ]}
+            />
+            <p className="mt-4 text-center text-lg font-bold">Total: {usuarios.length}</p>
+          </CardContent>
+        </Card>
+
+        {/* Gráfico de Roles (solo activos) */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Roles de Usuarios Activos</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <MetricPieChart
+              data={[
+                { name: 'Admin', value: usuarios.filter(u => u.activo && !u.bloqueado && u.role === 'admin').length, color: '#a855f7' },
+                { name: 'Propietarios', value: usuarios.filter(u => u.activo && !u.bloqueado && u.role === 'propietario').length, color: '#3b82f6' },
+                { name: 'Inquilinos', value: usuarios.filter(u => u.activo && !u.bloqueado && u.role === 'inquilino').length, color: '#10b981' },
+                { name: 'Mantenimiento', value: usuarios.filter(u => u.activo && !u.bloqueado && u.role === 'maintenance_special').length, color: '#f97316' },
+                { name: 'Seguros', value: usuarios.filter(u => u.activo && !u.bloqueado && u.role === 'insurance_special').length, color: '#06b6d4' },
+                { name: 'Legal', value: usuarios.filter(u => u.activo && !u.bloqueado && u.role === 'lawyer_special').length, color: '#6366f1' },
+              ]}
+            />
+            <p className="mt-4 text-center text-lg font-bold">Activos: {usuarios.filter(u => u.activo && !u.bloqueado).length}</p>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Tabla de usuarios */}
