@@ -16,6 +16,9 @@ import {
 import { GaleríaImagenes as GaleriaImagenes } from "@/components/propiedades/galeria-imagenes"
 import type { PropiedadImagen } from "@/lib/types/database"
 import { CIUDADES_COLOMBIA } from "@/lib/ciudades-colombia"
+import type { UserRole } from "@/lib/auth/role"
+
+type PerfilOption = { id: string; email: string; nombre?: string | null; role: string }
 
 const TIPOS = ["apartamento", "casa", "local", "oficina", "habitación"]
 const ESTADOS = ["disponible", "arrendado", "mantenimiento"]
@@ -29,6 +32,9 @@ export default function EditarPropiedadPage() {
   const [loadingData, setLoadingData] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [imagenes, setImagenes] = useState<PropiedadImagen[]>([])
+  const [role, setRole] = useState<UserRole | null>(null)
+  const [propietarios, setPropietarios] = useState<PerfilOption[]>([])
+  const [user_id, setUser_id] = useState<string>("")
 
   const [form, setForm] = useState({
     direccion: "",
@@ -47,6 +53,26 @@ export default function EditarPropiedadPage() {
     cuenta_bancaria_numero: "",
     cuenta_bancaria_titular: "",
   })
+
+  useEffect(() => {
+    fetch("/api/auth/me")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data: { role?: UserRole } | null) => {
+        if (data?.role) setRole(data.role)
+      })
+      .catch(() => {})
+  }, [])
+
+  useEffect(() => {
+    if (role !== "admin") return
+    fetch("/api/admin/usuarios")
+      .then((res) => (res.ok ? res.json() : []))
+      .then((list: PerfilOption[]) => {
+        const only = (list ?? []).filter((u) => u.role === "propietario")
+        setPropietarios(only)
+      })
+      .catch(() => setPropietarios([]))
+  }, [role])
 
   // Cargar datos de la propiedad
   useEffect(() => {
@@ -78,6 +104,7 @@ export default function EditarPropiedadPage() {
           cuenta_bancaria_numero: propData.cuenta_bancaria_numero ?? "",
           cuenta_bancaria_titular: propData.cuenta_bancaria_titular ?? "",
         })
+        setUser_id(propData.user_id ?? "")
         setImagenes(imgData)
       })
       .catch(() => setError("Propiedad no encontrada"))
@@ -90,26 +117,29 @@ export default function EditarPropiedadPage() {
     setLoading(true)
 
     try {
+      const body: Record<string, unknown> = {
+        direccion: form.direccion ?? "",
+        ciudad: form.ciudad ?? "",
+        barrio: form.barrio ?? "",
+        tipo: form.tipo ?? "apartamento",
+        habitaciones: Number(form.habitaciones) || 0,
+        banos: Number(form.banos) || 0,
+        area: Number(form.area) || 0,
+        valorArriendo: Number(form.valor_arriendo) || 0,
+        descripcion: form.descripcion ?? "",
+        estado: form.estado ?? "disponible",
+        matricula_inmobiliaria: form.matricula_inmobiliaria,
+        cuentaBancariaEntidad: form.cuenta_bancaria_entidad,
+        cuentaBancariaTipo: form.cuenta_bancaria_tipo,
+        cuentaBancariaNumero: form.cuenta_bancaria_numero,
+        cuentaBancariaTitular: form.cuenta_bancaria_titular,
+      }
+      if (role === "admin" && user_id) body.user_id = user_id
+
       const res = await fetch(`/api/propiedades/${id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          direccion: form.direccion ?? "",
-          ciudad: form.ciudad ?? "",
-          barrio: form.barrio ?? "",
-          tipo: form.tipo ?? "apartamento",
-          habitaciones: Number(form.habitaciones) || 0,
-          banos: Number(form.banos) || 0,
-          area: Number(form.area) || 0,
-          valorArriendo: Number(form.valor_arriendo) || 0,
-          descripcion: form.descripcion ?? "",
-          estado: form.estado ?? "disponible",
-          matricula_inmobiliaria: form.matricula_inmobiliaria,
-          cuentaBancariaEntidad: form.cuenta_bancaria_entidad,
-          cuentaBancariaTipo: form.cuenta_bancaria_tipo,
-          cuentaBancariaNumero: form.cuenta_bancaria_numero,
-          cuentaBancariaTitular: form.cuenta_bancaria_titular,
-        }),
+        body: JSON.stringify(body),
       })
 
       if (!res.ok) throw new Error("Error al actualizar")
@@ -146,6 +176,27 @@ export default function EditarPropiedadPage() {
                 <CardDescription>Modifica la información del inmueble</CardDescription>
               </CardHeader>
               <CardContent className="grid gap-4 sm:grid-cols-2">
+                {role === "admin" && (
+                  <div className="sm:col-span-2">
+                    <label htmlFor="propietario" className="mb-1 block text-sm font-medium">
+                      Propietario
+                    </label>
+                    <select
+                      id="propietario"
+                      value={user_id}
+                      onChange={(e) => setUser_id(e.target.value)}
+                      className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm"
+                    >
+                      <option value="">Seleccionar propietario...</option>
+                      {propietarios.map((p) => (
+                        <option key={p.id} value={p.id}>
+                          {p.nombre ? `${p.nombre} (${p.email})` : p.email}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
                 <div className="sm:col-span-2">
                   <label htmlFor="direccion" className="mb-1 block text-sm font-medium">
                     Dirección

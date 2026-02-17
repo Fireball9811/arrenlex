@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
@@ -14,6 +14,9 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import { CIUDADES_COLOMBIA } from "@/lib/ciudades-colombia"
+import type { UserRole } from "@/lib/auth/role"
+
+type PerfilOption = { id: string; email: string; nombre?: string | null; role: string }
 
 const TIPOS = ["apartamento", "casa", "local", "oficina", "habitación"]
 
@@ -21,6 +24,9 @@ export default function NuevaPropiedadPage() {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [role, setRole] = useState<UserRole | null>(null)
+  const [propietarios, setPropietarios] = useState<PerfilOption[]>([])
+  const [user_id, setUser_id] = useState<string>("")
   const [form, setForm] = useState({
     direccion: "",
     ciudad: "",
@@ -34,22 +40,50 @@ export default function NuevaPropiedadPage() {
     estado: "disponible",
   })
 
+  useEffect(() => {
+    fetch("/api/auth/me")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data: { role?: UserRole } | null) => {
+        if (data?.role) setRole(data.role)
+      })
+      .catch(() => {})
+  }, [])
+
+  useEffect(() => {
+    if (role !== "admin") return
+    fetch("/api/admin/usuarios")
+      .then((res) => (res.ok ? res.json() : []))
+      .then((list: PerfilOption[]) => {
+        const only = (list ?? []).filter((u) => u.role === "propietario")
+        setPropietarios(only)
+        setUser_id((prev) => (prev && only.some((p) => p.id === prev) ? prev : only[0]?.id ?? ""))
+      })
+      .catch(() => setPropietarios([]))
+  }, [role])
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setError(null)
+    if (role === "admin" && !user_id) {
+      setError("Seleccione un propietario")
+      return
+    }
     setLoading(true)
 
     try {
+      const body: Record<string, unknown> = {
+        ...form,
+        habitaciones: Number(form.habitaciones) || 0,
+        banos: Number(form.banos) || 0,
+        area: Number(form.area) || 0,
+        valorArriendo: Number(form.valorArriendo) || 0,
+      }
+      if (role === "admin" && user_id) body.user_id = user_id
+
       const res = await fetch("/api/propiedades", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          ...form,
-          habitaciones: Number(form.habitaciones) || 0,
-          banos: Number(form.banos) || 0,
-          area: Number(form.area) || 0,
-          valorArriendo: Number(form.valorArriendo) || 0,
-        }),
+        body: JSON.stringify(body),
       })
 
       if (!res.ok) throw new Error("Error al guardar")
@@ -77,6 +111,28 @@ export default function NuevaPropiedadPage() {
           </CardHeader>
 
           <CardContent className="grid gap-4 sm:grid-cols-2">
+            {role === "admin" && (
+              <div className="sm:col-span-2">
+                <label htmlFor="propietario" className="mb-1 block text-sm font-medium">
+                  Propietario
+                </label>
+                <select
+                  id="propietario"
+                  value={user_id}
+                  onChange={(e) => setUser_id(e.target.value)}
+                  className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm"
+                  required
+                >
+                  <option value="">Seleccionar propietario...</option>
+                  {propietarios.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.nombre ? `${p.nombre} (${p.email})` : p.email}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
             <div className="sm:col-span-2">
               <label htmlFor="direccion" className="mb-1 block text-sm font-medium">
                 Dirección

@@ -20,7 +20,14 @@ export async function POST(request: Request) {
 
   try {
     const body = await request.json()
-    const { email } = body
+    const {
+      email,
+      nombre: bodyNombre,
+      celular: bodyCelular,
+      cedula: bodyCedula,
+      cedula_lugar_expedicion: bodyCedulaLugar,
+      direccion: bodyDireccion,
+    } = body
 
     if (!email || typeof email !== "string") {
       return NextResponse.json(
@@ -170,15 +177,25 @@ export async function POST(request: Request) {
     }).catch(() => {})
     // #endregion
 
+    const nombreFinal =
+      typeof bodyNombre === "string" && bodyNombre.trim()
+        ? bodyNombre.trim()
+        : newUser.user.email?.split("@")[0] || "Inquilino"
+
     const { error: perfilError } = await admin
       .from("perfiles")
       .insert({
         id: newUser.user.id,
         email: newUser.user.email!,
-        nombre: newUser.user.email?.split("@")[0] || "Inquilino",
+        nombre: nombreFinal,
         role: "inquilino",
         activo: true,
         bloqueado: false,
+        celular: typeof bodyCelular === "string" ? bodyCelular.trim() || null : null,
+        cedula: typeof bodyCedula === "string" ? bodyCedula.trim() || null : null,
+        cedula_lugar_expedicion:
+          typeof bodyCedulaLugar === "string" ? bodyCedulaLugar.trim() || null : null,
+        direccion: typeof bodyDireccion === "string" ? bodyDireccion.trim() || null : null,
       })
 
     if (perfilError) {

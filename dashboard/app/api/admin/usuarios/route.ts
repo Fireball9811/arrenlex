@@ -48,7 +48,15 @@ export async function POST(request: Request) {
   }
 
   const body = await request.json()
-  const { email, role = "inquilino", nombre } = body
+  const {
+    email,
+    role = "inquilino",
+    nombre,
+    celular,
+    cedula,
+    cedula_lugar_expedicion,
+    direccion,
+  } = body
 
   if (!email?.trim()) {
     return NextResponse.json({ error: "El correo es obligatorio" }, { status: 400 })
@@ -84,6 +92,22 @@ export async function POST(request: Request) {
         )
       }
       return NextResponse.json({ error: error.message }, { status: 400 })
+    }
+
+    if (data.user?.id) {
+      const perfilUpdates: Record<string, string | null> = {}
+      if (typeof nombre === "string" && nombre.trim()) perfilUpdates.nombre = nombre.trim()
+      if (typeof celular === "string") perfilUpdates.celular = celular.trim() || null
+      if (typeof cedula === "string") perfilUpdates.cedula = cedula.trim() || null
+      if (typeof cedula_lugar_expedicion === "string")
+        perfilUpdates.cedula_lugar_expedicion = cedula_lugar_expedicion.trim() || null
+      if (typeof direccion === "string") perfilUpdates.direccion = direccion.trim() || null
+      if (Object.keys(perfilUpdates).length > 0) {
+        await admin
+          .from("perfiles")
+          .update(perfilUpdates)
+          .eq("id", data.user.id)
+      }
     }
 
     return NextResponse.json({

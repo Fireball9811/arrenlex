@@ -4,7 +4,7 @@ import { createAdminClient, isAdmin } from "@/lib/supabase/admin"
 
 const VALID_ROLES = ["admin", "propietario", "inquilino"] as const
 
-// PATCH - Actualizar estado (bloquear/activar) y/o rol de usuario
+// PATCH - Actualizar datos del perfil: nombre, celular, cédula, dirección, rol, activo, bloqueado; o acciones (bloquear/activar/etc.)
 export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
@@ -24,19 +24,44 @@ export async function PATCH(
 
   const { id } = await params
   const body = await request.json()
-  const { accion, role: newRole } = body
+  const {
+    accion,
+    role: newRole,
+    nombre,
+    celular,
+    cedula,
+    cedula_lugar_expedicion,
+    direccion,
+    activo: bodyActivo,
+    bloqueado: bodyBloqueado,
+  } = body
 
-  if (!accion && newRole === undefined) {
-    return NextResponse.json({ error: "Indica accion o role" }, { status: 400 })
+  const hasDataFields =
+    nombre !== undefined ||
+    celular !== undefined ||
+    cedula !== undefined ||
+    cedula_lugar_expedicion !== undefined ||
+    direccion !== undefined ||
+    newRole !== undefined ||
+    bodyActivo !== undefined ||
+    bodyBloqueado !== undefined
+
+  if (!accion && !hasDataFields) {
+    return NextResponse.json({ error: "Indica accion o al menos un campo a actualizar" }, { status: 400 })
   }
 
-  if (id === user?.id && (accion === "bloquear" || accion === "desactivar")) {
-    return NextResponse.json({ error: "No puedes desactivar o bloquear tu propio usuario" }, { status: 400 })
+  if (id === user?.id) {
+    if (accion === "bloquear" || accion === "desactivar") {
+      return NextResponse.json({ error: "No puedes desactivar o bloquear tu propio usuario" }, { status: 400 })
+    }
+    if (bodyBloqueado === true || bodyActivo === false) {
+      return NextResponse.json({ error: "No puedes desactivar o bloquear tu propio usuario" }, { status: 400 })
+    }
   }
 
   const admin = createAdminClient()
 
-  const updates: Record<string, boolean | string> = {}
+  const updates: Record<string, boolean | string | null> = {}
 
   if (newRole !== undefined) {
     if (!VALID_ROLES.includes(newRole)) {
@@ -65,6 +90,17 @@ export async function PATCH(
         return NextResponse.json({ error: "Acción no válida" }, { status: 400 })
     }
   }
+
+  if (nombre !== undefined) updates.nombre = typeof nombre === "string" ? nombre.trim() || null : null
+  if (celular !== undefined) updates.celular = typeof celular === "string" ? celular.trim() || null : null
+  if (cedula !== undefined) updates.cedula = typeof cedula === "string" ? cedula.trim() || null : null
+  if (cedula_lugar_expedicion !== undefined) {
+    updates.cedula_lugar_expedicion =
+      typeof cedula_lugar_expedicion === "string" ? cedula_lugar_expedicion.trim() || null : null
+  }
+  if (direccion !== undefined) updates.direccion = typeof direccion === "string" ? direccion.trim() || null : null
+  if (bodyActivo !== undefined) updates.activo = Boolean(bodyActivo)
+  if (bodyBloqueado !== undefined) updates.bloqueado = Boolean(bodyBloqueado)
 
   const { data, error } = await admin
     .from("perfiles")

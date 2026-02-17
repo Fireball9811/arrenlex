@@ -13,8 +13,12 @@ import {
 import { Camera } from "lucide-react"
 import type { Propiedad } from "@/lib/types/database"
 
+type PropiedadConPropietario = Propiedad & {
+  propietario?: { id: string; nombre: string | null; email: string } | null
+}
+
 export default function PropiedadesPage() {
-  const [propiedades, setPropiedades] = useState<Propiedad[]>([])
+  const [propiedades, setPropiedades] = useState<PropiedadConPropietario[]>([])
   const [loading, setLoading] = useState(true)
   const [imagenPorPropiedadId, setImagenPorPropiedadId] = useState<Record<string, string | null>>({})
   const [subiendoPorId, setSubiendoPorId] = useState<Record<string, boolean>>({})
@@ -142,6 +146,11 @@ export default function PropiedadesPage() {
                 <CardDescription className="mt-1">
                   {p.barrio}, {p.ciudad} · {p.tipo}
                 </CardDescription>
+                {p.propietario && (
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Propietario: {p.propietario.nombre ?? p.propietario.email}
+                  </p>
+                )}
                 <CardContent className="flex-1 space-y-2 p-0 pt-2">
                   <div className="flex gap-4 text-sm text-muted-foreground">
                     <span>🛏 {p.habitaciones} hab</span>

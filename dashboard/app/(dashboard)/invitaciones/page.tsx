@@ -13,6 +13,7 @@ import { Mail, Send, CheckCircle, AlertCircle } from "lucide-react"
 
 export default function InvitacionesPage() {
   const [email, setEmail] = useState("")
+  const [nombre, setNombre] = useState("")
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null)
 
@@ -25,7 +26,7 @@ export default function InvitacionesPage() {
       const res = await fetch("/api/invitaciones", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email }),
+        body: JSON.stringify({ email, nombre: nombre.trim() || undefined }),
       })
 
       const data = await res.json()
@@ -33,6 +34,7 @@ export default function InvitacionesPage() {
       if (res.ok) {
         setMessage({ type: "success", text: `Invitación enviada a ${email}` })
         setEmail("")
+        setNombre("")
       } else {
         setMessage({ type: "error", text: data.error || "Error al enviar invitación" })
       }
@@ -64,6 +66,20 @@ export default function InvitacionesPage() {
         </CardHeader>
         <CardContent>
           <form onSubmit={sendInvitation} className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium mb-1">
+                Nombre completo del inquilino *
+              </label>
+              <input
+                type="text"
+                required
+                placeholder="Ej: Juan Pérez García"
+                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                value={nombre}
+                onChange={(e) => setNombre(e.target.value)}
+              />
+            </div>
+
             <div>
               <label className="block text-sm font-medium mb-1">
                 Correo electrónico del inquilino *
@@ -102,7 +118,7 @@ export default function InvitacionesPage() {
               </p>
             </div>
 
-            <Button type="submit" disabled={loading || !email}>
+            <Button type="submit" disabled={loading || !email || !nombre.trim()}>
               <Send className="mr-2 h-4 w-4" />
               {loading ? "Enviando..." : "Enviar Invitación"}
             </Button>

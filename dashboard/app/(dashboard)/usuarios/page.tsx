@@ -4,20 +4,44 @@ import { useEffect, useState } from "react"
 import Link from "next/link"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
 
 interface Usuario {
   id: string
   email: string
   role: "admin" | "propietario" | "inquilino"
-  nombre?: string
+  nombre?: string | null
   activo: boolean
   bloqueado: boolean
   creado_en: string
+  celular?: string | null
+  cedula?: string | null
+  cedula_lugar_expedicion?: string | null
+  direccion?: string | null
 }
+
+const ROLES: { value: Usuario["role"]; label: string }[] = [
+  { value: "admin", label: "Administrador" },
+  { value: "propietario", label: "Propietario" },
+  { value: "inquilino", label: "Inquilino" },
+]
 
 export default function UsuariosSistemaPage() {
   const [usuarios, setUsuarios] = useState<Usuario[]>([])
   const [loading, setLoading] = useState(true)
+  const [editingUser, setEditingUser] = useState<Usuario | null>(null)
+  const [editForm, setEditForm] = useState({
+    nombre: "",
+    celular: "",
+    cedula: "",
+    cedula_lugar_expedicion: "",
+    direccion: "",
+    role: "inquilino" as Usuario["role"],
+    activo: true,
+    bloqueado: false,
+  })
+  const [saving, setSaving] = useState(false)
+  const [editError, setEditError] = useState<string | null>(null)
 
   useEffect(() => {
     fetch("/api/admin/usuarios")
@@ -26,8 +50,21 @@ export default function UsuariosSistemaPage() {
       .finally(() => setLoading(false))
   }, [])
 
-  const formatPeso = (n: number) =>
-    new Intl.NumberFormat("es-CO", { style: "currency", currency: "COP" }).format(n)
+  useEffect(() => {
+    if (editingUser) {
+      setEditForm({
+        nombre: editingUser.nombre ?? "",
+        celular: editingUser.celular ?? "",
+        cedula: editingUser.cedula ?? "",
+        cedula_lugar_expedicion: editingUser.cedula_lugar_expedicion ?? "",
+        direccion: editingUser.direccion ?? "",
+        role: editingUser.role,
+        activo: editingUser.activo,
+        bloqueado: editingUser.bloqueado,
+      })
+      setEditError(null)
+    }
+  }, [editingUser])
 
   function toggleActivo(usuario: Usuario) {
     const accion = usuario.activo ? "desactivar" : "activar"
@@ -75,6 +112,40 @@ export default function UsuariosSistemaPage() {
         }
       })
       .catch((err) => alert("Error: " + err.message))
+  }
+
+  function handleSaveEdit(e: React.FormEvent) {
+    e.preventDefault()
+    if (!editingUser) return
+    setSaving(true)
+    setEditError(null)
+    fetch(`/api/admin/usuarios/${editingUser.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        nombre: editForm.nombre.trim() || null,
+        celular: editForm.celular.trim() || null,
+        cedula: editForm.cedula.trim() || null,
+        cedula_lugar_expedicion: editForm.cedula_lugar_expedicion.trim() || null,
+        direccion: editForm.direccion.trim() || null,
+        role: editForm.role,
+        activo: editForm.activo,
+        bloqueado: editForm.bloqueado,
+      }),
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.error) {
+          setEditError(data.error)
+        } else {
+          setEditingUser(null)
+          fetch("/api/admin/usuarios")
+            .then((res) => res.json())
+            .then(setUsuarios)
+        }
+      })
+      .catch((err) => setEditError(err.message ?? "Error de conexión"))
+      .finally(() => setSaving(false))
   }
 
   const roleClass = (role: string) => {
@@ -161,27 +232,23 @@ export default function UsuariosSistemaPage() {
                     <th className="p-3 text-center">Estado</th>
                     <th className="p-3 text-center">Activar/Inactivar</th>
                     <th className="p-3 text-center">Bloquear</th>
+                    <th className="p-3 text-center">Editar</th>
                   </tr>
                 </thead>
                 <tbody>
                   {usuarios.map((usuario) => (
                     <tr key={usuario.id} className={`border-b ${usuario.bloqueado ? "bg-red-50" : ""}`}>
-                      {/* Usuario */}
                       <td className="p-3">
                         <div>
                           <p className="font-medium">{usuario.nombre || usuario.email}</p>
                           <p className="text-xs text-muted-foreground">{usuario.email}</p>
                         </div>
                       </td>
-
-                      {/* Rol */}
                       <td className="p-3">
                         <span className={`rounded px-2 py-1 text-xs font-medium ${roleClass(usuario.role)}`}>
                           {roleLabel(usuario.role)}
                         </span>
                       </td>
-
-                      {/* Estado */}
                       <td className="p-3 text-center">
                         {usuario.bloqueado ? (
                           <span className="rounded-full bg-red-100 px-2 py-1 text-xs font-medium text-red-800">
@@ -197,8 +264,6 @@ export default function UsuariosSistemaPage() {
                           </span>
                         )}
                       </td>
-
-                      {/* Activar/Inactivar */}
                       <td className="p-3 text-center">
                         <label className="inline-flex items-center gap-2">
                           <input
@@ -213,8 +278,6 @@ export default function UsuariosSistemaPage() {
                           </span>
                         </label>
                       </td>
-
-                      {/* Bloquear */}
                       <td className="p-3 text-center">
                         <Button
                           size="sm"
@@ -222,6 +285,15 @@ export default function UsuariosSistemaPage() {
                           onClick={() => toggleBloqueo(usuario)}
                         >
                           {usuario.bloqueado ? "🔓 Desbloquear" : "🚫 Bloquear"}
+                        </Button>
+                      </td>
+                      <td className="p-3 text-center">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => setEditingUser(usuario)}
+                        >
+                          Editar
                         </Button>
                       </td>
                     </tr>
@@ -232,6 +304,135 @@ export default function UsuariosSistemaPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Modal Editar usuario */}
+      {editingUser && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+          onClick={() => !saving && setEditingUser(null)}
+        >
+          <Card
+            className="w-full max-w-lg max-h-[90vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <CardHeader className="flex flex-row items-center justify-between space-y-0">
+              <CardTitle>Editar usuario</CardTitle>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                disabled={saving}
+                onClick={() => setEditingUser(null)}
+              >
+                Cerrar
+              </Button>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={handleSaveEdit} className="space-y-4">
+                <div>
+                  <label className="mb-1 block text-sm font-medium">Nombre completo</label>
+                  <Input
+                    value={editForm.nombre}
+                    onChange={(e) => setEditForm((f) => ({ ...f, nombre: e.target.value }))}
+                    placeholder="Ej: Juan Pérez"
+                  />
+                </div>
+                <div>
+                  <label className="mb-1 block text-sm font-medium">Correo electrónico</label>
+                  <Input value={editingUser.email} disabled className="bg-muted" />
+                  <p className="mt-1 text-xs text-muted-foreground">No se puede cambiar el correo</p>
+                </div>
+                <div>
+                  <label className="mb-1 block text-sm font-medium">Celular</label>
+                  <Input
+                    value={editForm.celular}
+                    onChange={(e) => setEditForm((f) => ({ ...f, celular: e.target.value }))}
+                    placeholder="Ej: 3001234567"
+                  />
+                </div>
+                <div>
+                  <label className="mb-1 block text-sm font-medium">Cédula de ciudadanía</label>
+                  <Input
+                    value={editForm.cedula}
+                    onChange={(e) => setEditForm((f) => ({ ...f, cedula: e.target.value }))}
+                    placeholder="Número de cédula"
+                  />
+                </div>
+                <div>
+                  <label className="mb-1 block text-sm font-medium">Lugar de expedición de la cédula</label>
+                  <Input
+                    value={editForm.cedula_lugar_expedicion}
+                    onChange={(e) =>
+                      setEditForm((f) => ({ ...f, cedula_lugar_expedicion: e.target.value }))
+                    }
+                    placeholder="Ej: Bogotá D.C."
+                  />
+                </div>
+                <div>
+                  <label className="mb-1 block text-sm font-medium">Dirección de vivienda</label>
+                  <Input
+                    value={editForm.direccion}
+                    onChange={(e) => setEditForm((f) => ({ ...f, direccion: e.target.value }))}
+                    placeholder="Ej: Cra 15 #42-18"
+                  />
+                </div>
+                <div>
+                  <label className="mb-1 block text-sm font-medium">Rol</label>
+                  <select
+                    value={editForm.role}
+                    onChange={(e) =>
+                      setEditForm((f) => ({ ...f, role: e.target.value as Usuario["role"] }))
+                    }
+                    className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm"
+                  >
+                    {ROLES.map((r) => (
+                      <option key={r.value} value={r.value}>
+                        {r.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="flex gap-4">
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={editForm.activo}
+                      onChange={(e) => setEditForm((f) => ({ ...f, activo: e.target.checked }))}
+                      className="h-4 w-4 rounded border-gray-300"
+                    />
+                    <span className="text-sm font-medium">Activo</span>
+                  </label>
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={editForm.bloqueado}
+                      onChange={(e) => setEditForm((f) => ({ ...f, bloqueado: e.target.checked }))}
+                      className="h-4 w-4 rounded border-gray-300"
+                    />
+                    <span className="text-sm font-medium">Bloqueado</span>
+                  </label>
+                </div>
+                {editError && (
+                  <p className="text-sm text-destructive">{editError}</p>
+                )}
+                <div className="flex gap-2 pt-2">
+                  <Button type="submit" disabled={saving}>
+                    {saving ? "Guardando..." : "Guardar cambios"}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={saving}
+                    onClick={() => setEditingUser(null)}
+                  >
+                    Cancelar
+                  </Button>
+                </div>
+              </form>
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
       {/* Leyenda */}
       <Card className="mt-4 bg-gray-50">

@@ -75,6 +75,10 @@ export type Perfil = {
   bloqueado: boolean
   creado_en: string
   actualizado_en: string
+  celular?: string | null
+  cedula?: string | null
+  cedula_lugar_expedicion?: string | null
+  direccion?: string | null
 }
 
 export type Contrato = {
