@@ -162,7 +162,7 @@ export default function PropiedadesPage() {
           </CardContent>
         </Card>
       ) : (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-4 md:grid-cols-1 lg:grid-cols-2">
           {propiedades.map((p) => (
             <Card key={p.id} className="flex flex-row overflow-hidden">
               {/* Columna izquierda: texto */}
@@ -210,40 +210,38 @@ export default function PropiedadesPage() {
               </div>
               {/* Columna derecha: foto ocupa todo el alto */}
               <div
-                className={`w-44 shrink-0 bg-muted sm:w-52 transition-all ${
+                className={`relative w-44 shrink-0 bg-muted sm:w-52 transition-all cursor-pointer ${
                   dragOverPropiedadId === p.id ? "border-primary border-2 bg-primary/5" : ""
                 }`}
                 onDragOver={(e) => handleDragOver(e, p.id)}
                 onDragLeave={(e) => handleDragLeave(e, p.id)}
                 onDrop={(e) => handleDrop(e, p.id)}
+                onClick={() => document.getElementById(`file-input-${p.id}`)?.click()}
               >
+                <input
+                  id={`file-input-${p.id}`}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => handleFileInputChange(p.id, e)}
+                  disabled={subiendoPorId[p.id]}
+                />
                 {subiendoPorId[p.id] ? (
                   <div className="flex h-full min-h-[200px] items-center justify-center">
                     <span className="text-sm text-muted-foreground">Subiendo…</span>
                   </div>
+                ) : imagenPorPropiedadId[p.id] ? (
+                  <img
+                    src={imagenPorPropiedadId[p.id]!}
+                    alt=""
+                    className="h-full w-full object-cover"
+                  />
                 ) : (
-                  <label className="flex h-full min-h-[200px] cursor-pointer items-center justify-center transition hover:bg-muted/80">
-                    {imagenPorPropiedadId[p.id] ? (
-                      <img
-                        src={imagenPorPropiedadId[p.id]!}
-                        alt=""
-                        className="h-full w-full object-cover"
-                      />
-                    ) : (
-                      <span className="flex flex-col items-center gap-2 p-4 text-center text-muted-foreground hover:text-foreground">
-                        <Camera className="h-10 w-10" />
-                        <span className="text-xs font-medium">Subir foto</span>
-                        <span className="text-xs text-muted-foreground">o arrastra aquí</span>
-                      </span>
-                    )}
-                    <input
-                      type="file"
-                      accept="image/*"
-                      className="hidden"
-                      onChange={(e) => handleFileInputChange(p.id, e)}
-                      disabled={subiendoPorId[p.id]}
-                    />
-                  </label>
+                  <span className="flex h-full min-h-[200px] flex-col items-center justify-center gap-2 p-4 text-center text-muted-foreground hover:text-foreground transition hover:bg-muted/80">
+                    <Camera className="h-10 w-10" />
+                    <span className="text-xs font-medium">Subir foto</span>
+                    <span className="text-xs text-muted-foreground">o arrastra aquí</span>
+                  </span>
                 )}
               </div>
             </Card>
