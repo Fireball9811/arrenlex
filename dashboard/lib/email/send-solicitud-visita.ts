@@ -1,4 +1,4 @@
-import { getSmtpTransporter, getEmailFrom } from "./transport"
+import { getResendClient, getEmailFrom } from "./transport"
 
 const TO_CEO = "ceo@arrenlex.com"
 
@@ -13,13 +13,13 @@ export type SendSolicitudVisitaParams = {
 
 /**
  * Envía email a ceo@arrenlex.com con asunto "Solicitar Visita" y detalles del mensaje.
- * Usa SMTP (Microsoft 365) con credenciales desde Supabase.
+ * Usa Resend API para el envío.
  */
 export async function sendSolicitudVisitaEmail(
   params: SendSolicitudVisitaParams
 ): Promise<{ success: boolean; error?: string }> {
-  const transporter = await getSmtpTransporter()
-  if (!transporter) {
+  const resend = getResendClient()
+  if (!resend) {
     return { success: false, error: "Servicio de email no configurado" }
   }
 
@@ -54,8 +54,12 @@ export async function sendSolicitudVisitaEmail(
 `.trim()
 
   try {
-    const info = await transporter.sendMail({ from, to: TO_CEO, subject, html })
-    console.log("[send-solicitud-visita] Email enviado:", info.messageId)
+    const { data, error } = await resend.emails.send({ from, to: TO_CEO, subject, html })
+    if (error) {
+      console.error("[send-solicitud-visita] Error enviando email:", error)
+      return { success: false, error: error.message }
+    }
+    console.log("[send-solicitud-visita] Email enviado:", data?.id)
     return { success: true }
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Error desconocido"

@@ -1,4 +1,4 @@
-import { getSmtpTransporter, getEmailFrom } from "./transport"
+import { getResendClient, getEmailFrom } from "./transport"
 
 const SITE_NAME = process.env.NEXT_PUBLIC_SITE_NAME ?? "Arrenlex"
 
@@ -10,15 +10,15 @@ export type SendResetEmailParams = {
 
 /**
  * Envía email con link único para restablecer contraseña.
- * Usa SMTP (Microsoft 365) con credenciales desde Supabase.
+ * Usa Resend API para el envío.
  */
 export async function sendPasswordResetEmail({
   to,
   resetLink,
   expiresMinutes = 15,
 }: SendResetEmailParams): Promise<{ success: boolean; error?: string }> {
-  const transporter = await getSmtpTransporter()
-  if (!transporter) {
+  const resend = getResendClient()
+  if (!resend) {
     return { success: false, error: "Servicio de email no configurado" }
   }
 
@@ -45,8 +45,12 @@ export async function sendPasswordResetEmail({
 `.trim()
 
   try {
-    const info = await transporter.sendMail({ from, to, subject, html })
-    console.log("[send-reset] Email enviado:", info.messageId)
+    const { data, error } = await resend.emails.send({ from, to, subject, html })
+    if (error) {
+      console.error("[send-reset] Error enviando email:", error)
+      return { success: false, error: error.message }
+    }
+    console.log("[send-reset] Email enviado:", data?.id)
     return { success: true }
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Error desconocido"
