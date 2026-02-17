@@ -225,13 +225,15 @@ export async function POST(request: Request) {
     desdeCuando: desdeCuandoTrim,
     propiedadRef,
   })
-
   if (!emailResult.success) {
     console.error("[mantenimiento] Email no enviado:", emailResult.error)
   }
 
   return NextResponse.json({
     id: inserted?.id,
-    message: "Solicitud de mantenimiento enviada correctamente",
+    message: emailResult.success
+      ? "Solicitud de mantenimiento enviada correctamente"
+      : "Solicitud guardada. No se pudo enviar la notificación por correo al administrador.",
+    emailSent: emailResult.success,
   })
 }

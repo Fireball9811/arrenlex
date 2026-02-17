@@ -85,3 +85,38 @@ Vercel no aplica variables nuevas hasta que se hace redeploy.
 1. Ve a https://www.arrenlex.com/invitaciones
 2. Envía una invitación a un correo tuyo
 3. Revisa bandeja de entrada y carpeta de spam
+
+## DNS y SPF
+
+Para que los correos enviados por Resend lleguen correctamente (no a spam), el dominio debe tener SPF configurado. El SPF de la raíz (`@`) debe incluir Resend. Si usas Microsoft 365 para correo corporativo, une ambos:
+
+**Valor SPF para Host `@`:**
+
+```
+v=spf1 include:spf.protection.outlook.com include:_spf.resend.com -all
+```
+
+Pasos:
+1. Entra en tu proveedor DNS (Vercel, Cloudflare, etc.)
+2. Edita el TXT de Host `@` que contiene `v=spf1`
+3. Sustituye por el valor anterior (incluyendo Outlook y Resend)
+4. Guarda y espera propagación DNS (minutos a 24 h)
+
+Para verificar propagación: `nslookup -type=TXT arrenlex.com`
+
+## Rutas que envían correo
+
+| Ruta | Destinatario | Variables requeridas |
+|------|--------------|----------------------|
+| Invitaciones (`/api/invitaciones`) | Inquilino (to) | RESEND_API_KEY, EMAIL_FROM, NEXT_PUBLIC_SITE_URL |
+| Mantenimiento (`/api/mantenimiento`) | ceo@arrenlex.com | RESEND_API_KEY, EMAIL_FROM |
+| Solicitudes visita (`/api/solicitudes-visita`) | ceo@arrenlex.com | RESEND_API_KEY, EMAIL_FROM |
+| Recuperar contraseña (`/api/auth/request-password-reset`) | Usuario | RESEND_API_KEY, EMAIL_FROM, NEXT_PUBLIC_SITE_URL |
+
+## Diagnóstico en producción
+
+Si los correos no llegan, revisa los logs de Vercel (Project → Logs):
+
+- `[email] RESEND_API_KEY no configurado` → Añade la variable en Vercel y redeploy
+- `[send-invitation] Resend error:` → Revisa dominio verificado en Resend y SPF
+- `[send-mantenimiento]` o `[send-solicitud-visita]` → Mismo tratamiento

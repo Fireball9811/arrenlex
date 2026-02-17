@@ -184,14 +184,15 @@ export async function POST(request: Request) {
     propiedadRef,
     nota: notaVal,
   })
-
   if (!emailResult.success) {
     console.error("[solicitudes-visita] Email no enviado:", emailResult.error)
-    // La solicitud ya se guardó; no fallamos la petición
   }
 
   return NextResponse.json({
     id: inserted?.id,
-    message: "Solicitud enviada correctamente",
+    message: emailResult.success
+      ? "Solicitud enviada correctamente"
+      : "Solicitud guardada. No se pudo enviar la notificación por correo al administrador.",
+    emailSent: emailResult.success,
   })
 }

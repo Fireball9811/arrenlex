@@ -196,7 +196,6 @@ export async function POST(request: Request) {
       loginUrl,
       expiresInDays: EXPIRY_DAYS,
     })
-
     if (!emailResult.success) {
       console.error("[invitaciones] Error enviando email:", emailResult.error)
       return NextResponse.json(
