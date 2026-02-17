@@ -1,12 +1,13 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useCallback } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { X, Upload, Image as ImageIcon } from "lucide-react"
+import { cn } from "@/lib/utils"
 import type { PropiedadImagen } from "@/lib/types/database"
 
-const categorias = [
+const categorias: Array<{ value: CategoriaValue; label: string; icon: string }> = [
   { value: "sala", label: "Sala", icon: "🛋" },
   { value: "cocina", label: "Cocina", icon: "🍳" },
   { value: "habitacion", label: "Habitación", icon: "🛏" },
@@ -14,6 +15,8 @@ const categorias = [
   { value: "fachada", label: "Fachada", icon: "🏠" },
   { value: "otra", label: "Otra", icon: "📷" },
 ]
+
+type CategoriaValue = "sala" | "cocina" | "habitacion" | "bano" | "fachada" | "otra"
 
 type Props = {
   propiedadId: string
@@ -23,23 +26,24 @@ type Props = {
 }
 
 export function GaleríaImagenes({ propiedadId, imagenes, onImagenesChange, readonly = false }: Props) {
-  const [subiendo, setSubiendo] = useState(false)
-  const [categoriaActiva, setCategoriaActiva] = useState<"sala" | "cocina" | "habitacion" | "bano" | "fachada" | "otra">("sala")
+  const [subiendoCategoria, setSubiendoCategoria] = useState<CategoriaValue | null>(null)
+  const [dragOverCategoria, setDragOverCategoria] = useState<CategoriaValue | null>(null)
 
-  async function handleSubir(archivos: FileList | null) {
+  const handleSubir = useCallback(async (archivos: FileList | File[] | null, categoria: CategoriaValue) => {
     if (!archivos || archivos.length === 0) return
 
-    setSubiendo(true)
-    const formData = new FormData()
-    formData.append("propiedad_id", propiedadId)
-    formData.append("categoria", categoriaActiva)
-
-    // Subir cada archivo
-    for (const archivo of Array.from(archivos)) {
-      formData.append("archivo", archivo)
-    }
+    setSubiendoCategoria(categoria)
 
     try {
+      const formData = new FormData()
+      formData.append("propiedad_id", propiedadId)
+      formData.append("categoria", categoria)
+
+      // Agregar cada archivo
+      for (const archivo of Array.from(archivos)) {
+        formData.append("archivo", archivo)
+      }
+
       const res = await fetch("/api/propiedades/imagenes", {
         method: "POST",
         body: formData,
@@ -47,21 +51,24 @@ export function GaleríaImagenes({ propiedadId, imagenes, onImagenesChange, read
 
       if (!res.ok) {
         const err = await res.json()
-        alert(err.error || "Error al subir imagen")
+        alert(err.error || "Error al subir imágenes")
         return
       }
 
       const data = await res.json()
-      onImagenesChange([...imagenes, data])
+      // data es ahora un array de imágenes
+      onImagenesChange([...imagenes, ...data])
     } finally {
-      setSubiendo(false)
-      // Reset input
-      const input = document.getElementById(`file-input-${categoriaActiva}`) as HTMLInputElement
-      if (input) input.value = ""
+      setSubiendoCategoria(null)
+      // Reset inputs de esta categoría
+      const inputs = document.querySelectorAll(`input[data-categoria="${categoria}"]`) as NodeListOf<HTMLInputElement>
+      inputs.forEach((input) => {
+        if (input) input.value = ""
+      })
     }
-  }
+  }, [propiedadId, imagenes, onImagenesChange])
 
-  async function handleEliminar(id: string) {
+  const handleEliminar = async (id: string) => {
     if (!confirm("¿Eliminar esta imagen?")) return
 
     try {
@@ -78,6 +85,35 @@ export function GaleríaImagenes({ propiedadId, imagenes, onImagenesChange, read
     }
   }
 
+  // Drag & Drop handlers
+  const handleDragOver = (e: React.DragEvent, categoria: CategoriaValue) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setDragOverCategoria(categoria)
+  }
+
+  const handleDragLeave = (e: React.DragEvent, categoria: CategoriaValue) => {
+    e.preventDefault()
+    e.stopPropagation()
+    // Solo limpiar si estamos saliendo de la tarjeta, no de un hijo
+    if (e.currentTarget === e.target) {
+      setDragOverCategoria(null)
+    }
+  }
+
+  const handleDrop = (e: React.DragEvent, categoria: CategoriaValue) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setDragOverCategoria(null)
+
+    if (readonly) return
+
+    const archivos = e.dataTransfer.files
+    if (archivos.length > 0) {
+      handleSubir(archivos, categoria)
+    }
+  }
+
   const imagenesPorCategoria = categorias.reduce((acc, cat) => {
     acc[cat.value] = imagenes.filter((img) => img.categoria === cat.value)
     return acc
@@ -85,31 +121,22 @@ export function GaleríaImagenes({ propiedadId, imagenes, onImagenesChange, read
 
   return (
     <div className="space-y-6">
-      {!readonly && (
-        <div className="flex items-center gap-4 p-4 bg-muted rounded-lg">
-          <div className="flex gap-2">
-            {categorias.map((cat) => (
-              <button
-                key={cat.value}
-                onClick={() => setCategoriaActiva(cat.value as any)}
-                className={`px-4 py-2 rounded-lg transition ${
-                  categoriaActiva === cat.value
-                    ? "bg-primary text-primary-foreground"
-                    : "bg-background hover:bg-muted"
-                }`}
-              >
-                <span className="mr-2">{cat.icon}</span>
-                {cat.label}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-
       {categorias.map((cat) => {
         const imagenesCategoria = imagenesPorCategoria[cat.value] || []
+        const isUploading = subiendoCategoria === cat.value
+        const isDragOver = dragOverCategoria === cat.value
+
         return (
-          <Card key={cat.value}>
+          <Card
+            key={cat.value}
+            onDragOver={(e) => handleDragOver(e, cat.value)}
+            onDragLeave={(e) => handleDragLeave(e, cat.value)}
+            onDrop={(e) => handleDrop(e, cat.value)}
+            className={cn(
+              "transition-all",
+              isDragOver && !readonly && "border-primary border-2 bg-primary/5"
+            )}
+          >
             <CardHeader>
               <div className="flex items-center justify-between">
                 <CardTitle className="flex items-center gap-2">
@@ -119,29 +146,45 @@ export function GaleríaImagenes({ propiedadId, imagenes, onImagenesChange, read
                     ({imagenesCategoria.length})
                   </span>
                 </CardTitle>
-                </div>
-              </CardHeader>
+                {isUploading && (
+                  <span className="text-sm text-primary animate-pulse">
+                    Subiendo...
+                  </span>
+                )}
+              </div>
+            </CardHeader>
             <CardContent>
               {imagenesCategoria.length === 0 ? (
-                <div className="text-center py-8 text-muted-foreground">
+                <div
+                  className={cn(
+                    "text-center py-8 text-muted-foreground transition-colors",
+                    isDragOver && !readonly && "bg-primary/10 rounded-lg"
+                  )}
+                >
                   <ImageIcon className="mx-auto h-12 w-12 mb-2 opacity-50" />
                   <p>No hay fotos en esta categoría</p>
                   {!readonly && (
-                    <label
-                      htmlFor={`file-input-${cat.value}`}
-                      className="inline-flex items-center gap-2 mt-4 cursor-pointer text-primary hover:underline"
-                    >
-                      <Upload className="h-4 w-4" />
-                      Subir primera foto
-                      <input
-                        id={`file-input-${cat.value}`}
-                        type="file"
-                        accept="image/jpeg,image/jpg,image/png,image/webp"
-                        multiple
-                        className="hidden"
-                        onChange={(e) => handleSubir(e.target.files)}
-                      />
-                    </label>
+                    <>
+                      <label
+                        htmlFor={`file-input-${cat.value}`}
+                        className="inline-flex items-center gap-2 mt-4 cursor-pointer text-primary hover:underline"
+                      >
+                        <Upload className="h-4 w-4" />
+                        Subir primera foto
+                        <input
+                          id={`file-input-${cat.value}`}
+                          data-categoria={cat.value}
+                          type="file"
+                          accept="image/jpeg,image/jpg,image/png,image/webp"
+                          multiple
+                          className="hidden"
+                          onChange={(e) => handleSubir(e.target.files, cat.value)}
+                        />
+                      </label>
+                      <p className="text-xs mt-2 text-muted-foreground">
+                        o arrastra las fotos aquí
+                      </p>
+                    </>
                   )}
                 </div>
               ) : (
@@ -164,15 +207,21 @@ export function GaleríaImagenes({ propiedadId, imagenes, onImagenesChange, read
                     </div>
                   ))}
                   {!readonly && (
-                    <label className="aspect-square flex items-center justify-center border-2 border-dashed rounded-lg cursor-pointer hover:border-primary hover:bg-muted transition">
+                    <label
+                      className={cn(
+                        "aspect-square flex items-center justify-center border-2 border-dashed rounded-lg cursor-pointer hover:border-primary hover:bg-muted transition",
+                        isDragOver && "border-primary bg-primary/10"
+                      )}
+                    >
                       <Upload className="h-8 w-8 text-muted-foreground" />
                       <input
-                        id={`file-input-${cat.value}`}
+                        id={`file-input-more-${cat.value}`}
+                        data-categoria={cat.value}
                         type="file"
                         accept="image/jpeg,image/jpg,image/png,image/webp"
                         multiple
                         className="hidden"
-                        onChange={(e) => handleSubir(e.target.files)}
+                        onChange={(e) => handleSubir(e.target.files, cat.value)}
                       />
                     </label>
                   )}
