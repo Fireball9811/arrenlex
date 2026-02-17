@@ -133,8 +133,9 @@ export default function PropiedadDetallePage() {
         setSubmitMessage({ type: "error", text: data.error ?? "Error al enviar la solicitud" })
         return
       }
+      const emailSent = data.emailSent !== false
       setSubmitMessage({
-        type: "success",
+        type: emailSent ? "success" : "error",
         text: data.message || "Solicitud enviada. Nos pondremos en contacto contigo.",
       })
       setTimeout(() => {

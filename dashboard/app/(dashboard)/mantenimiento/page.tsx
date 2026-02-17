@@ -104,7 +104,11 @@ export default function MantenimientoPage() {
       })
       const data = await res.json()
       if (res.ok) {
-        setFormMessage({ type: "success", text: data.message || "Solicitud enviada correctamente" })
+        const emailSent = data.emailSent !== false
+        setFormMessage({
+          type: emailSent ? "success" : "error",
+          text: data.message || "Solicitud enviada correctamente",
+        })
         setNombreCompleto("")
         setDetalle("")
         setDesdeCuando("")
