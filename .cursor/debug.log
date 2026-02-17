@@ -1,3 +1,6 @@
 {"location":"invitaciones/route.ts:reinvite_before_update","message":"Re-invitación: usuario existente, email_confirmed_at","data":{"email":"lamo1005@yahoo.com","userId":"812e7ccf-9011-458d-a060-6eab229ad68e","email_confirmed_at":"2026-02-14T20:22:32.117926Z","hypothesisId":"H1"},"timestamp":1771337416700}
 {"location":"cambio-contrasena:before_getUser","message":"checkSession started","data":{"href":"https://www.arrenlex.com/cambio-contrasena?next=%2Finquilino%2Fdashboard"},"timestamp":1771338346763,"hypothesisId":"H3"}
 {"location":"cambio-contrasena:after_getUser","message":"getUser response","data":{"hasUser":true},"timestamp":1771338347091,"hypothesisId":"H3"}
+{"location":"invitaciones/route.ts:reinvite_before_update","message":"Re-invitación: usuario existente, email_confirmed_at","data":{"email":"lamo1005@yahoo.com","userId":"812e7ccf-9011-458d-a060-6eab229ad68e","email_confirmed_at":"2026-02-17T14:11:56.205199Z","hypothesisId":"H1"},"timestamp":1771360818905}
+{"location":"cambio-contrasena:before_getUser","message":"checkSession started","data":{"href":"https://www.arrenlex.com/cambio-contrasena?next=%2Finquilino%2Fdashboard"},"timestamp":1771360911434,"hypothesisId":"H3"}
+{"location":"cambio-contrasena:after_getUser","message":"getUser response","data":{"hasUser":true},"timestamp":1771360912762,"hypothesisId":"H3"}

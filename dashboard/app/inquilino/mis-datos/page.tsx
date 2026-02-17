@@ -1,29 +1,39 @@
 "use client"
 
-import { useEffect } from "react"
+import { Suspense, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
+import { createClient } from "@/lib/supabase/client"
+import { FormularioDatosInquilino } from "@/components/inquilino/formulario-datos-inquilino"
 
-export default function InquilinoMisDatosPage() {
+function InquilinoMisDatosContent() {
   const router = useRouter()
 
   useEffect(() => {
-    import("@/lib/supabase/client").then((m) => m.createClient()).then((supabase) => {
-      supabase.auth.getUser().then(({ data: { user } }) => {
-        if (!user) router.replace("/login")
-      })
-    })
+    const checkAuth = async () => {
+      const supabase = createClient()
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) {
+        router.replace("/login")
+      }
+    }
+    checkAuth()
   }, [router])
 
   return (
-    <div>
-      <div className="mb-6">
+    <div className="container mx-auto p-4">
+      <div className="mb-4">
         <Link href="/inquilino/dashboard" className="text-sm text-muted-foreground hover:underline">← Volver</Link>
-        <h1 className="mt-2 text-3xl font-bold">Mis Datos</h1>
-        <p className="text-muted-foreground">Actualiza tu información personal</p>
       </div>
-      <p className="text-muted-foreground">Para completar o actualizar tu perfil de inquilino, usa el formulario de registro.</p>
-      <Link href="/registrar-inquilino" className="mt-4 inline-block rounded bg-primary px-4 py-2 text-primary-foreground hover:opacity-90">Ir a completar registro</Link>
+      <FormularioDatosInquilino />
     </div>
+  )
+}
+
+export default function InquilinoMisDatosPage() {
+  return (
+    <Suspense fallback={<div className="flex min-h-screen items-center justify-center">Cargando...</div>}>
+      <InquilinoMisDatosContent />
+    </Suspense>
   )
 }
