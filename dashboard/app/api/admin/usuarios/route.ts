@@ -70,6 +70,12 @@ export async function POST(request: Request) {
   const admin = createAdminClient()
   const userData = { role, nombre }
 
+  // Logging para diagnóstico
+  console.log("[inviteUserByEmail] Enviando invitación a:", email.trim())
+  console.log("[inviteUserByEmail] redirectTo:", redirectTo)
+  console.log("[inviteUserByEmail] siteUrl:", siteUrl)
+  console.log("[inviteUserByEmail] userData:", userData)
+
   try {
     const { data, error } = await admin.auth.admin.inviteUserByEmail(
       email.trim(),
@@ -77,6 +83,7 @@ export async function POST(request: Request) {
     )
 
     if (error) {
+      console.error("[inviteUserByEmail] Error de Supabase:", error)
       const msg = error.message.toLowerCase()
       if (
         msg.includes("rate limit") ||
@@ -86,7 +93,7 @@ export async function POST(request: Request) {
         return NextResponse.json(
           {
             error:
-              "Límite temporal de envío alcanzado. Intenta de nuevo en unos minutos (Supabase SMTP).",
+              "Límite temporal de emails alcanzado. Espera unos minutos o configura SMTP custom en Supabase (Settings → Authentication → Email Templates → Custom SMTP).",
           },
           { status: 429 }
         )
