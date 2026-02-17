@@ -1,7 +1,4 @@
-import { getResendClient } from "./transport"
-
-const FROM_EMAIL =
-  process.env.EMAIL_FROM ?? "Arrenlex <onboarding@resend.dev>"
+import { getSmtpTransporter, getEmailFrom } from "./transport"
 
 const TO_CEO = "ceo@arrenlex.com"
 
@@ -14,17 +11,18 @@ export type SendMantenimientoParams = {
 
 /**
  * Envía email a ceo@arrenlex.com con asunto "Mantenimiento" y todo el detalle del reporte.
- * Usa Resend (API). No requiere contraseña de Microsoft ni Gmail.
+ * Usa SMTP (Microsoft 365) con credenciales desde Supabase.
  */
 export async function sendMantenimientoEmail(
   params: SendMantenimientoParams
 ): Promise<{ success: boolean; error?: string }> {
-  const resend = getResendClient()
-  if (!resend) {
+  const transporter = await getSmtpTransporter()
+  if (!transporter) {
     return { success: false, error: "Servicio de email no configurado" }
   }
 
   const { nombreCompleto, detalle, desdeCuando, propiedadRef } = params
+  const from = getEmailFrom()
 
   const subject = "Mantenimiento"
   const html = `
@@ -51,16 +49,8 @@ export async function sendMantenimientoEmail(
 `.trim()
 
   try {
-    const { error } = await resend.emails.send({
-      from: FROM_EMAIL,
-      to: TO_CEO,
-      subject,
-      html,
-    })
-    if (error) {
-      console.error("[send-mantenimiento] Resend error:", error)
-      return { success: false, error: error.message }
-    }
+    const info = await transporter.sendMail({ from, to: TO_CEO, subject, html })
+    console.log("[send-mantenimiento] Email enviado:", info.messageId)
     return { success: true }
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Error desconocido"

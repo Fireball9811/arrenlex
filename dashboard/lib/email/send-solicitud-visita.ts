@@ -1,7 +1,4 @@
-import { getResendClient } from "./transport"
-
-const FROM_EMAIL =
-  process.env.EMAIL_FROM ?? "Arrenlex <onboarding@resend.dev>"
+import { getSmtpTransporter, getEmailFrom } from "./transport"
 
 const TO_CEO = "ceo@arrenlex.com"
 
@@ -16,17 +13,18 @@ export type SendSolicitudVisitaParams = {
 
 /**
  * Envía email a ceo@arrenlex.com con asunto "Solicitar Visita" y detalles del mensaje.
- * Usa Resend (API). No requiere contraseña de Microsoft ni Gmail.
+ * Usa SMTP (Microsoft 365) con credenciales desde Supabase.
  */
 export async function sendSolicitudVisitaEmail(
   params: SendSolicitudVisitaParams
 ): Promise<{ success: boolean; error?: string }> {
-  const resend = getResendClient()
-  if (!resend) {
+  const transporter = await getSmtpTransporter()
+  if (!transporter) {
     return { success: false, error: "Servicio de email no configurado" }
   }
 
   const { nombreCompleto, celular, email, propiedadId, propiedadRef, nota } = params
+  const from = getEmailFrom()
   const baseUrl = process.env.NEXT_PUBLIC_SITE_URL ?? ""
   const linkPropiedad = baseUrl ? `${baseUrl}/catalogo/propiedades/${propiedadId}` : ""
 
@@ -56,16 +54,8 @@ export async function sendSolicitudVisitaEmail(
 `.trim()
 
   try {
-    const { error } = await resend.emails.send({
-      from: FROM_EMAIL,
-      to: TO_CEO,
-      subject,
-      html,
-    })
-    if (error) {
-      console.error("[send-solicitud-visita] Resend error:", error)
-      return { success: false, error: error.message }
-    }
+    const info = await transporter.sendMail({ from, to: TO_CEO, subject, html })
+    console.log("[send-solicitud-visita] Email enviado:", info.messageId)
     return { success: true }
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Error desconocido"
