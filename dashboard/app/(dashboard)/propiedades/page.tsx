@@ -22,6 +22,7 @@ export default function PropiedadesPage() {
   const [loading, setLoading] = useState(true)
   const [imagenPorPropiedadId, setImagenPorPropiedadId] = useState<Record<string, string | null>>({})
   const [subiendoPorId, setSubiendoPorId] = useState<Record<string, boolean>>({})
+  const [dragOverPropiedadId, setDragOverPropiedadId] = useState<string | null>(null)
 
   useEffect(() => {
     fetch("/api/propiedades")
@@ -52,10 +53,7 @@ export default function PropiedadesPage() {
     })
   }, [propiedades])
 
-  async function handleSubirFoto(propiedadId: string, e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0]
-    if (!file) return
-
+  async function handleSubirFoto(propiedadId: string, file: File) {
     setSubiendoPorId((prev) => ({ ...prev, [propiedadId]: true }))
 
     const formData = new FormData()
@@ -71,6 +69,7 @@ export default function PropiedadesPage() {
 
       const data = await res.json()
       if (data.error) {
+        alert(data.error || "Error al subir la foto")
         return
       }
       if (data.url_publica) {
@@ -78,7 +77,40 @@ export default function PropiedadesPage() {
       }
     } finally {
       setSubiendoPorId((prev) => ({ ...prev, [propiedadId]: false }))
-      e.target.value = ""
+    }
+  }
+
+  function handleFileInputChange(propiedadId: string, e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    handleSubirFoto(propiedadId, file)
+    e.target.value = ""
+  }
+
+  // Drag & Drop handlers
+  function handleDragOver(e: React.DragEvent, propiedadId: string) {
+    e.preventDefault()
+    e.stopPropagation()
+    setDragOverPropiedadId(propiedadId)
+  }
+
+  function handleDragLeave(e: React.DragEvent, propiedadId: string) {
+    e.preventDefault()
+    e.stopPropagation()
+    // Solo limpiar si estamos saliendo del elemento, no de un hijo
+    if (e.currentTarget === e.target) {
+      setDragOverPropiedadId(null)
+    }
+  }
+
+  function handleDrop(e: React.DragEvent, propiedadId: string) {
+    e.preventDefault()
+    e.stopPropagation()
+    setDragOverPropiedadId(null)
+
+    const file = e.dataTransfer.files?.[0]
+    if (file && file.type.startsWith("image/")) {
+      handleSubirFoto(propiedadId, file)
     }
   }
 
@@ -177,7 +209,14 @@ export default function PropiedadesPage() {
                 </div>
               </div>
               {/* Columna derecha: foto ocupa todo el alto */}
-              <div className="w-44 shrink-0 bg-muted sm:w-52">
+              <div
+                className={`w-44 shrink-0 bg-muted sm:w-52 transition-all ${
+                  dragOverPropiedadId === p.id ? "border-primary border-2 bg-primary/5" : ""
+                }`}
+                onDragOver={(e) => handleDragOver(e, p.id)}
+                onDragLeave={(e) => handleDragLeave(e, p.id)}
+                onDrop={(e) => handleDrop(e, p.id)}
+              >
                 {subiendoPorId[p.id] ? (
                   <div className="flex h-full min-h-[200px] items-center justify-center">
                     <span className="text-sm text-muted-foreground">Subiendo…</span>
@@ -194,13 +233,14 @@ export default function PropiedadesPage() {
                       <span className="flex flex-col items-center gap-2 p-4 text-center text-muted-foreground hover:text-foreground">
                         <Camera className="h-10 w-10" />
                         <span className="text-xs font-medium">Subir foto</span>
+                        <span className="text-xs text-muted-foreground">o arrastra aquí</span>
                       </span>
                     )}
                     <input
                       type="file"
                       accept="image/*"
                       className="hidden"
-                      onChange={(e) => handleSubirFoto(p.id, e)}
+                      onChange={(e) => handleFileInputChange(p.id, e)}
                       disabled={subiendoPorId[p.id]}
                     />
                   </label>
