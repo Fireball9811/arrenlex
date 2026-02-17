@@ -8,7 +8,20 @@ import { UserPlus, Users, FileText, MessageSquare, Wrench, Building, TrendingUp 
 import { MetricPieChart } from "@/components/admin/pie-chart"
 
 interface DashboardMetrics {
-  usuarios: { activos: number; bloqueados: number; inactivos: number; totales: number }
+  usuarios: {
+    activos: number
+    inactivos: number
+    bloqueados: number
+    totales: number
+    rolesActivos: {
+      admin: number
+      propietario: number
+      inquilino: number
+      maintenance_special: number
+      insurance_special: number
+      lawyer_special: number
+    }
+  }
   contratos: { cumplidos: number; pendientes: number; enEjecucion: number }
   mensajes: { contestados: number; pendientes: number; enCurso: number }
   mantenimientos: { pendientes: number; enEjecucion: number; completados: number }
@@ -57,42 +70,62 @@ export default function AdminDashboardPage() {
 
       {/* Tarjetas de métricas con gráficas - Grid de 3 columnas */}
       <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3 mb-16">
-        {/* Usuarios */}
-        <Card>
+        {/* Usuarios - Tarjeta grande que ocupa 2 columnas */}
+        <Card className="md:col-span-2 lg:col-span-2">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium">Usuarios</CardTitle>
             <Users className="h-4 w-4 text-gray-400" />
           </CardHeader>
           <CardContent>
             {metrics && (
-              <>
-                <MetricPieChart
-                  data={[
-                    { name: 'Activos', value: metrics.usuarios.activos, color: '#10b981' },
-                    { name: 'Bloqueados', value: metrics.usuarios.bloqueados, color: '#ef4444' }
-                  ]}
-                />
-                <p className="mt-2 text-center text-lg font-bold">Total: {metrics.usuarios.totales}</p>
-                <div className="mt-4 flex gap-2">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="flex-1"
-                    onClick={() => router.push("/admin/usuarios")}
-                  >
-                    Ver
-                  </Button>
-                  <Button
-                    size="sm"
-                    className="flex-1"
-                    onClick={() => router.push("/admin/usuarios?create=true")}
-                  >
-                    <UserPlus className="mr-1 h-3 w-3" />
-                    Crear
-                  </Button>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Gráfico de Estados */}
+                <div>
+                  <h4 className="text-xs font-medium text-gray-500 mb-2 text-center">Estados</h4>
+                  <MetricPieChart
+                    data={[
+                      { name: 'Activos', value: metrics.usuarios.activos, color: '#10b981' },
+                      { name: 'Inactivos', value: metrics.usuarios.inactivos, color: '#f59e0b' },
+                      { name: 'Bloqueados', value: metrics.usuarios.bloqueados, color: '#ef4444' }
+                    ]}
+                  />
+                  <p className="mt-2 text-center text-sm font-bold">Total: {metrics.usuarios.totales}</p>
                 </div>
-              </>
+                {/* Gráfico de Roles */}
+                <div>
+                  <h4 className="text-xs font-medium text-gray-500 mb-2 text-center">Roles (Activos)</h4>
+                  <MetricPieChart
+                    data={[
+                      { name: 'Admin', value: metrics.usuarios.rolesActivos.admin, color: '#a855f7' },
+                      { name: 'Propietarios', value: metrics.usuarios.rolesActivos.propietario, color: '#3b82f6' },
+                      { name: 'Inquilinos', value: metrics.usuarios.rolesActivos.inquilino, color: '#10b981' },
+                      { name: 'Mantenimiento', value: metrics.usuarios.rolesActivos.maintenance_special, color: '#f97316' },
+                      { name: 'Seguros', value: metrics.usuarios.rolesActivos.insurance_special, color: '#06b6d4' },
+                      { name: 'Legal', value: metrics.usuarios.rolesActivos.lawyer_special, color: '#6366f1' },
+                    ]}
+                  />
+                  <p className="mt-2 text-center text-sm font-bold">Activos: {metrics.usuarios.activos}</p>
+                </div>
+              </div>
             )}
+            <div className="mt-4 flex gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                className="flex-1"
+                onClick={() => router.push("/admin/usuarios")}
+              >
+                Ver Usuarios
+              </Button>
+              <Button
+                size="sm"
+                className="flex-1"
+                onClick={() => router.push("/admin/usuarios?create=true")}
+              >
+                <UserPlus className="mr-1 h-3 w-3" />
+                Crear Usuario
+              </Button>
+            </div>
           </CardContent>
         </Card>
 

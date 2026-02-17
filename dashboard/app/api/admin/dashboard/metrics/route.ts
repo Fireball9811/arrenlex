@@ -20,11 +20,23 @@ export async function GET() {
   // 1. Usuarios
   const { data: usuarios } = await admin
     .from("perfiles")
-    .select("activo")
+    .select("activo, bloqueado, role")
 
-  const usuariosActivos = usuarios?.filter(u => u.activo).length ?? 0
-  const usuariosBloqueados = usuarios?.filter(u => !u.activo).length ?? 0
+  const usuariosActivos = usuarios?.filter(u => u.activo && !u.bloqueado).length ?? 0
+  const usuariosInactivos = usuarios?.filter(u => !u.activo && !u.bloqueado).length ?? 0
+  const usuariosBloqueados = usuarios?.filter(u => u.bloqueado).length ?? 0
   const usuariosTotales = usuarios?.length ?? 0
+
+  // Roles de usuarios activos
+  const usuariosActivosData = usuarios?.filter(u => u.activo && !u.bloqueado) ?? []
+  const rolesUsuariosActivos = {
+    admin: usuariosActivosData.filter(u => u.role === 'admin').length,
+    propietario: usuariosActivosData.filter(u => u.role === 'propietario').length,
+    inquilino: usuariosActivosData.filter(u => u.role === 'inquilino').length,
+    maintenance_special: usuariosActivosData.filter(u => u.role === 'maintenance_special').length,
+    insurance_special: usuariosActivosData.filter(u => u.role === 'insurance_special').length,
+    lawyer_special: usuariosActivosData.filter(u => u.role === 'lawyer_special').length,
+  }
 
   // 2. Contratos
   const { data: contratos } = await admin
@@ -77,9 +89,10 @@ export async function GET() {
   return NextResponse.json({
     usuarios: {
       activos: usuariosActivos,
+      inactivos: usuariosInactivos,
       bloqueados: usuariosBloqueados,
-      inactivos: usuariosBloqueados, // mismo que bloqueados
-      totales: usuariosTotales
+      totales: usuariosTotales,
+      rolesActivos: rolesUsuariosActivos
     },
     contratos: {
       cumplidos: contratosCumplidos,
