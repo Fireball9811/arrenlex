@@ -5,6 +5,7 @@ import Link from "next/link"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { downloadFile } from "@/lib/download-file"
 
 interface Usuario {
   id: string
@@ -42,6 +43,13 @@ export default function UsuariosSistemaPage() {
   })
   const [saving, setSaving] = useState(false)
   const [editError, setEditError] = useState<string | null>(null)
+  const [documentos, setDocumentos] = useState<{ name: string; path: string; url: string | null }[]>([])
+  const [documentosLoading, setDocumentosLoading] = useState(false)
+  const [documentosModalUser, setDocumentosModalUser] = useState<Usuario | null>(null)
+  const [documentosModalList, setDocumentosModalList] = useState<{ name: string; path: string; url: string | null }[]>([])
+  const [documentosModalLoading, setDocumentosModalLoading] = useState(false)
+  const [downloadingAll, setDownloadingAll] = useState(false)
+  const [downloadingAllEdit, setDownloadingAllEdit] = useState(false)
 
   useEffect(() => {
     fetch("/api/admin/usuarios")
@@ -65,6 +73,36 @@ export default function UsuariosSistemaPage() {
       setEditError(null)
     }
   }, [editingUser])
+
+  useEffect(() => {
+    if (!editingUser) {
+      setDocumentos([])
+      return
+    }
+    setDocumentosLoading(true)
+    fetch(`/api/admin/usuarios/${editingUser.id}/documentos`)
+      .then((r) => (r.ok ? r.json() : { documentos: [] }))
+      .then((data: { documentos?: { name: string; path: string; url: string | null }[] }) => {
+        setDocumentos(Array.isArray(data.documentos) ? data.documentos : [])
+      })
+      .catch(() => setDocumentos([]))
+      .finally(() => setDocumentosLoading(false))
+  }, [editingUser?.id])
+
+  useEffect(() => {
+    if (!documentosModalUser) {
+      setDocumentosModalList([])
+      return
+    }
+    setDocumentosModalLoading(true)
+    fetch(`/api/admin/usuarios/${documentosModalUser.id}/documentos`)
+      .then((r) => (r.ok ? r.json() : { documentos: [] }))
+      .then((data: { documentos?: { name: string; path: string; url: string | null }[] }) => {
+        setDocumentosModalList(Array.isArray(data.documentos) ? data.documentos : [])
+      })
+      .catch(() => setDocumentosModalList([]))
+      .finally(() => setDocumentosModalLoading(false))
+  }, [documentosModalUser?.id])
 
   function toggleActivo(usuario: Usuario) {
     const accion = usuario.activo ? "desactivar" : "activar"
@@ -233,6 +271,7 @@ export default function UsuariosSistemaPage() {
                     <th className="p-3 text-center">Activar/Inactivar</th>
                     <th className="p-3 text-center">Bloquear</th>
                     <th className="p-3 text-center">Editar</th>
+                    <th className="p-3 text-center">Documentos</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -296,6 +335,15 @@ export default function UsuariosSistemaPage() {
                           Editar
                         </Button>
                       </td>
+                      <td className="p-3 text-center">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => setDocumentosModalUser(usuario)}
+                        >
+                          Documentos adjuntos
+                        </Button>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -304,6 +352,100 @@ export default function UsuariosSistemaPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Modal Documentos adjuntos */}
+      {documentosModalUser && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+          onClick={() => setDocumentosModalUser(null)}
+        >
+          <Card
+            className="w-full max-w-md max-h-[80vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <CardHeader className="flex flex-row items-center justify-between space-y-0">
+              <CardTitle>Documentos adjuntos</CardTitle>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => setDocumentosModalUser(null)}
+              >
+                Cerrar
+              </Button>
+            </CardHeader>
+            <CardContent>
+              <p className="mb-3 text-sm text-muted-foreground">
+                Usuario: {documentosModalUser.nombre || documentosModalUser.email}
+              </p>
+              {documentosModalLoading ? (
+                <p className="text-sm text-muted-foreground">Cargando documentos…</p>
+              ) : documentosModalList.length === 0 ? (
+                <p className="text-sm text-muted-foreground">Ningún documento subido.</p>
+              ) : (
+                <>
+                  <div className="mb-3 flex gap-2">
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      size="sm"
+                      disabled={downloadingAll || documentosModalList.every((d) => !d.url)}
+                      onClick={async () => {
+                        setDownloadingAll(true)
+                        const conUrl = documentosModalList.filter((d) => d.url)
+                        for (let i = 0; i < conUrl.length; i++) {
+                          const doc = conUrl[i]!
+                          await downloadFile(doc.url!, doc.name).catch(() => {})
+                          if (i < conUrl.length - 1) {
+                            await new Promise((r) => setTimeout(r, 400))
+                          }
+                        }
+                        setDownloadingAll(false)
+                      }}
+                    >
+                      {downloadingAll ? "Descargando…" : "Descargar todos"}
+                    </Button>
+                  </div>
+                  <ul className="space-y-2 text-sm">
+                  {documentosModalList.map((doc) => (
+                    <li key={doc.path} className="flex items-center justify-between gap-2">
+                      <span className="min-w-0 flex-1">
+                        {doc.url ? (
+                          <a
+                            href={doc.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-primary underline hover:no-underline"
+                          >
+                            {doc.name}
+                          </a>
+                        ) : (
+                          <span className="text-muted-foreground">{doc.name}</span>
+                        )}
+                      </span>
+                      {doc.url && (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() =>
+                            downloadFile(doc.url!, doc.name).catch(() =>
+                              alert("Error al descargar")
+                            )
+                          }
+                        >
+                          Descargar
+                        </Button>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+                </>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
       {/* Modal Editar usuario */}
       {editingUser && (
@@ -412,6 +554,75 @@ export default function UsuariosSistemaPage() {
                     <span className="text-sm font-medium">Bloqueado</span>
                   </label>
                 </div>
+
+                <div className="border-t pt-4">
+                  <p className="mb-2 text-sm font-medium">Documentos subidos por este usuario</p>
+                  {documentosLoading ? (
+                    <p className="text-sm text-muted-foreground">Cargando documentos…</p>
+                  ) : documentos.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">Ningún documento subido.</p>
+                  ) : (
+                    <>
+                      <div className="mb-2 flex gap-2">
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          size="sm"
+                          disabled={downloadingAllEdit || documentos.every((d) => !d.url)}
+                          onClick={async () => {
+                            setDownloadingAllEdit(true)
+                            const conUrl = documentos.filter((d) => d.url)
+                            for (let i = 0; i < conUrl.length; i++) {
+                              const doc = conUrl[i]!
+                              await downloadFile(doc.url!, doc.name).catch(() => {})
+                              if (i < conUrl.length - 1) {
+                                await new Promise((r) => setTimeout(r, 400))
+                              }
+                            }
+                            setDownloadingAllEdit(false)
+                          }}
+                        >
+                          {downloadingAllEdit ? "Descargando…" : "Descargar todos"}
+                        </Button>
+                      </div>
+                      <ul className="space-y-1 text-sm">
+                      {documentos.map((doc) => (
+                        <li key={doc.path} className="flex items-center justify-between gap-2">
+                          <span className="min-w-0 flex-1">
+                            {doc.url ? (
+                              <a
+                                href={doc.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-primary underline hover:no-underline"
+                              >
+                                {doc.name}
+                              </a>
+                            ) : (
+                              <span className="text-muted-foreground">{doc.name}</span>
+                            )}
+                          </span>
+                          {doc.url && (
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={() =>
+                                downloadFile(doc.url!, doc.name).catch(() =>
+                                  alert("Error al descargar")
+                                )
+                              }
+                            >
+                              Descargar
+                            </Button>
+                          )}
+                        </li>
+                      ))}
+                    </ul>
+                    </>
+                  )}
+                </div>
+
                 {editError && (
                   <p className="text-sm text-destructive">{editError}</p>
                 )}

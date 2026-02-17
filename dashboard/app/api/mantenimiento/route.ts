@@ -90,8 +90,9 @@ export async function GET() {
 }
 
 /**
- * POST - Crea una solicitud de mantenimiento (solo inquilino).
- * Body: nombre_completo, detalle, desde_cuando, propiedad_id (opcional si tiene un solo contrato activo).
+ * POST - Crea una solicitud de mantenimiento.
+ * Inquilino: nombre_completo, detalle, desde_cuando, propiedad_id (opcional si tiene un solo contrato activo).
+ * Admin / Propietario: nombre_completo, detalle, desde_cuando, propiedad_id (obligatorio).
  */
 export async function POST(request: Request) {
   const supabase = await createClient()
@@ -104,8 +105,8 @@ export async function POST(request: Request) {
   }
 
   const role = await getUserRole(supabase, user)
-  if (role !== "inquilino") {
-    return NextResponse.json({ error: "Solo el inquilino puede crear solicitudes de mantenimiento" }, { status: 403 })
+  if (role !== "inquilino" && role !== "admin" && role !== "propietario") {
+    return NextResponse.json({ error: "No autorizado para crear solicitudes de mantenimiento" }, { status: 403 })
   }
 
   let body: unknown
@@ -140,54 +141,80 @@ export async function POST(request: Request) {
   }
 
   const admin = createAdminClient()
-
-  // Resolver arrendatario por user_id
-  const { data: arrendatario, error: errArr } = await admin
-    .from("arrendatarios")
-    .select("id")
-    .eq("user_id", user.id)
-    .maybeSingle()
-
-  if (errArr || !arrendatario) {
-    return NextResponse.json(
-      { error: "No se encontró perfil de arrendatario. Debes tener un contrato activo." },
-      { status: 403 }
-    )
-  }
-
-  // Contratos activos del arrendatario
-  const { data: contratos, error: errContratos } = await admin
-    .from("contratos")
-    .select("propiedad_id")
-    .eq("arrendatario_id", arrendatario.id)
-    .eq("estado", "activo")
-
-  if (errContratos || !contratos?.length) {
-    return NextResponse.json(
-      { error: "No tienes contratos activos. Solo puedes reportar mantenimiento de tu vivienda actual." },
-      { status: 403 }
-    )
-  }
-
-  const propiedadIds = contratos.map((c) => c.propiedad_id)
   let propiedadId: string
+  let arrendatarioId: string | null = null
 
-  if (typeof propiedad_id === "string" && propiedad_id.trim()) {
-    const idTrim = propiedad_id.trim()
-    if (!propiedadIds.includes(idTrim)) {
+  if (role === "admin" || role === "propietario") {
+    const idTrim = typeof propiedad_id === "string" ? propiedad_id.trim() : ""
+    if (!idTrim) {
       return NextResponse.json(
-        { error: "La propiedad no corresponde a uno de tus contratos activos" },
+        { error: "Debes indicar la propiedad (propiedad_id)" },
         { status: 400 }
       )
     }
+    const { data: propiedad, error: errProp } = await admin
+      .from("propiedades")
+      .select("id, user_id, direccion, ciudad")
+      .eq("id", idTrim)
+      .single()
+
+    if (errProp || !propiedad) {
+      return NextResponse.json({ error: "Propiedad no encontrada" }, { status: 404 })
+    }
+    if (role === "propietario" && (propiedad as { user_id: string }).user_id !== user.id) {
+      return NextResponse.json(
+        { error: "Solo puedes reportar mantenimiento de tus propias propiedades" },
+        { status: 403 }
+      )
+    }
     propiedadId = idTrim
-  } else if (propiedadIds.length === 1) {
-    propiedadId = propiedadIds[0]
   } else {
-    return NextResponse.json(
-      { error: "Tienes más de un contrato activo; debes indicar propiedad_id" },
-      { status: 400 }
-    )
+    // Inquilino: resolver por contratos activos
+    const { data: arrendatario, error: errArr } = await admin
+      .from("arrendatarios")
+      .select("id")
+      .eq("user_id", user.id)
+      .maybeSingle()
+
+    if (errArr || !arrendatario) {
+      return NextResponse.json(
+        { error: "No se encontró perfil de arrendatario. Debes tener un contrato activo." },
+        { status: 403 }
+      )
+    }
+    arrendatarioId = arrendatario.id
+
+    const { data: contratos, error: errContratos } = await admin
+      .from("contratos")
+      .select("propiedad_id")
+      .eq("arrendatario_id", arrendatario.id)
+      .eq("estado", "activo")
+
+    if (errContratos || !contratos?.length) {
+      return NextResponse.json(
+        { error: "No tienes contratos activos. Solo puedes reportar mantenimiento de tu vivienda actual." },
+        { status: 403 }
+      )
+    }
+
+    const propiedadIds = contratos.map((c) => c.propiedad_id)
+    if (typeof propiedad_id === "string" && propiedad_id.trim()) {
+      const idTrim = propiedad_id.trim()
+      if (!propiedadIds.includes(idTrim)) {
+        return NextResponse.json(
+          { error: "La propiedad no corresponde a uno de tus contratos activos" },
+          { status: 400 }
+        )
+      }
+      propiedadId = idTrim
+    } else if (propiedadIds.length === 1) {
+      propiedadId = propiedadIds[0]
+    } else {
+      return NextResponse.json(
+        { error: "Tienes más de un contrato activo; debes indicar propiedad_id" },
+        { status: 400 }
+      )
+    }
   }
 
   const { data: propiedad, error: errProp } = await admin
@@ -208,7 +235,7 @@ export async function POST(request: Request) {
       detalle: detalleTrim,
       desde_cuando: desdeCuandoTrim,
       status: "pendiente",
-      arrendatario_id: arrendatario.id,
+      arrendatario_id: arrendatarioId,
     })
     .select("id")
     .single()

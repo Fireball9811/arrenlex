@@ -22,7 +22,7 @@ export default function MantenimientoPage() {
   const [tab, setTab] = useState<string>("pendiente")
   const [updatingId, setUpdatingId] = useState<string | null>(null)
 
-  // Form (inquilino)
+  // Form (inquilino y admin/propietario)
   const [propiedades, setPropiedades] = useState<PropiedadOption[]>([])
   const [nombreCompleto, setNombreCompleto] = useState("")
   const [detalle, setDetalle] = useState("")
@@ -30,6 +30,7 @@ export default function MantenimientoPage() {
   const [propiedadId, setPropiedadId] = useState("")
   const [formLoading, setFormLoading] = useState(false)
   const [formMessage, setFormMessage] = useState<{ type: "success" | "error"; text: string } | null>(null)
+  const [showFormAdminProp, setShowFormAdminProp] = useState(false)
 
   const fetchSolicitudes = useCallback(async () => {
     const res = await fetch("/api/mantenimiento")
@@ -70,6 +71,15 @@ export default function MantenimientoPage() {
         })
         .catch(() => setPropiedades([]))
     }
+    if (role === "admin" || role === "propietario") {
+      fetch("/api/propiedades")
+        .then((r) => (r.ok ? r.json() : []))
+        .then((data: PropiedadOption[]) => {
+          setPropiedades(Array.isArray(data) ? data : [])
+          if (data?.length === 1) setPropiedadId(data[0].id)
+        })
+        .catch(() => setPropiedades([]))
+    }
   }, [role])
 
   const handleChangeStatus = async (id: string, newStatus: string) => {
@@ -96,7 +106,16 @@ export default function MantenimientoPage() {
         detalle: detalle.trim(),
         desde_cuando: desdeCuando.trim(),
       }
-      if (propiedades.length > 1 && propiedadId) body.propiedad_id = propiedadId
+      if (role === "admin" || role === "propietario") {
+        if (!propiedadId) {
+          setFormMessage({ type: "error", text: "Selecciona una propiedad" })
+          setFormLoading(false)
+          return
+        }
+        body.propiedad_id = propiedadId
+      } else if (propiedades.length > 1 && propiedadId) {
+        body.propiedad_id = propiedadId
+      }
       const res = await fetch("/api/mantenimiento", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -112,7 +131,11 @@ export default function MantenimientoPage() {
         setNombreCompleto("")
         setDetalle("")
         setDesdeCuando("")
-        if (propiedades.length > 1) setPropiedadId("")
+        if (propiedades.length > 1 || role === "admin" || role === "propietario") setPropiedadId("")
+        if (role === "admin" || role === "propietario") {
+          fetchSolicitudes()
+          setShowFormAdminProp(false)
+        }
       } else {
         setFormMessage({ type: "error", text: data.error || "Error al enviar la solicitud" })
       }
@@ -245,15 +268,115 @@ export default function MantenimientoPage() {
     )
   }
 
-  // Admin / Propietario: lista con tabs
+  // Admin / Propietario: lista con tabs + formulario para crear solicitud
   return (
     <div>
       <div className="mb-6">
         <h1 className="text-3xl font-bold">Mantenimiento</h1>
         <p className="text-muted-foreground">
-          Solicitudes de mantenimiento reportadas por inquilinos. Cambia el estado según gestiones cada una.
+          Solicitudes de mantenimiento. Puedes crear nuevas solicitudes o gestionar las existentes.
         </p>
       </div>
+
+      {!showFormAdminProp ? (
+        <div className="mb-6">
+          <Button onClick={() => setShowFormAdminProp(true)} variant="default">
+            Nueva solicitud de mantenimiento
+          </Button>
+        </div>
+      ) : (
+        <Card className="mb-6 max-w-2xl">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0">
+            <div>
+              <CardTitle>Nueva solicitud de mantenimiento</CardTitle>
+              <CardDescription>
+                Completa los campos para reportar un problema en una propiedad.
+              </CardDescription>
+            </div>
+            <Button variant="ghost" size="sm" onClick={() => setShowFormAdminProp(false)}>
+              Cerrar
+            </Button>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleSubmitForm} className="space-y-4">
+              <div>
+                <label className="mb-1 block text-sm font-medium">Propiedad *</label>
+                <select
+                  required
+                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                  value={propiedadId}
+                  onChange={(e) => setPropiedadId(e.target.value)}
+                >
+                  <option value="">Selecciona la propiedad</option>
+                  {propiedades.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {[p.direccion, p.ciudad].filter(Boolean).join(", ")}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="mb-1 block text-sm font-medium">Nombre completo *</label>
+                <input
+                  type="text"
+                  required
+                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                  value={nombreCompleto}
+                  onChange={(e) => setNombreCompleto(e.target.value)}
+                  placeholder="Nombre de quien reporta"
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-sm font-medium">Detalle del problema *</label>
+                <textarea
+                  required
+                  rows={4}
+                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                  value={detalle}
+                  onChange={(e) => setDetalle(e.target.value)}
+                  placeholder="Describe el problema que tiene el inmueble..."
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-sm font-medium">Desde cuándo está el problema *</label>
+                <input
+                  type="text"
+                  required
+                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                  value={desdeCuando}
+                  onChange={(e) => setDesdeCuando(e.target.value)}
+                  placeholder="Ej: hace 2 semanas, desde el lunes..."
+                />
+              </div>
+              {formMessage && (
+                <div
+                  className={`rounded-lg p-3 text-sm ${
+                    formMessage.type === "success"
+                      ? "border border-green-200 bg-green-50 text-green-800"
+                      : "border border-red-200 bg-red-50 text-red-800"
+                  }`}
+                >
+                  {formMessage.text}
+                </div>
+              )}
+              <div className="flex gap-2">
+                <Button type="submit" disabled={formLoading}>
+                  {formLoading ? "Enviando…" : "Enviar solicitud"}
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={formLoading}
+                  onClick={() => setShowFormAdminProp(false)}
+                >
+                  Cancelar
+                </Button>
+              </div>
+            </form>
+          </CardContent>
+        </Card>
+      )}
+
       <Card>
         <CardHeader>
           <CardTitle>Solicitudes de mantenimiento</CardTitle>
