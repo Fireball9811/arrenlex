@@ -4,7 +4,7 @@ import { useEffect, useState, Suspense } from "react"
 import { useSearchParams } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { UserPlus } from "lucide-react"
+import { UserPlus, Pencil } from "lucide-react"
 
 interface Usuario {
   id: string
@@ -41,6 +41,15 @@ function UsuariosContent() {
   })
   const [submitting, setSubmitting] = useState(false)
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null)
+
+  // Formulario de edición
+  const [editingUser, setEditingUser] = useState<Usuario | null>(null)
+  const [editFormData, setEditFormData] = useState({
+    nombre: "",
+    role: "inquilino",
+  })
+  const [editSubmitting, setEditSubmitting] = useState(false)
+  const [editMessage, setEditMessage] = useState<{ type: "success" | "error"; text: string } | null>(null)
 
   useEffect(() => {
     fetchUsuarios()
@@ -115,6 +124,51 @@ function UsuariosContent() {
         }
       })
       .catch((err) => alert("Error: " + err.message))
+  }
+
+  function openEditModal(usuario: Usuario) {
+    setEditingUser(usuario)
+    setEditFormData({
+      nombre: usuario.nombre || "",
+      role: usuario.role,
+    })
+    setEditMessage(null)
+  }
+
+  function closeEditModal() {
+    setEditingUser(null)
+    setEditFormData({ nombre: "", role: "inquilino" })
+    setEditMessage(null)
+  }
+
+  async function actualizarUsuario(e: React.FormEvent) {
+    e.preventDefault()
+    if (!editingUser) return
+
+    setEditSubmitting(true)
+    setEditMessage(null)
+
+    try {
+      const res = await fetch(`/api/admin/usuarios/${editingUser.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(editFormData),
+      })
+
+      const data = await res.json()
+
+      if (res.ok) {
+        setEditMessage({ type: "success", text: "Usuario actualizado exitosamente" })
+        fetchUsuarios()
+        setTimeout(() => closeEditModal(), 1500)
+      } else {
+        setEditMessage({ type: "error", text: data.error || "Error al actualizar usuario" })
+      }
+    } catch (err) {
+      setEditMessage({ type: "error", text: "Error de conexión" })
+    } finally {
+      setEditSubmitting(false)
+    }
   }
 
   const roleClass = (role: string) => {
@@ -251,6 +305,7 @@ function UsuariosContent() {
                     <th className="p-3 text-left">Rol</th>
                     <th className="p-3 text-center">Estado</th>
                     <th className="p-3 text-center">Activar/Inactivar</th>
+                    <th className="p-3 text-center">Editar</th>
                     <th className="p-3 text-center">Bloquear</th>
                   </tr>
                 </thead>
@@ -266,6 +321,11 @@ function UsuariosContent() {
                         <input type="checkbox" checked={u.activo && !u.bloqueado} disabled={u.bloqueado} onChange={() => toggleActivo(u)} className="h-4 w-4 rounded border-gray-300" />
                       </td>
                       <td className="p-3 text-center">
+                        <Button size="sm" variant="outline" onClick={() => openEditModal(u)}>
+                          <Pencil className="h-3 w-3" />
+                        </Button>
+                      </td>
+                      <td className="p-3 text-center">
                         <Button size="sm" variant={u.bloqueado ? "outline" : "destructive"} onClick={() => toggleBloqueo(u)}>{u.bloqueado ? "Desbloquear" : "Bloquear"}</Button>
                       </td>
                     </tr>
@@ -276,6 +336,83 @@ function UsuariosContent() {
           )}
         </CardContent>
       </Card>
+
+      {/* Modal de edición */}
+      {editingUser && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <Card className="w-full max-w-md">
+            <CardHeader>
+              <CardTitle>Editar Usuario</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={actualizarUsuario} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium mb-1">
+                    Correo electrónico
+                  </label>
+                  <input
+                    type="email"
+                    disabled
+                    value={editingUser.email}
+                    className="w-full rounded-md border border-input bg-muted px-3 py-2 text-sm text-muted-foreground"
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">El correo no se puede modificar</p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">
+                    Nombre completo
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Juan Pérez García"
+                    className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                    value={editFormData.nombre}
+                    onChange={(e) => setEditFormData({ ...editFormData, nombre: e.target.value })}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">
+                    Rol *
+                  </label>
+                  <select
+                    required
+                    className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                    value={editFormData.role}
+                    onChange={(e) => setEditFormData({ ...editFormData, role: e.target.value })}
+                  >
+                    {ROLES.map((r) => (
+                      <option key={r.value} value={r.value}>
+                        {r.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {editMessage && (
+                  <div
+                    className={`flex items-center gap-2 p-3 rounded-lg ${
+                      editMessage.type === "success"
+                        ? "bg-green-50 text-green-800 border border-green-200"
+                        : "bg-red-50 text-red-800 border border-red-200"
+                    }`}
+                  >
+                    <span className="text-sm">{editMessage.text}</span>
+                  </div>
+                )}
+
+                <div className="flex gap-2">
+                  <Button type="submit" disabled={editSubmitting}>
+                    {editSubmitting ? "Guardando..." : "Guardar Cambios"}
+                  </Button>
+                  <Button type="button" variant="outline" onClick={closeEditModal}>
+                    Cancelar
+                  </Button>
+                </div>
+              </form>
+            </CardContent>
+          </Card>
+        </div>
+      )}
     </div>
   )
 }
