@@ -83,7 +83,7 @@ export default async function LegalDashboard() {
                       </span>
                     </div>
                     <div className="text-sm text-gray-500">
-                      {caso.propiedades?.direccion} - {caso.propiedades?.ciudad}
+                      {caso.propiedades?.[0]?.direccion} - {caso.propiedades?.[0]?.ciudad}
                     </div>
                     <div className="text-sm text-gray-600 mt-1">{caso.descripcion}</div>
                   </div>

@@ -73,7 +73,7 @@ export default async function InsuranceDashboard() {
                   <div>
                     <div className="font-medium capitalize">{caso.tipo.replace("_", " ")}</div>
                     <div className="text-sm text-gray-500">
-                      {caso.propiedades?.direccion} - {caso.propiedades?.ciudad}
+                      {caso.propiedades?.[0]?.direccion} - {caso.propiedades?.[0]?.ciudad}
                     </div>
                     <div className="text-sm text-gray-600 mt-1">{caso.descripcion}</div>
                     {caso.monto_reclamado && (

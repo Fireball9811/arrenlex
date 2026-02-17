@@ -73,7 +73,7 @@ export default async function MaintenanceDashboard() {
                   <div>
                     <div className="font-medium">{solicitud.nombre_completo}</div>
                     <div className="text-sm text-gray-500">
-                      {solicitud.propiedades?.direccion} - {solicitud.propiedades?.ciudad}
+                      {solicitud.propiedades?.[0]?.direccion} - {solicitud.propiedades?.[0]?.ciudad}
                     </div>
                     <div className="text-sm text-gray-600 mt-1">{solicitud.detalle}</div>
                   </div>
