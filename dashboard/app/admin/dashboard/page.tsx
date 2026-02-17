@@ -79,30 +79,32 @@ export default function AdminDashboardPage() {
           <CardContent>
             {metrics && (
               <>
-                {/* Gráfico de Estados */}
-                <div className="mb-3">
-                  <h4 className="text-xs font-medium text-gray-500 mb-1 text-center">Estados</h4>
-                  <MetricPieChart
-                    data={[
-                      { name: 'Activos', value: metrics.usuarios.activos, color: '#10b981' },
-                      { name: 'Inactivos', value: metrics.usuarios.inactivos, color: '#f59e0b' },
-                      { name: 'Bloqueados', value: metrics.usuarios.bloqueados, color: '#ef4444' }
-                    ]}
-                  />
-                </div>
-                {/* Gráfico de Roles */}
-                <div className="mb-3">
-                  <h4 className="text-xs font-medium text-gray-500 mb-1 text-center">Roles (Activos)</h4>
-                  <MetricPieChart
-                    data={[
-                      { name: 'Admin', value: metrics.usuarios.rolesActivos.admin, color: '#a855f7' },
-                      { name: 'Propietarios', value: metrics.usuarios.rolesActivos.propietario, color: '#3b82f6' },
-                      { name: 'Inquilinos', value: metrics.usuarios.rolesActivos.inquilino, color: '#10b981' },
-                      { name: 'Mantenimiento', value: metrics.usuarios.rolesActivos.maintenance_special, color: '#f97316' },
-                      { name: 'Seguros', value: metrics.usuarios.rolesActivos.insurance_special, color: '#06b6d4' },
-                      { name: 'Legal', value: metrics.usuarios.rolesActivos.lawyer_special, color: '#6366f1' },
-                    ]}
-                  />
+                <div className="grid grid-cols-2 gap-3">
+                  {/* Gráfico de Estados */}
+                  <div>
+                    <h4 className="text-xs font-medium text-gray-500 mb-1 text-center">Estados</h4>
+                    <MetricPieChart
+                      data={[
+                        { name: 'Activos', value: metrics.usuarios.activos, color: '#10b981' },
+                        { name: 'Inactivos', value: metrics.usuarios.inactivos, color: '#f59e0b' },
+                        { name: 'Bloqueados', value: metrics.usuarios.bloqueados, color: '#ef4444' }
+                      ]}
+                    />
+                  </div>
+                  {/* Gráfico de Roles */}
+                  <div>
+                    <h4 className="text-xs font-medium text-gray-500 mb-1 text-center">Roles (Activos)</h4>
+                    <MetricPieChart
+                      data={[
+                        { name: 'Admin', value: metrics.usuarios.rolesActivos.admin, color: '#a855f7' },
+                        { name: 'Propietarios', value: metrics.usuarios.rolesActivos.propietario, color: '#3b82f6' },
+                        { name: 'Inquilinos', value: metrics.usuarios.rolesActivos.inquilino, color: '#10b981' },
+                        { name: 'Mantenimiento', value: metrics.usuarios.rolesActivos.maintenance_special, color: '#f97316' },
+                        { name: 'Seguros', value: metrics.usuarios.rolesActivos.insurance_special, color: '#06b6d4' },
+                        { name: 'Legal', value: metrics.usuarios.rolesActivos.lawyer_special, color: '#6366f1' },
+                      ]}
+                    />
+                  </div>
                 </div>
                 <p className="text-center text-sm font-bold">Total: {metrics.usuarios.totales}</p>
                 <div className="mt-3 flex gap-2">
