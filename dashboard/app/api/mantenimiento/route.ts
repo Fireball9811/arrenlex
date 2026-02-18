@@ -245,22 +245,117 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Error al guardar la solicitud" }, { status: 500 })
   }
 
+  const solicitudId = inserted?.id
+
+  // === INICIO: Asignar responsable y obtener emails para notificaciones ===
+
+  // 1. Buscar usuario con perfil maintenance_special activo para asignarlo
+  const { data: maintenanceUser, error: errMaintenance } = await admin
+    .from("perfiles")
+    .select("id, email, nombre")
+    .eq("role", "maintenance_special")
+    .eq("activo", true)
+    .limit(1)
+    .maybeSingle()
+
+  let assignedToUserId: string | null = null
+  let mantenimientoEmail: string | undefined
+  let mantenimientoNombre: string | undefined
+
+  if (maintenanceUser && !errMaintenance) {
+    assignedToUserId = maintenanceUser.id
+    mantenimientoEmail = maintenanceUser.email
+    mantenimientoNombre = maintenanceUser.nombre || undefined
+
+    // Actualizar la solicitud con el responsable asignado
+    await admin
+      .from("solicitudes_mantenimiento")
+      .update({
+        assigned_to: assignedToUserId,
+        responsable: maintenanceUser.nombre || "Especialista Mantenimiento"
+      })
+      .eq("id", solicitudId)
+
+    console.log("[mantenimiento] Asignado a maintenance_special:", maintenanceUser.email)
+  } else {
+    console.warn("[mantenimiento] No se encontró usuario con perfil maintenance_special activo")
+  }
+
+  // 2. Obtener email del propietario de la propiedad
+  let propietarioEmail: string | undefined
+  let propietarioNombre: string | undefined
+
+  const { data: propietarioUser, error: errPropietario } = await admin
+    .from("propiedades")
+    .select("user_id")
+    .eq("id", propiedadId)
+    .single()
+
+  if (propietarioUser && !errPropietario) {
+    // Obtener email desde auth.users usando el admin client
+    const { data: authUser, error: errAuth } = await admin.auth.admin.getUserById(propietarioUser.user_id)
+    if (!errAuth && authUser) {
+      propietarioEmail = authUser.user.email
+      // Obtener nombre del perfil del propietario
+      const { data: perfilPropietario } = await admin
+        .from("perfiles")
+        .select("nombre")
+        .eq("id", propietarioUser.user_id)
+        .maybeSingle()
+      propietarioNombre = perfilPropietario?.nombre || authUser.user.user_metadata?.nombre || undefined
+      console.log("[mantenimiento] Propietario encontrado:", propietarioEmail)
+    }
+  }
+
+  // 3. Obtener emails de administradores (todos los usuarios con rol admin)
+  const { data: adminUsers, error: errAdmins } = await admin
+    .from("perfiles")
+    .select("id, email, nombre")
+    .eq("role", "admin")
+    .eq("activo", true)
+
+  const adminsData: Array<{ email: string; nombre?: string }> = []
+  if (!errAdmins && adminUsers && adminUsers.length > 0) {
+    for (const adminUser of adminUsers) {
+      if (adminUser.email) {
+        adminsData.push({
+          email: adminUser.email,
+          nombre: adminUser.nombre || undefined
+        })
+      }
+    }
+    console.log("[mantenimiento] Admins encontrados:", adminsData.map(a => a.email).join(", "))
+  }
+
+  // === FIN: Asignar responsable y obtener emails para notificaciones ===
+
+  // Enviar correos a todos los destinatarios
   const propiedadRef = [propiedad.direccion, propiedad.ciudad].filter(Boolean).join(", ") || propiedadId
   const emailResult = await sendMantenimientoEmail({
     nombreCompleto: nombreTrim,
     detalle: detalleTrim,
     desdeCuando: desdeCuandoTrim,
     propiedadRef,
+    propietarioEmail,
+    propietarioNombre,
+    mantenimientoEmail,
+    mantenimientoNombre,
+    admins: adminsData.length > 0 ? adminsData : undefined,
   })
+
   if (!emailResult.success) {
     console.error("[mantenimiento] Email no enviado:", emailResult.error)
+  } else {
+    console.log("[mantenimiento] Correos enviados a:", emailResult.sentTo?.join(", "))
   }
 
   return NextResponse.json({
-    id: inserted?.id,
+    id: solicitudId,
     message: emailResult.success
       ? "Solicitud de mantenimiento enviada correctamente"
-      : "Solicitud guardada. No se pudo enviar la notificación por correo al administrador.",
+      : "Solicitud guardada. No se pudo enviar la notificación por correo.",
     emailSent: emailResult.success,
+    sentTo: emailResult.sentTo,
+    assignedTo: assignedToUserId,
   })
 }
