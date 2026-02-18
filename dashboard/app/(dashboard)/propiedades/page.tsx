@@ -72,8 +72,10 @@ export default function PropiedadesPage() {
         alert(data.error || "Error al subir la foto")
         return
       }
-      if (data.url_publica) {
-        setImagenPorPropiedadId((prev) => ({ ...prev, [propiedadId]: data.url_publica }))
+      // La API devuelve un array de imágenes
+      const imagenes = Array.isArray(data) ? data : []
+      if (imagenes.length > 0 && imagenes[0].url_publica) {
+        setImagenPorPropiedadId((prev) => ({ ...prev, [propiedadId]: imagenes[0].url_publica }))
       }
     } finally {
       setSubiendoPorId((prev) => ({ ...prev, [propiedadId]: false }))
@@ -203,7 +205,7 @@ export default function PropiedadesPage() {
                     className="h-full w-full object-cover"
                   />
                 ) : (
-                  <span className="flex h-full min-h-[200px] flex-col items-center justify-center gap-2 p-4 text-center text-muted-foreground hover:text-foreground transition hover:bg-muted/80">
+                  <span className="pointer-events-none flex h-full min-h-[200px] flex-col items-center justify-center gap-2 p-4 text-center text-muted-foreground hover:text-foreground transition hover:bg-muted/80">
                     <Camera className="h-12 w-12" />
                     <span className="text-sm font-medium">Subir foto</span>
                     <span className="text-xs text-muted-foreground">o arrastra aquí</span>
