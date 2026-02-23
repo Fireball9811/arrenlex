@@ -70,7 +70,7 @@ export type Perfil = {
   id: string
   email: string
   nombre?: string | null
-  role: "admin" | "propietario" | "inquilino"
+  role: "admin" | "propietario" | "inquilino" | "maintenance_special" | "insurance_special" | "lawyer_special"
   activo: boolean
   bloqueado: boolean
   creado_en: string
@@ -79,6 +79,15 @@ export type Perfil = {
   cedula?: string | null
   cedula_lugar_expedicion?: string | null
   direccion?: string | null
+  // Datos bancarios (para propietarios)
+  cuenta_bancaria_1_entidad?: string | null
+  cuenta_bancaria_1_numero?: string | null
+  cuenta_bancaria_1_tipo?: string | null
+  cuenta_bancaria_2_entidad?: string | null
+  cuenta_bancaria_2_numero?: string | null
+  cuenta_bancaria_2_tipo?: string | null
+  llave_bancaria_1?: string | null
+  llave_bancaria_2?: string | null
 }
 
 export type Contrato = {

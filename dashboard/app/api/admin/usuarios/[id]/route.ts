@@ -86,6 +86,49 @@ export async function PATCH(
       case "desactivar":
         updates.activo = false
         break
+      case "actualizar_datos_personales":
+        // Los datos personales se manejan en los campos individuales fuera del switch
+        break
+      case "actualizar_datos_bancarios": {
+        // Campos bancarios
+        const {
+          cuenta_bancaria_1_entidad,
+          cuenta_bancaria_1_numero,
+          cuenta_bancaria_1_tipo,
+          cuenta_bancaria_2_entidad,
+          cuenta_bancaria_2_numero,
+          cuenta_bancaria_2_tipo,
+          llave_bancaria_1,
+          llave_bancaria_2,
+        } = body
+
+        console.log("[api/admin/usuarios/[id]] actualizar_datos_bancarios - Campos recibidos:", {
+          cuenta_bancaria_1_entidad,
+          cuenta_bancaria_1_numero,
+          cuenta_bancaria_1_tipo,
+          cuenta_bancaria_2_entidad,
+          cuenta_bancaria_2_numero,
+          cuenta_bancaria_2_tipo,
+          llave_bancaria_1,
+          llave_bancaria_2,
+        })
+
+        if (cuenta_bancaria_1_entidad !== undefined) updates.cuenta_bancaria_1_entidad = cuenta_bancaria_1_entidad
+        if (cuenta_bancaria_1_numero !== undefined) updates.cuenta_bancaria_1_numero = cuenta_bancaria_1_numero
+        if (cuenta_bancaria_1_tipo !== undefined) updates.cuenta_bancaria_1_tipo = cuenta_bancaria_1_tipo
+        if (cuenta_bancaria_2_entidad !== undefined) updates.cuenta_bancaria_2_entidad = cuenta_bancaria_2_entidad
+        if (cuenta_bancaria_2_numero !== undefined) updates.cuenta_bancaria_2_numero = cuenta_bancaria_2_numero
+        if (cuenta_bancaria_2_tipo !== undefined) updates.cuenta_bancaria_2_tipo = cuenta_bancaria_2_tipo
+        if (llave_bancaria_1 !== undefined) updates.llave_bancaria_1 = llave_bancaria_1
+        if (llave_bancaria_2 !== undefined) updates.llave_bancaria_2 = llave_bancaria_2
+
+        // Actualizar timestamp
+        updates.actualizado_en = new Date().toISOString()
+
+        console.log("[api/admin/usuarios/[id]] actualizar_datos_bancarios - Updates a aplicar:", updates)
+
+        break
+      }
       default:
         return NextResponse.json({ error: "Acción no válida" }, { status: 400 })
     }

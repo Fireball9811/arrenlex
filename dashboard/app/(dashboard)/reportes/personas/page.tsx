@@ -1,87 +1,143 @@
 "use client"
 
+import { useEffect, useState } from "react"
 import Link from "next/link"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Card, CardContent } from "@/components/ui/card"
+import { InquilinosActivosTab } from "./components/InquilinosActivosTab"
+import { PropietariosTab } from "./components/PropietariosTab"
+import { UsuariosSistemaTab } from "./components/UsuariosSistemaTab"
+import { HistorialInquilinosTab } from "./components/HistorialInquilinosTab"
+import { RolesPermisosTab } from "./components/RolesPermisosTab"
+import { ContactosTab } from "./components/ContactosTab"
+
+type Counts = {
+  inquilinosActivos: number
+  propietarios: number
+  usuariosSistema: number
+  historialInquilinos: number
+  roles: number
+  contactos: number
+}
 
 export default function PersonasPage() {
+  const [counts, setCounts] = useState<Counts | null>(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    fetch("/api/reportes/personas/counts")
+      .then((r) => r.json())
+      .then((data) => {
+        setCounts(data)
+        setLoading(false)
+      })
+      .catch(() => setLoading(false))
+  }, [])
+
+  const formatCount = (count: number | undefined) => {
+    if (loading) return "..."
+    return count ?? 0
+  }
+
   return (
     <div>
       <div className="mb-6">
         <Link href="/reportes" className="text-sm text-muted-foreground hover:underline">
           ← Volver a Reportes
         </Link>
-        <h1 className="mt-2 text-3xl font-bold">Reportes de Personas</h1>
+        <h1 className="mt-2 text-3xl font-bold">Gestión de Personas</h1>
         <p className="text-muted-foreground">
-          Información sobre inquilinos, propietarios y usuarios
+          Administra inquilinos, propietarios, usuarios y roles del sistema
         </p>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+      {/* Resumen de contadores */}
+      <div className="mb-6 grid gap-4 md:grid-cols-3 lg:grid-cols-6">
         <Card>
-          <CardHeader>
-            <CardTitle>👥 Inquilinos Activos</CardTitle>
-            <CardDescription>Listado de inquilinos con contrato vigente</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <p className="text-3xl font-bold">24</p>
-            <p className="text-sm text-muted-foreground">inquilinos</p>
+          <CardContent className="p-4">
+            <p className="text-sm text-muted-foreground">Inquilinos Activos</p>
+            <p className="text-2xl font-bold">{formatCount(counts?.inquilinosActivos)}</p>
           </CardContent>
         </Card>
-
         <Card>
-          <CardHeader>
-            <CardTitle>🏠 Propietarios</CardTitle>
-            <CardDescription>Listado de propietarios de inmuebles</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <p className="text-3xl font-bold">12</p>
-            <p className="text-sm text-muted-foreground">propietarios</p>
+          <CardContent className="p-4">
+            <p className="text-sm text-muted-foreground">Propietarios</p>
+            <p className="text-2xl font-bold">{formatCount(counts?.propietarios)}</p>
           </CardContent>
         </Card>
-
-        <Link href="/reportes/personas/usuarios">
-          <Card className="hover:bg-gray-50 transition cursor-pointer">
-            <CardHeader>
-              <CardTitle>👤 Usuarios del Sistema</CardTitle>
-              <CardDescription>Usuarios registrados en la plataforma</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <p className="text-3xl font-bold">41</p>
-              <p className="text-sm text-muted-foreground">usuarios →</p>
-            </CardContent>
-          </Card>
-        </Link>
-
         <Card>
-          <CardHeader>
-            <CardTitle>📋 Historial de Inquilinos</CardTitle>
-            <CardDescription>Historial completo de todos los inquilinos</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <p className="text-muted-foreground">Ver listado completo...</p>
+          <CardContent className="p-4">
+            <p className="text-sm text-muted-foreground">Usuarios Sistema</p>
+            <p className="text-2xl font-bold">{formatCount(counts?.usuariosSistema)}</p>
           </CardContent>
         </Card>
-
         <Card>
-          <CardHeader>
-            <CardTitle>📞 Contactos</CardTitle>
-            <CardDescription>Información de contacto de todas las personas</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <p className="text-muted-foreground">Ver directorio...</p>
+          <CardContent className="p-4">
+            <p className="text-sm text-muted-foreground">Historial</p>
+            <p className="text-2xl font-bold">{formatCount(counts?.historialInquilinos)}</p>
           </CardContent>
         </Card>
-
         <Card>
-          <CardHeader>
-            <CardTitle>🔑 Roles y Permisos</CardTitle>
-            <CardDescription>Gestión de roles de usuarios</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <p className="text-muted-foreground">Ver permisos...</p>
+          <CardContent className="p-4">
+            <p className="text-sm text-muted-foreground">Roles</p>
+            <p className="text-2xl font-bold">{formatCount(counts?.roles)}</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <p className="text-sm text-muted-foreground">Contactos</p>
+            <p className="text-2xl font-bold">{formatCount(counts?.contactos)}</p>
           </CardContent>
         </Card>
       </div>
+
+      {/* Pestañas de gestión */}
+      <Tabs defaultValue="inquilinos-activos" className="space-y-4">
+        <TabsList className="grid w-full grid-cols-3 lg:grid-cols-6">
+          <TabsTrigger value="inquilinos-activos" className="text-sm">
+            Inquilinos Activos
+          </TabsTrigger>
+          <TabsTrigger value="propietarios" className="text-sm">
+            Propietarios
+          </TabsTrigger>
+          <TabsTrigger value="usuarios-sistema" className="text-sm">
+            Usuarios Sistema
+          </TabsTrigger>
+          <TabsTrigger value="historial-inquilinos" className="text-sm">
+            Historial
+          </TabsTrigger>
+          <TabsTrigger value="roles-permisos" className="text-sm">
+            Roles
+          </TabsTrigger>
+          <TabsTrigger value="contactos" className="text-sm">
+            Contactos
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="inquilinos-activos" className="space-y-4">
+          <InquilinosActivosTab />
+        </TabsContent>
+
+        <TabsContent value="propietarios" className="space-y-4">
+          <PropietariosTab />
+        </TabsContent>
+
+        <TabsContent value="usuarios-sistema" className="space-y-4">
+          <UsuariosSistemaTab />
+        </TabsContent>
+
+        <TabsContent value="historial-inquilinos" className="space-y-4">
+          <HistorialInquilinosTab />
+        </TabsContent>
+
+        <TabsContent value="roles-permisos" className="space-y-4">
+          <RolesPermisosTab />
+        </TabsContent>
+
+        <TabsContent value="contactos" className="space-y-4">
+          <ContactosTab />
+        </TabsContent>
+      </Tabs>
     </div>
   )
 }
