@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
-import { getSessionFromCookie } from "@/lib/auth/session-sql"
+import { createServerClient } from "@supabase/ssr"
+import { cookies } from "next/headers"
 
 // Rutas que NO requieren autenticación (públicas)
 const PUBLIC_PATHS = [
@@ -27,6 +28,45 @@ const PROPIETARIO_ONLY_PATHS = [
   "/propietario",
 ]
 
+async function getUserRole(request: NextRequest): Promise<{ role: string; userId: string } | null> {
+  try {
+    const cookieStore = await cookies()
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
+    const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ??
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+
+    const supabase = createServerClient(supabaseUrl, supabaseKey, {
+      cookies: {
+        getAll() {
+          return cookieStore.getAll()
+        },
+        setAll() {
+          // No-op en middleware
+        },
+      },
+    })
+
+    const { data: { user } } = await supabase.auth.getUser()
+
+    if (!user) {
+      return null
+    }
+
+    // Obtener el rol desde la base de datos
+    const { data: perfil } = await supabase
+      .from("perfiles")
+      .select("role")
+      .eq("id", user.id)
+      .maybeSingle()
+
+    const role = perfil?.role || "inquilino"
+
+    return { role, userId: user.id }
+  } catch {
+    return null
+  }
+}
+
 export async function proxy(request: NextRequest) {
   const path = request.nextUrl.pathname
 
@@ -37,10 +77,10 @@ export async function proxy(request: NextRequest) {
     return NextResponse.next()
   }
 
-  // 2. Para rutas protegidas, verificar la sesión JWT
-  const session = await getSessionFromCookie()
+  // 2. Para rutas protegidas, verificar la sesión usando Supabase
+  const userData = await getUserRole(request)
 
-  if (!session) {
+  if (!userData) {
     // No hay sesión válida → redirigir a login
     const loginUrl = new URL("/login", request.url)
     loginUrl.searchParams.set("redirect", path)
@@ -48,7 +88,7 @@ export async function proxy(request: NextRequest) {
   }
 
   // 3. Verificación de rol para rutas específicas
-  const userRole = session.role as string
+  const userRole = userData.role
 
   // Rutas de admin - solo rol "admin"
   if (ADMIN_ONLY_PATHS.some((p) => path.startsWith(p))) {
