@@ -234,3 +234,37 @@ export type SolicitudMantenimientoConPropiedad = SolicitudMantenimiento & {
     barrio?: string
   } | null
 }
+
+export type IntakeFormulario = {
+  id: string
+  id_inmueble: string | null
+  nombre: string | null
+  email: string | null
+  telefono: string | null
+  cedula: string | null
+  fecha_expedicion_cedula: string | null
+  ingresos: number | null
+  salario: number | null
+  salario_2: number | null
+  personas: number | null
+  personas_trabajan: number | null
+  ninos: number | null
+  mascotas: number | null
+  negocio: string | null
+  empresas: string | null
+  empresa_arrendatario: string | null
+  antiguedad_meses: number | null
+  antiguedad_meses_2: number | null
+  nombre_coarrendatario: string | null
+  cedula_coarrendatario: string | null
+  fecha_expedicion_cedula_coarrendatario: string | null
+  telefono_coarrendatario: string | null
+  empresa_coarrendatario: string | null
+  autorizacion: string | null
+  raw_data: Record<string, unknown> | null
+  fecha_envio: string | null
+  created_at: string
+  gestionado: boolean
+  // Campo calculado al hacer JOIN con propiedades (no está en la tabla)
+  valor_arriendo: number | null
+}

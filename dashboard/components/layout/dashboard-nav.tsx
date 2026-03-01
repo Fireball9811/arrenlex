@@ -9,6 +9,7 @@ import type { UserRole } from "@/lib/auth/role"
 export function DashboardNav() {
   const [role, setRole] = useState<UserRole | null>(null)
   const [pendientesCount, setPendientesCount] = useState<number>(0)
+  const [intakeCount, setIntakeCount] = useState<number>(0)
   const [mantenimientoPendientesCount, setMantenimientoPendientesCount] = useState<number>(0)
 
   useEffect(() => {
@@ -27,6 +28,14 @@ export function DashboardNav() {
       .then((res) => (res.ok ? res.json() : { count: 0 }))
       .then((data: { count?: number }) => setPendientesCount(Number(data?.count) || 0))
       .catch(() => setPendientesCount(0))
+  }, [role])
+
+  useEffect(() => {
+    if (role !== "admin") return
+    fetch("/api/intake/count")
+      .then((res) => (res.ok ? res.json() : { count: 0 }))
+      .then((data: { count?: number }) => setIntakeCount(Number(data?.count) || 0))
+      .catch(() => setIntakeCount(0))
   }, [role])
 
   useEffect(() => {
@@ -96,9 +105,9 @@ export function DashboardNav() {
         <Link href="/mensajes" className={linkClass}>
           <MessageSquare />
           Mensajes
-          {pendientesCount > 0 && (
+          {(pendientesCount + intakeCount) > 0 && (
             <span className="ml-auto rounded-full bg-amber-500/90 px-2 py-0.5 text-xs font-medium text-white">
-              {pendientesCount}
+              {pendientesCount + intakeCount}
             </span>
           )}
         </Link>
