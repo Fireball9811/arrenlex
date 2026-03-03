@@ -16,6 +16,16 @@ const PUBLIC_PATHS = [
   "/cambio-contrasena",
   "/registrar-inquilino",
   "/catalogo", // Catálogo público
+  "/api/propiedades/ciudades", // API pública del catálogo
+  "/api/propiedades/public",  // API pública del catálogo
+  "/api/intake/aplicacion",   // Formulario de aplicación público
+  "/api/solicitudes-visita",  // Solicitar visita público
+]
+
+// Patrones de rutas públicas con segmentos dinámicos
+const PUBLIC_PATH_PATTERNS = [
+  /^\/api\/propiedades\/[^/]+\/public$/,        // /api/propiedades/[id]/public
+  /^\/api\/propiedades\/[^/]+\/aplicacion-info$/, // /api/propiedades/[id]/aplicacion-info
 ]
 
 // Rutas que solo admin puede acceder
@@ -71,7 +81,9 @@ export async function proxy(request: NextRequest) {
   const path = request.nextUrl.pathname
 
   // 1. Verificar si es una ruta pública
-  const isPublic = PUBLIC_PATHS.some((p) => path === p || path.startsWith(p + "/"))
+  const isPublic =
+    PUBLIC_PATHS.some((p) => path === p || path.startsWith(p + "/")) ||
+    PUBLIC_PATH_PATTERNS.some((pattern) => pattern.test(path))
 
   if (isPublic) {
     return NextResponse.next()

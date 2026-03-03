@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server"
-import { createClient } from "@/lib/supabase/server"
+import { createAdminClient } from "@/lib/supabase/admin"
 
-// GET - Ciudades con propiedades disponibles (consulta directa a la tabla, sin RPC).
+// GET - Ciudades con propiedades disponibles (ruta pública, sin autenticación).
 export async function GET() {
   try {
-    const supabase = await createClient()
+    const supabase = createAdminClient()
     const { data, error } = await supabase
       .from("propiedades")
       .select("ciudad")

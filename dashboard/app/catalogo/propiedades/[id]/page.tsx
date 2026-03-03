@@ -18,7 +18,33 @@ import {
   TabsTrigger,
 } from "@/components/ui/tabs"
 import { Input } from "@/components/ui/input"
-import { ArrowLeft, Calendar } from "lucide-react"
+import { ArrowLeft, Calendar, ClipboardList } from "lucide-react"
+
+const HORARIOS_VISITA = [
+  { value: "08:00", label: "8:00 AM" },
+  { value: "08:30", label: "8:30 AM" },
+  { value: "09:00", label: "9:00 AM" },
+  { value: "09:30", label: "9:30 AM" },
+  { value: "10:00", label: "10:00 AM" },
+  { value: "10:30", label: "10:30 AM" },
+  { value: "11:00", label: "11:00 AM" },
+  { value: "11:30", label: "11:30 AM" },
+  { value: "12:00", label: "12:00 PM" },
+  { value: "12:30", label: "12:30 PM" },
+  { value: "13:00", label: "1:00 PM" },
+  { value: "13:30", label: "1:30 PM" },
+  { value: "14:00", label: "2:00 PM" },
+  { value: "14:30", label: "2:30 PM" },
+  { value: "15:00", label: "3:00 PM" },
+  { value: "15:30", label: "3:30 PM" },
+  { value: "16:00", label: "4:00 PM" },
+  { value: "16:30", label: "4:30 PM" },
+]
+
+function getTodayString() {
+  const d = new Date()
+  return d.toISOString().split("T")[0]
+}
 
 type PropiedadImagenPublica = {
   id: string
@@ -54,6 +80,8 @@ export default function PropiedadDetallePage() {
   const [celular, setCelular] = useState("")
   const [email, setEmail] = useState("")
   const [nota, setNota] = useState("")
+  const [fechaVisita, setFechaVisita] = useState("")
+  const [horaVisita, setHoraVisita] = useState("")
   const [submitting, setSubmitting] = useState(false)
   const [submitMessage, setSubmitMessage] = useState<{ type: "success" | "error"; text: string } | null>(null)
 
@@ -108,6 +136,8 @@ export default function PropiedadDetallePage() {
       setCelular("")
       setEmail("")
       setNota("")
+      setFechaVisita("")
+      setHoraVisita("")
       setSubmitMessage(null)
     }
   }
@@ -117,6 +147,11 @@ export default function PropiedadDetallePage() {
     setSubmitting(true)
     setSubmitMessage(null)
     try {
+      const fechaHoraVisita =
+        fechaVisita && horaVisita
+          ? new Date(`${fechaVisita}T${horaVisita}:00`).toISOString()
+          : undefined
+
       const res = await fetch("/api/solicitudes-visita", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -126,6 +161,7 @@ export default function PropiedadDetallePage() {
           email: email.trim(),
           propiedad_id: params.id,
           nota: nota.trim() || undefined,
+          fecha_visita: fechaHoraVisita,
         }),
       })
       const data = await res.json().catch(() => ({}))
@@ -190,10 +226,23 @@ export default function PropiedadDetallePage() {
                 </div>
               )}
 
-              <Button size="lg" className="w-full" onClick={openModal}>
-                <Calendar className="mr-2 h-4 w-4" />
-                Solicitar visita
-              </Button>
+              <div className="flex flex-col gap-2">
+                <Button size="lg" className="w-full" onClick={openModal}>
+                  <Calendar className="mr-2 h-4 w-4" />
+                  Solicitar visita
+                </Button>
+                <Button
+                  size="lg"
+                  variant="outline"
+                  className="w-full border-cyan-500 text-cyan-700 hover:bg-cyan-50"
+                  asChild
+                >
+                  <Link href={`/catalogo/propiedades/${params.id}/aplicacion`}>
+                    <ClipboardList className="mr-2 h-4 w-4" />
+                    Diligenciar Aplicación
+                  </Link>
+                </Button>
+              </div>
             </div>
           </div>
         </CardContent>
@@ -328,6 +377,46 @@ export default function PropiedadDetallePage() {
                   disabled={submitting}
                 />
               </div>
+              {/* Selección de fecha */}
+              <div>
+                <label htmlFor="fecha-visita" className="block text-sm font-medium mb-1">
+                  Fecha de visita <span className="text-destructive">*</span>
+                </label>
+                <input
+                  id="fecha-visita"
+                  type="date"
+                  value={fechaVisita}
+                  onChange={(e) => setFechaVisita(e.target.value)}
+                  min={getTodayString()}
+                  required
+                  disabled={submitting}
+                  className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                />
+              </div>
+
+              {/* Selección de hora */}
+              <div>
+                <label htmlFor="hora-visita" className="block text-sm font-medium mb-1">
+                  Hora de visita <span className="text-destructive">*</span>
+                </label>
+                <select
+                  id="hora-visita"
+                  value={horaVisita}
+                  onChange={(e) => setHoraVisita(e.target.value)}
+                  required
+                  disabled={submitting}
+                  className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  <option value="">Selecciona una hora</option>
+                  {HORARIOS_VISITA.map((slot) => (
+                    <option key={slot.value} value={slot.value}>
+                      {slot.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Nota opcional */}
               <div>
                 <label htmlFor="nota" className="block text-sm font-medium mb-1">
                   Nota (opcional)
@@ -336,9 +425,9 @@ export default function PropiedadDetallePage() {
                   id="nota"
                   value={nota}
                   onChange={(e) => setNota(e.target.value)}
-                  placeholder="Comentario o preferencia de horario"
+                  placeholder="Comentario adicional"
                   disabled={submitting}
-                  className="flex min-h-[80px] w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-xs placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                  className="flex min-h-[72px] w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-xs placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
                 />
               </div>
               {submitMessage && (

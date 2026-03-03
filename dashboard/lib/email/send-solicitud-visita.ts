@@ -9,6 +9,7 @@ export type SendSolicitudVisitaParams = {
   propiedadId: string
   propiedadRef?: string
   nota?: string | null
+  fechaVisita?: string | null
 }
 
 /**
@@ -23,7 +24,7 @@ export async function sendSolicitudVisitaEmail(
     return { success: false, error: "Servicio de email no configurado" }
   }
 
-  const { nombreCompleto, celular, email, propiedadId, propiedadRef, nota } = params
+  const { nombreCompleto, celular, email, propiedadId, propiedadRef, nota, fechaVisita } = params
   const from = getEmailFrom()
   const baseUrl = process.env.NEXT_PUBLIC_SITE_URL ?? ""
   const linkPropiedad = baseUrl ? `${baseUrl}/catalogo/propiedades/${propiedadId}` : ""
@@ -44,6 +45,7 @@ export async function sendSolicitudVisitaEmail(
     <p style="margin: 0 0 8px 0;"><strong>Celular:</strong> ${escapeHtml(celular)}</p>
     <p style="margin: 0 0 8px 0;"><strong>Correo electrónico:</strong> ${escapeHtml(email)}</p>
     <p style="margin: 0 0 8px 0;"><strong>Referencia propiedad:</strong> ${escapeHtml(propiedadRef || propiedadId)}</p>
+    ${fechaVisita ? `<p style="margin: 0 0 8px 0;"><strong>Fecha y hora preferida:</strong> ${escapeHtml(formatFechaVisita(fechaVisita))}</p>` : ""}
     ${nota ? `<p style="margin: 0;"><strong>Nota:</strong> ${escapeHtml(nota)}</p>` : ""}
   </div>
   ${linkPropiedad ? `<p><a href="${linkPropiedad}" style="color: #2563eb;">Ver ficha de la propiedad</a></p>` : ""}
@@ -77,4 +79,21 @@ function escapeHtml(text: string): string {
     "'": "&#039;",
   }
   return text.replace(/[&<>"']/g, (c) => map[c] ?? c)
+}
+
+function formatFechaVisita(iso: string): string {
+  try {
+    const d = new Date(iso)
+    const dias = ["domingo", "lunes", "martes", "miércoles", "jueves", "viernes", "sábado"]
+    const meses = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"]
+    const dia = dias[d.getDay()]
+    const fecha = `${d.getDate()} de ${meses[d.getMonth()]} de ${d.getFullYear()}`
+    const horas = d.getHours()
+    const minutos = String(d.getMinutes()).padStart(2, "0")
+    const ampm = horas >= 12 ? "PM" : "AM"
+    const hora12 = horas % 12 || 12
+    return `${dia} ${fecha} a las ${hora12}:${minutos} ${ampm}`
+  } catch {
+    return iso
+  }
 }

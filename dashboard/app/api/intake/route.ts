@@ -41,24 +41,22 @@ export async function GET() {
     return NextResponse.json([])
   }
 
-  // Recopilar las matriculas de inmueble presentes para hacer lookup en propiedades
-  const matriculas = intakeData
-    .map((r) => r.id_inmueble)
-    .filter((m): m is string => !!m)
+  // Recopilar propiedad_ids presentes para hacer lookup en propiedades
+  const propiedadIds = intakeData
+    .map((r) => r.propiedad_id)
+    .filter((id): id is string => typeof id === "string" && !!id)
 
-  let canonPorMatricula: Record<string, number> = {}
+  let canonPorPropiedad: Record<string, number> = {}
 
-  if (matriculas.length > 0) {
+  if (propiedadIds.length > 0) {
     const { data: propiedades } = await admin
       .from("propiedades")
-      .select("matricula_inmobiliaria, valor_arriendo")
-      .in("matricula_inmobiliaria", matriculas)
+      .select("id, valor_arriendo, direccion, ciudad")
+      .in("id", propiedadIds)
 
     if (propiedades) {
       for (const p of propiedades) {
-        if (p.matricula_inmobiliaria) {
-          canonPorMatricula[p.matricula_inmobiliaria] = p.valor_arriendo
-        }
+        canonPorPropiedad[p.id] = p.valor_arriendo
       }
     }
   }
@@ -66,7 +64,7 @@ export async function GET() {
   // Adjuntar valor_arriendo a cada registro
   const resultado = intakeData.map((r) => ({
     ...r,
-    valor_arriendo: r.id_inmueble ? (canonPorMatricula[r.id_inmueble] ?? null) : null,
+    valor_arriendo: r.propiedad_id ? (canonPorPropiedad[r.propiedad_id] ?? null) : null,
   }))
 
   return NextResponse.json(resultado)

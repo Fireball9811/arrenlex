@@ -105,6 +105,7 @@ export async function POST(request: Request) {
     email,
     propiedad_id,
     nota,
+    fecha_visita,
   } = body as Record<string, unknown>
 
   if (
@@ -138,6 +139,22 @@ export async function POST(request: Request) {
 
   const notaVal = typeof nota === "string" ? nota.trim() || null : null
 
+  let fechaVisitaVal: string | null = null
+  if (typeof fecha_visita === "string" && fecha_visita.trim()) {
+    const parsed = new Date(fecha_visita)
+    if (isNaN(parsed.getTime())) {
+      return NextResponse.json({ error: "Formato de fecha_visita inválido" }, { status: 400 })
+    }
+    const hora = parsed.getHours()
+    if (hora < 8 || hora >= 17) {
+      return NextResponse.json(
+        { error: "La visita debe estar entre las 8:00 AM y las 5:00 PM" },
+        { status: 400 }
+      )
+    }
+    fechaVisitaVal = parsed.toISOString()
+  }
+
   const admin = createAdminClient()
 
   const { data: propiedad, error: errProp } = await admin
@@ -165,6 +182,7 @@ export async function POST(request: Request) {
       email: emailTrim,
       propiedad_id: propiedadIdTrim,
       nota: notaVal,
+      fecha_visita: fechaVisitaVal,
       status: "pendiente",
     })
     .select("id")
@@ -183,6 +201,7 @@ export async function POST(request: Request) {
     propiedadId: propiedadIdTrim,
     propiedadRef,
     nota: notaVal,
+    fechaVisita: fechaVisitaVal,
   })
   if (!emailResult.success) {
     console.error("[solicitudes-visita] Email no enviado:", emailResult.error)
