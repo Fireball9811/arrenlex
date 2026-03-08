@@ -18,6 +18,7 @@ const PUBLIC_PATHS = [
   "/catalogo", // Catálogo público
   "/api/propiedades/ciudades", // API pública del catálogo
   "/api/propiedades/public",  // API pública del catálogo
+  "/api/propiedades/banner",  // Banner de fotos en la landing
   "/api/intake/aplicacion",   // Formulario de aplicación público
   "/api/solicitudes-visita",  // Solicitar visita público
 ]

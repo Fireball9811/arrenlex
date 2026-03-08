@@ -20,7 +20,7 @@ export const translations = {
       error: "Error",
     },
     landing: {
-      hub: "La plataforma líder de arriendos en Colombia",
+      hub: "Tu aliado en la gestión de arriendos",
       titulo: "Encuentra tu próximo",
       futuro: "futuro",
       botonCatalogo: "ECHAR UN VISTAZO",
@@ -747,7 +747,7 @@ export const translations = {
       error: "Error",
     },
     landing: {
-      hub: "The leading rental platform in Colombia",
+      hub: "Your partner in rental management",
       titulo: "Find your next",
       futuro: "future",
       botonCatalogo: "TAKE A LOOK",

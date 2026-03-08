@@ -1,0 +1,14 @@
+{"sessionId":"b8dc72","location":"landing-hero.tsx","message":"banner fetch response","data":{"ok":true,"status":200},"timestamp":1773012791073,"hypothesisId":"H4-H5"}
+{"sessionId":"b8dc72","location":"landing-hero.tsx","message":"banner fetch response","data":{"ok":true,"status":200},"timestamp":1773012791145,"hypothesisId":"H4-H5"}
+{"sessionId":"b8dc72","location":"landing-hero.tsx","message":"banner fetch catch","data":{"error":"SyntaxError: Unexpected token '<', \"<!DOCTYPE \"... is not valid JSON"},"timestamp":1773012791207,"hypothesisId":"H4-H5"}
+{"sessionId":"b8dc72","location":"landing-hero.tsx","message":"banner fetch catch","data":{"error":"SyntaxError: Unexpected token '<', \"<!DOCTYPE \"... is not valid JSON"},"timestamp":1773012791216,"hypothesisId":"H4-H5"}
+{"sessionId":"b8dc72","location":"landing-hero.tsx","message":"banner fetch response","data":{"ok":true,"status":200},"timestamp":1773012862868,"hypothesisId":"H4-H5"}
+{"sessionId":"b8dc72","location":"landing-hero.tsx","message":"banner fetch response","data":{"ok":true,"status":200},"timestamp":1773012862999,"hypothesisId":"H4-H5"}
+{"sessionId":"b8dc72","location":"landing-hero.tsx","message":"banner fetch catch","data":{"error":"SyntaxError: Unexpected token '<', \"<!DOCTYPE \"... is not valid JSON"},"timestamp":1773012863000,"hypothesisId":"H4-H5"}
+{"sessionId":"b8dc72","location":"landing-hero.tsx","message":"banner fetch catch","data":{"error":"SyntaxError: Unexpected token '<', \"<!DOCTYPE \"... is not valid JSON"},"timestamp":1773012863014,"hypothesisId":"H4-H5"}
+{"sessionId":"b8dc72","location":"landing-hero.tsx","message":"banner fetch response","data":{"ok":true,"status":200},"timestamp":1773013426025,"hypothesisId":"H4-H5"}
+{"sessionId":"b8dc72","location":"landing-hero.tsx","message":"banner fetch response","data":{"ok":true,"status":200},"timestamp":1773013426135,"hypothesisId":"H4-H5"}
+{"sessionId":"b8dc72","location":"landing-hero.tsx","message":"banner fetch catch","data":{"error":"SyntaxError: Unexpected token '<', \"<!DOCTYPE \"... is not valid JSON"},"timestamp":1773013426136,"hypothesisId":"H4-H5"}
+{"sessionId":"b8dc72","location":"landing-hero.tsx","message":"banner fetch catch","data":{"error":"SyntaxError: Unexpected token '<', \"<!DOCTYPE \"... is not valid JSON"},"timestamp":1773013426371,"hypothesisId":"H4-H5"}
+{"sessionId":"b8dc72","location":"landing-hero.tsx","message":"banner fetch response","data":{"ok":true,"status":200},"timestamp":1773013640150,"hypothesisId":"H4-H5"}
+{"sessionId":"b8dc72","location":"landing-hero.tsx","message":"banner data processed","data":{"isArray":true,"dataLength":14,"urlCount":14},"timestamp":1773013640151,"hypothesisId":"H4-H5"}

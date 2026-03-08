@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server"
+import { createAdminClient } from "@/lib/supabase/admin"
 import { sendContactoEmail } from "@/lib/email/send-contacto"
 import { sendWhatsAppCEO } from "@/lib/whatsapp/send-whatsapp"
 
@@ -19,12 +20,29 @@ export async function POST(request: Request) {
     }
 
     const tipoLabel = tipo === "propietario" ? "Propietario" : "Arrendatario"
+    const nombreTrim = nombre.trim()
+    const celularTrim = celular.trim()
+    const emailTrim = email.trim()
+
+    const admin = createAdminClient()
+    const { error: insertError } = await admin.from("contactos_landing").insert({
+      nombre: nombreTrim,
+      celular: celularTrim,
+      email: emailTrim,
+      tipo,
+      estado: "pendiente",
+    })
+
+    if (insertError) {
+      console.error("[api/contacto] Error insertando en contactos_landing:", insertError)
+      return NextResponse.json({ error: "Error al guardar el contacto" }, { status: 500 })
+    }
 
     const [emailResult, waResult] = await Promise.allSettled([
       sendContactoEmail({
-        nombre: nombre.trim(),
-        celular: celular.trim(),
-        email: email.trim(),
+        nombre: nombreTrim,
+        celular: celularTrim,
+        email: emailTrim,
         tipo,
       }),
       sendWhatsAppCEO(
@@ -32,9 +50,9 @@ export async function POST(request: Request) {
           `📞 *Nuevo contacto desde la web*`,
           ``,
           `👤 Tipo: ${tipoLabel}`,
-          `📝 Nombre: ${nombre.trim()}`,
-          `📱 Celular: ${celular.trim()}`,
-          `📧 Correo: ${email.trim()}`,
+          `📝 Nombre: ${nombreTrim}`,
+          `📱 Celular: ${celularTrim}`,
+          `📧 Correo: ${emailTrim}`,
         ].join("\n")
       ),
     ])

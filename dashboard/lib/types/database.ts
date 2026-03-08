@@ -268,3 +268,14 @@ export type IntakeFormulario = {
   // Campo calculado al hacer JOIN con propiedades (no está en la tabla)
   valor_arriendo: number | null
 }
+
+export type ContactoLanding = {
+  id: string
+  nombre: string
+  celular: string
+  email: string
+  tipo: "propietario" | "arrendatario"
+  fecha_contacto: string
+  estado: "pendiente" | "contactado" | "archivado"
+  created_at: string
+}
