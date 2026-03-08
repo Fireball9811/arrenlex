@@ -13,20 +13,22 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
+import { useLang } from "@/lib/i18n/context"
 
 const MIN_LENGTH = 6
 const CHECK_SESSION_TIMEOUT_MS = 10_000
 
 type CheckState = "checking" | "ready" | "error"
 
-function validatePassword(password: string): string | null {
+function validatePassword(password: string, msgMinimo: string): string | null {
   if (password.length < MIN_LENGTH) {
-    return `Mínimo ${MIN_LENGTH} caracteres.`
+    return msgMinimo.replace("{n}", String(MIN_LENGTH))
   }
   return null
 }
 
 function CambioContrasenaContent() {
+  const { t } = useLang()
   const router = useRouter()
   const searchParams = useSearchParams()
   const nextParam = searchParams.get("next")
@@ -87,7 +89,7 @@ function CambioContrasenaContent() {
 
         checkStateResolvedRef.current = true
         if (!user) {
-          setError("Debes iniciar sesión para cambiar la contraseña.")
+          setError(t.auth.debesIniciar)
           setCheckState("error")
           return
         }
@@ -100,13 +102,13 @@ function CambioContrasenaContent() {
 
         setError(
           err instanceof Error && err.message === "timeout"
-            ? "La verificación de sesión tardó demasiado. Reintenta."
-            : "Error al verificar sesión."
+            ? t.auth.verificacionTardio
+            : t.auth.errorVerificacion
         )
         setCheckState("error")
       } finally {
         if (mountedRef.current && !checkStateResolvedRef.current) {
-          setError("No se pudo verificar la sesión.")
+          setError(t.auth.errorVerificacion)
           setCheckState("error")
         }
       }
@@ -122,14 +124,14 @@ function CambioContrasenaContent() {
     e.preventDefault()
     setError(null)
 
-    const validationError = validatePassword(password)
+    const validationError = validatePassword(password, t.auth.minimoCaracteres)
     if (validationError) {
       setError(validationError)
       return
     }
 
     if (!passwordsMatch || password !== confirm) {
-      setError("Las contraseñas no coinciden.")
+      setError(t.auth.noCoinciden)
       return
     }
 
@@ -197,7 +199,7 @@ function CambioContrasenaContent() {
       <div className="max-w-md">
         <Card>
           <CardHeader>
-            <CardTitle>Cambio de contraseña</CardTitle>
+            <CardTitle>{t.auth.cambioTitulo}</CardTitle>
             <CardDescription>{error}</CardDescription>
           </CardHeader>
         </Card>
@@ -210,21 +212,21 @@ function CambioContrasenaContent() {
       <Card>
         <form onSubmit={handleSubmit}>
           <CardHeader>
-            <CardTitle>Cambio de contraseña</CardTitle>
+            <CardTitle>{t.auth.cambioTitulo}</CardTitle>
             <CardDescription>
-              Crea tu nueva contraseña (mínimo {MIN_LENGTH} caracteres).
+              {t.auth.cambioDescripcion.replace("{n}", String(MIN_LENGTH))}
             </CardDescription>
           </CardHeader>
 
           <CardContent className="space-y-4">
             <div>
               <label htmlFor="password" className="mb-1 block text-sm font-medium">
-                Nueva contraseña
+                {t.auth.nuevaContrasena}
               </label>
               <Input
                 id="password"
                 type="password"
-                placeholder={`Mínimo ${MIN_LENGTH} caracteres`}
+                placeholder={t.auth.minimoCaracteres.replace("{n}", String(MIN_LENGTH))}
                 value={password}
                 onChange={(e) => {
                   setPassword(e.target.value)
@@ -239,12 +241,12 @@ function CambioContrasenaContent() {
 
             <div>
               <label htmlFor="confirm" className="mb-1 block text-sm font-medium">
-                Confirmar contraseña
+                {t.auth.confirmarContrasena}
               </label>
               <Input
                 id="confirm"
                 type="password"
-                placeholder="Repite la nueva contraseña"
+                placeholder={t.auth.placeholderConfirmar}
                 value={confirm}
                 onChange={(e) => {
                   setConfirm(e.target.value)
@@ -269,7 +271,7 @@ function CambioContrasenaContent() {
               className="w-full"
               disabled={loading || !passwordsMatch || password.length < MIN_LENGTH || confirm.length < MIN_LENGTH}
             >
-              {loading ? "Guardando..." : "Cambiar contraseña"}
+              {loading ? t.auth.guardandoContrasena : t.auth.cambiarContrasena}
             </Button>
           </CardFooter>
         </form>

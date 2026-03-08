@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { downloadFile } from "@/lib/download-file"
+import { useLang } from "@/lib/i18n/context"
 
 interface Usuario {
   id: string
@@ -21,13 +22,8 @@ interface Usuario {
   direccion?: string | null
 }
 
-const ROLES: { value: Usuario["role"]; label: string }[] = [
-  { value: "admin", label: "Administrador" },
-  { value: "propietario", label: "Propietario" },
-  { value: "inquilino", label: "Inquilino" },
-]
-
 export default function UsuariosSistemaPage() {
+  const { t } = useLang()
   const [usuarios, setUsuarios] = useState<Usuario[]>([])
   const [loading, setLoading] = useState(true)
   const [editingUser, setEditingUser] = useState<Usuario | null>(null)
@@ -128,8 +124,8 @@ export default function UsuariosSistemaPage() {
   function toggleBloqueo(usuario: Usuario) {
     const accion = usuario.bloqueado ? "desbloquear" : "bloquear"
     const confirmMsg = usuario.bloqueado
-      ? `Desbloquear a ${usuario.email}?`
-      : `Bloquear definitivamente a ${usuario.email}?`
+      ? `${t.usuarios.confirmDesbloquear} ${usuario.email}?`
+      : `${t.usuarios.confirmBloquear} ${usuario.email}?`
 
     if (!confirm(confirmMsg)) return
 
@@ -197,9 +193,9 @@ export default function UsuariosSistemaPage() {
 
   const roleLabel = (role: string) => {
     switch (role) {
-      case "admin": return "🔴 Administrador"
-      case "propietario": return "🏠 Propietario"
-      case "inquilino": return "👤 Inquilino"
+      case "admin": return `🔴 ${t.usuarios.roles.admin}`
+      case "propietario": return `🏠 ${t.usuarios.roles.propietario}`
+      case "inquilino": return `👤 ${t.usuarios.roles.inquilino}`
       default: return role
     }
   }
@@ -207,9 +203,9 @@ export default function UsuariosSistemaPage() {
   return (
     <div>
       <div className="mb-6">
-        <h1 className="mt-2 text-3xl font-bold">Usuarios del Sistema</h1>
+        <h1 className="mt-2 text-3xl font-bold">{t.usuarios.titulo}</h1>
         <p className="text-muted-foreground">
-          Gestiona usuarios, roles, permisos y estados de acceso
+          {t.usuarios.descripcion}
         </p>
       </div>
 
@@ -217,7 +213,7 @@ export default function UsuariosSistemaPage() {
       <div className="mb-6 grid gap-4 md:grid-cols-4">
         <Card>
           <CardHeader>
-            <CardTitle className="text-sm">Total Usuarios</CardTitle>
+            <CardTitle className="text-sm">{t.usuarios.totalUsuarios}</CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-2xl font-bold">{usuarios.length}</p>
@@ -226,7 +222,7 @@ export default function UsuariosSistemaPage() {
 
         <Card className="bg-green-50 border-green-200">
           <CardHeader>
-            <CardTitle className="text-sm">✅ Activos</CardTitle>
+            <CardTitle className="text-sm">{t.usuarios.activos}</CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-2xl font-bold">{usuarios.filter(u => u.activo).length}</p>
@@ -235,7 +231,7 @@ export default function UsuariosSistemaPage() {
 
         <Card className="bg-amber-50 border-amber-200">
           <CardHeader>
-            <CardTitle className="text-sm">⏸ Inactivos</CardTitle>
+            <CardTitle className="text-sm">{t.usuarios.inactivos}</CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-2xl font-bold">{usuarios.filter(u => !u.activo && !u.bloqueado).length}</p>
@@ -244,7 +240,7 @@ export default function UsuariosSistemaPage() {
 
         <Card className="bg-red-50 border-red-200">
           <CardHeader>
-            <CardTitle className="text-sm">🚫 Bloqueados</CardTitle>
+            <CardTitle className="text-sm">{t.usuarios.bloqueados}</CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-2xl font-bold">{usuarios.filter(u => u.bloqueado).length}</p>
@@ -255,23 +251,23 @@ export default function UsuariosSistemaPage() {
       {/* Tabla de usuarios */}
       <Card>
         <CardHeader>
-          <CardTitle>Lista de Usuarios</CardTitle>
+          <CardTitle>{t.usuarios.listaTitulo}</CardTitle>
         </CardHeader>
         <CardContent>
           {loading ? (
-            <p className="text-muted-foreground">Cargando usuarios...</p>
+            <p className="text-muted-foreground">{t.usuarios.cargandoUsuarios}</p>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b bg-gray-50">
-                    <th className="p-3 text-left">Usuario</th>
-                    <th className="p-3 text-left">Rol</th>
-                    <th className="p-3 text-center">Estado</th>
-                    <th className="p-3 text-center">Activar/Inactivar</th>
-                    <th className="p-3 text-center">Bloquear</th>
-                    <th className="p-3 text-center">Editar</th>
-                    <th className="p-3 text-center">Documentos</th>
+                    <th className="p-3 text-left">{t.usuarios.columnas.usuario}</th>
+                    <th className="p-3 text-left">{t.usuarios.columnas.rol}</th>
+                    <th className="p-3 text-center">{t.usuarios.columnas.estado}</th>
+                    <th className="p-3 text-center">{t.usuarios.columnas.activarInactivar}</th>
+                    <th className="p-3 text-center">{t.usuarios.columnas.bloquear}</th>
+                    <th className="p-3 text-center">{t.usuarios.columnas.editar}</th>
+                    <th className="p-3 text-center">{t.usuarios.columnas.documentos}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -291,15 +287,15 @@ export default function UsuariosSistemaPage() {
                       <td className="p-3 text-center">
                         {usuario.bloqueado ? (
                           <span className="rounded-full bg-red-100 px-2 py-1 text-xs font-medium text-red-800">
-                            🚫 Bloqueado
+                            {t.usuarios.estadoBloqueado}
                           </span>
                         ) : usuario.activo ? (
                           <span className="rounded-full bg-green-100 px-2 py-1 text-xs font-medium text-green-800">
-                            ✅ Activo
+                            {t.usuarios.estadoActivo}
                           </span>
                         ) : (
                           <span className="rounded-full bg-amber-100 px-2 py-1 text-xs font-medium text-amber-800">
-                            ⏸ Inactivo
+                            {t.usuarios.estadoInactivo}
                           </span>
                         )}
                       </td>
@@ -313,7 +309,7 @@ export default function UsuariosSistemaPage() {
                             className="h-4 w-4 rounded border-gray-300"
                           />
                           <span className="text-xs text-muted-foreground">
-                            {usuario.activo ? "Activo" : "Inactivo"}
+                            {usuario.activo ? t.usuarios.textoActivo : t.usuarios.textoInactivo}
                           </span>
                         </label>
                       </td>
@@ -323,7 +319,7 @@ export default function UsuariosSistemaPage() {
                           variant={usuario.bloqueado ? "outline" : "destructive"}
                           onClick={() => toggleBloqueo(usuario)}
                         >
-                          {usuario.bloqueado ? "🔓 Desbloquear" : "🚫 Bloquear"}
+                          {usuario.bloqueado ? t.usuarios.desbloquear : t.usuarios.bloquear}
                         </Button>
                       </td>
                       <td className="p-3 text-center">
@@ -332,7 +328,7 @@ export default function UsuariosSistemaPage() {
                           variant="outline"
                           onClick={() => setEditingUser(usuario)}
                         >
-                          Editar
+                          {t.usuarios.columnas.editar}
                         </Button>
                       </td>
                       <td className="p-3 text-center">
@@ -341,7 +337,7 @@ export default function UsuariosSistemaPage() {
                           variant="outline"
                           onClick={() => setDocumentosModalUser(usuario)}
                         >
-                          Documentos adjuntos
+                          {t.usuarios.documentosAdjuntos}
                         </Button>
                       </td>
                     </tr>
@@ -364,24 +360,24 @@ export default function UsuariosSistemaPage() {
             onClick={(e) => e.stopPropagation()}
           >
             <CardHeader className="flex flex-row items-center justify-between space-y-0">
-              <CardTitle>Documentos adjuntos</CardTitle>
+              <CardTitle>{t.usuarios.documentosAdjuntos}</CardTitle>
               <Button
                 type="button"
                 variant="ghost"
                 size="sm"
                 onClick={() => setDocumentosModalUser(null)}
               >
-                Cerrar
+                {t.usuarios.cerrar}
               </Button>
             </CardHeader>
             <CardContent>
               <p className="mb-3 text-sm text-muted-foreground">
-                Usuario: {documentosModalUser.nombre || documentosModalUser.email}
+                {t.usuarios.usuarioLabel} {documentosModalUser.nombre || documentosModalUser.email}
               </p>
               {documentosModalLoading ? (
-                <p className="text-sm text-muted-foreground">Cargando documentos…</p>
+                <p className="text-sm text-muted-foreground">{t.usuarios.cargandoDocumentos}</p>
               ) : documentosModalList.length === 0 ? (
-                <p className="text-sm text-muted-foreground">Ningún documento subido.</p>
+                <p className="text-sm text-muted-foreground">{t.usuarios.ningunDocumento}</p>
               ) : (
                 <>
                   <div className="mb-3 flex gap-2">
@@ -403,7 +399,7 @@ export default function UsuariosSistemaPage() {
                         setDownloadingAll(false)
                       }}
                     >
-                      {downloadingAll ? "Descargando…" : "Descargar todos"}
+                      {downloadingAll ? t.usuarios.descargando : t.usuarios.descargarTodos}
                     </Button>
                   </div>
                   <ul className="space-y-2 text-sm">
@@ -434,7 +430,7 @@ export default function UsuariosSistemaPage() {
                             )
                           }
                         >
-                          Descargar
+                          {t.usuarios.descargar}
                         </Button>
                       )}
                     </li>
@@ -458,7 +454,7 @@ export default function UsuariosSistemaPage() {
             onClick={(e) => e.stopPropagation()}
           >
             <CardHeader className="flex flex-row items-center justify-between space-y-0">
-              <CardTitle>Editar usuario</CardTitle>
+              <CardTitle>{t.usuarios.editarModal.titulo}</CardTitle>
               <Button
                 type="button"
                 variant="ghost"
@@ -466,13 +462,13 @@ export default function UsuariosSistemaPage() {
                 disabled={saving}
                 onClick={() => setEditingUser(null)}
               >
-                Cerrar
+                {t.usuarios.cerrar}
               </Button>
             </CardHeader>
             <CardContent>
               <form onSubmit={handleSaveEdit} className="space-y-4">
                 <div>
-                  <label className="mb-1 block text-sm font-medium">Nombre completo</label>
+                  <label className="mb-1 block text-sm font-medium">{t.usuarios.editarModal.nombreCompleto}</label>
                   <Input
                     value={editForm.nombre}
                     onChange={(e) => setEditForm((f) => ({ ...f, nombre: e.target.value }))}
@@ -480,12 +476,12 @@ export default function UsuariosSistemaPage() {
                   />
                 </div>
                 <div>
-                  <label className="mb-1 block text-sm font-medium">Correo electrónico</label>
+                  <label className="mb-1 block text-sm font-medium">{t.usuarios.editarModal.correo}</label>
                   <Input value={editingUser.email} disabled className="bg-muted" />
-                  <p className="mt-1 text-xs text-muted-foreground">No se puede cambiar el correo</p>
+                  <p className="mt-1 text-xs text-muted-foreground">{t.usuarios.noCorreo}</p>
                 </div>
                 <div>
-                  <label className="mb-1 block text-sm font-medium">Celular</label>
+                  <label className="mb-1 block text-sm font-medium">{t.usuarios.editarModal.celular}</label>
                   <Input
                     value={editForm.celular}
                     onChange={(e) => setEditForm((f) => ({ ...f, celular: e.target.value }))}
@@ -493,7 +489,7 @@ export default function UsuariosSistemaPage() {
                   />
                 </div>
                 <div>
-                  <label className="mb-1 block text-sm font-medium">Cédula de ciudadanía</label>
+                  <label className="mb-1 block text-sm font-medium">{t.usuarios.editarModal.cedula}</label>
                   <Input
                     value={editForm.cedula}
                     onChange={(e) => setEditForm((f) => ({ ...f, cedula: e.target.value }))}
@@ -501,7 +497,7 @@ export default function UsuariosSistemaPage() {
                   />
                 </div>
                 <div>
-                  <label className="mb-1 block text-sm font-medium">Lugar de expedición de la cédula</label>
+                  <label className="mb-1 block text-sm font-medium">{t.usuarios.editarModal.cedulaExpedicion}</label>
                   <Input
                     value={editForm.cedula_lugar_expedicion}
                     onChange={(e) =>
@@ -511,7 +507,7 @@ export default function UsuariosSistemaPage() {
                   />
                 </div>
                 <div>
-                  <label className="mb-1 block text-sm font-medium">Dirección de vivienda</label>
+                  <label className="mb-1 block text-sm font-medium">{t.usuarios.editarModal.direccion}</label>
                   <Input
                     value={editForm.direccion}
                     onChange={(e) => setEditForm((f) => ({ ...f, direccion: e.target.value }))}
@@ -519,7 +515,7 @@ export default function UsuariosSistemaPage() {
                   />
                 </div>
                 <div>
-                  <label className="mb-1 block text-sm font-medium">Rol</label>
+                  <label className="mb-1 block text-sm font-medium">{t.usuarios.editarModal.rol}</label>
                   <select
                     value={editForm.role}
                     onChange={(e) =>
@@ -527,9 +523,9 @@ export default function UsuariosSistemaPage() {
                     }
                     className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm"
                   >
-                    {ROLES.map((r) => (
-                      <option key={r.value} value={r.value}>
-                        {r.label}
+                    {(["admin", "propietario", "inquilino"] as const).map((r) => (
+                      <option key={r} value={r}>
+                        {t.usuarios.roles[r]}
                       </option>
                     ))}
                   </select>
@@ -542,7 +538,7 @@ export default function UsuariosSistemaPage() {
                       onChange={(e) => setEditForm((f) => ({ ...f, activo: e.target.checked }))}
                       className="h-4 w-4 rounded border-gray-300"
                     />
-                    <span className="text-sm font-medium">Activo</span>
+                    <span className="text-sm font-medium">{t.usuarios.editarModal.activo}</span>
                   </label>
                   <label className="flex items-center gap-2">
                     <input
@@ -551,16 +547,16 @@ export default function UsuariosSistemaPage() {
                       onChange={(e) => setEditForm((f) => ({ ...f, bloqueado: e.target.checked }))}
                       className="h-4 w-4 rounded border-gray-300"
                     />
-                    <span className="text-sm font-medium">Bloqueado</span>
+                    <span className="text-sm font-medium">{t.usuarios.editarModal.bloqueado}</span>
                   </label>
                 </div>
 
                 <div className="border-t pt-4">
-                  <p className="mb-2 text-sm font-medium">Documentos subidos por este usuario</p>
+                  <p className="mb-2 text-sm font-medium">{t.usuarios.documentosSubidos}</p>
                   {documentosLoading ? (
-                    <p className="text-sm text-muted-foreground">Cargando documentos…</p>
+                    <p className="text-sm text-muted-foreground">{t.usuarios.cargandoDocumentos}</p>
                   ) : documentos.length === 0 ? (
-                    <p className="text-sm text-muted-foreground">Ningún documento subido.</p>
+                    <p className="text-sm text-muted-foreground">{t.usuarios.ningunDocumento}</p>
                   ) : (
                     <>
                       <div className="mb-2 flex gap-2">
@@ -582,7 +578,7 @@ export default function UsuariosSistemaPage() {
                             setDownloadingAllEdit(false)
                           }}
                         >
-                          {downloadingAllEdit ? "Descargando…" : "Descargar todos"}
+                          {downloadingAllEdit ? t.usuarios.descargando : t.usuarios.descargarTodos}
                         </Button>
                       </div>
                       <ul className="space-y-1 text-sm">
@@ -613,7 +609,7 @@ export default function UsuariosSistemaPage() {
                                 )
                               }
                             >
-                              Descargar
+                              {t.usuarios.descargar}
                             </Button>
                           )}
                         </li>
@@ -628,7 +624,7 @@ export default function UsuariosSistemaPage() {
                 )}
                 <div className="flex gap-2 pt-2">
                   <Button type="submit" disabled={saving}>
-                    {saving ? "Guardando..." : "Guardar cambios"}
+                    {saving ? t.usuarios.guardando : t.usuarios.guardarCambios}
                   </Button>
                   <Button
                     type="button"
@@ -636,7 +632,7 @@ export default function UsuariosSistemaPage() {
                     disabled={saving}
                     onClick={() => setEditingUser(null)}
                   >
-                    Cancelar
+                    {t.comun.cancelar}
                   </Button>
                 </div>
               </form>
@@ -648,31 +644,31 @@ export default function UsuariosSistemaPage() {
       {/* Leyenda */}
       <Card className="mt-4 bg-gray-50">
         <CardContent className="pt-4">
-          <p className="text-sm font-semibold mb-2">Leyenda:</p>
+          <p className="text-sm font-semibold mb-2">{t.usuarios.leyendaTitulo}</p>
           <div className="grid gap-2 text-sm md:grid-cols-2">
             <div className="flex items-center gap-2">
               <span className="rounded-full bg-green-100 px-2 py-1 text-xs font-medium text-green-800">
-                ✅ Activo
+                {t.usuarios.estadoActivo}
               </span>
-              <span className="text-muted-foreground">- Puede acceder a la plataforma</span>
+              <span className="text-muted-foreground">{t.usuarios.leyenda.activo}</span>
             </div>
             <div className="flex items-center gap-2">
               <span className="rounded-full bg-amber-100 px-2 py-1 text-xs font-medium text-amber-800">
-                ⏸ Inactivo
+                {t.usuarios.estadoInactivo}
               </span>
-              <span className="text-muted-foreground">- No puede acceder temporalmente</span>
+              <span className="text-muted-foreground">{t.usuarios.leyenda.inactivo}</span>
             </div>
             <div className="flex items-center gap-2">
               <span className="rounded-full bg-red-100 px-2 py-1 text-xs font-medium text-red-800">
-                🚫 Bloqueado
+                {t.usuarios.estadoBloqueado}
               </span>
-              <span className="text-muted-foreground">- Bloqueado definitivamente</span>
+              <span className="text-muted-foreground">{t.usuarios.leyenda.bloqueado}</span>
             </div>
             <div className="flex items-center gap-2">
               <span className="rounded px-2 py-1 text-xs font-medium bg-purple-100 text-purple-800">
-                🔴 Administrador
+                🔴 {t.usuarios.roles.admin}
               </span>
-              <span className="text-muted-foreground">- Acceso total al sistema</span>
+              <span className="text-muted-foreground">{t.usuarios.leyenda.admin}</span>
             </div>
           </div>
         </CardContent>

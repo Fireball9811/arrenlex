@@ -8,40 +8,43 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
+import { useLang } from "@/lib/i18n/context"
 
 export default function ReportesPage() {
+  const { t } = useLang()
+
   const reportes = [
     {
-      title: "Financiero",
-      description: "Reportes de ingresos, pagos y consignaciones",
+      title: t.reportes.financiero,
+      description: t.reportes.descFinanciero,
       href: "/reportes/financiero",
       icon: "💰",
       color: "bg-green-50 border-green-200 hover:bg-green-100",
     },
     {
-      title: "Personas",
-      description: "Reportes de inquilinos, propietarios y usuarios",
+      title: t.reportes.personas,
+      description: t.reportes.descPersonas,
       href: "/reportes/personas",
       icon: "👥",
       color: "bg-blue-50 border-blue-200 hover:bg-blue-100",
     },
     {
-      title: "Propiedades",
-      description: "Estado y ocupación de propiedades",
+      title: t.reportes.propiedadesCard,
+      description: t.reportes.descPropiedades,
       href: "/reportes/propiedades",
       icon: "🏠",
       color: "bg-amber-50 border-amber-200 hover:bg-amber-100",
     },
     {
-      title: "Generales",
-      description: "Resumen general del sistema",
+      title: t.reportes.generales,
+      description: t.reportes.descGenerales,
       href: "/reportes/generales",
       icon: "📊",
       color: "bg-purple-50 border-purple-200 hover:bg-purple-100",
     },
     {
-      title: "Documentos",
-      description: "Gestión de documentos y contratos",
+      title: t.reportes.documentos,
+      description: t.reportes.descDocumentos,
       href: "/reportes/documentos",
       icon: "📄",
       color: "bg-slate-50 border-slate-200 hover:bg-slate-100",
@@ -51,9 +54,9 @@ export default function ReportesPage() {
   return (
     <div>
       <div className="mb-6">
-        <h1 className="text-3xl font-bold">Reportes</h1>
+        <h1 className="text-3xl font-bold">{t.reportes.titulo}</h1>
         <p className="text-muted-foreground">
-          Selecciona una categoría para ver los reportes disponibles
+          {t.reportes.descripcion}
         </p>
       </div>
 

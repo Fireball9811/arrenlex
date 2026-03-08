@@ -6,6 +6,7 @@ import Link from "next/link"
 import { SignOutButton } from "@/components/auth/sign-out-button"
 import { UserEmail } from "@/components/auth/user-email"
 import { AdjuntarDocumentos } from "@/components/layout/adjuntar-documentos"
+import { useLang } from "@/lib/i18n/context"
 import {
   UserPlus,
   Building,
@@ -19,6 +20,7 @@ import {
 } from "lucide-react"
 
 export function AdminSidebar() {
+  const { t, lang, setLang } = useLang()
   const [pendientesCount, setPendientesCount] = useState(0)
   const [mantenimientoPendientesCount, setMantenimientoPendientesCount] = useState(0)
 
@@ -44,28 +46,28 @@ export function AdminSidebar() {
       <nav className="flex-1 space-y-2 p-4">
         <Link href="/admin/dashboard" className="flex items-center gap-3 rounded p-2 transition hover:bg-gray-800">
           <Home className="h-4 w-4" />
-          Dashboard
+          {t.sidebar.dashboard}
         </Link>
         <Link href="/nuevo" className="flex items-center gap-3 rounded p-2 transition hover:bg-gray-800">
           <UserPlus className="h-4 w-4" />
-          Nuevo Arrendatario
+          {t.sidebar.nuevoArrendatario}
         </Link>
         <Link href="/propiedades" className="flex items-center gap-3 rounded p-2 transition hover:bg-gray-800">
           <Building className="h-4 w-4" />
-          Propiedades
+          {t.sidebar.propiedades}
         </Link>
         <Link href="/contratos" className="flex items-center gap-3 rounded p-2 transition hover:bg-gray-800">
           <FileText className="h-4 w-4" />
-          Contratos
+          {t.sidebar.contratos}
         </Link>
         <Link href="/invitaciones" className="flex items-center gap-3 rounded p-2 transition hover:bg-gray-800">
           <Mail className="h-4 w-4" />
-          Invitaciones
+          {t.sidebar.invitaciones}
         </Link>
         <Link href="/mensajes" className="flex items-center justify-between rounded p-2 transition hover:bg-gray-800">
           <div className="flex items-center gap-3">
             <MessageSquare className="h-4 w-4" />
-            Mensajes
+            {t.sidebar.mensajes}
           </div>
           {pendientesCount > 0 && (
             <span className="rounded-full bg-amber-500/90 px-2 py-0.5 text-xs font-medium text-white">
@@ -75,12 +77,12 @@ export function AdminSidebar() {
         </Link>
         <Link href="/admin/reportes/gestion-pagos" className="flex items-center gap-3 rounded p-2 transition hover:bg-gray-800">
           <DollarSign className="h-4 w-4" />
-          Gestión de Pagos
+          {t.sidebar.gestionPagos}
         </Link>
         <Link href="/mantenimiento" className="flex items-center justify-between rounded p-2 transition hover:bg-gray-800">
           <div className="flex items-center gap-3">
             <Wrench className="h-4 w-4" />
-            Mantenimiento
+            {t.sidebar.mantenimiento}
           </div>
           {mantenimientoPendientesCount > 0 && (
             <span className="rounded-full bg-amber-500/90 px-2 py-0.5 text-xs font-medium text-white">
@@ -90,15 +92,23 @@ export function AdminSidebar() {
         </Link>
         <Link href="/admin/reportes" className="flex items-center gap-3 rounded p-2 transition hover:bg-gray-800">
           <BarChart3 className="h-4 w-4" />
-          Reportes
+          {t.sidebar.reportes}
         </Link>
       </nav>
       <div className="space-y-2 border-t border-gray-700 p-4">
+        <button
+          onClick={() => setLang(lang === "es" ? "en" : "es")}
+          className="flex w-full items-center justify-center gap-1 rounded p-2 text-xs font-semibold text-gray-400 transition hover:bg-gray-800 hover:text-white"
+        >
+          <span className={lang === "es" ? "text-white" : "text-gray-500"}>ES</span>
+          <span className="text-gray-600">|</span>
+          <span className={lang === "en" ? "text-white" : "text-gray-500"}>EN</span>
+        </button>
         <Link href="/cambio-contrasena" className="block rounded p-2 text-left text-sm text-white transition hover:bg-gray-800">
-          Cambio de contraseña
+          {t.sidebar.cambioContrasena}
         </Link>
         <AdjuntarDocumentos sidebar />
-        <SignOutButton>Cerrar sesión</SignOutButton>
+        <SignOutButton>{t.sidebar.cerrarSesion}</SignOutButton>
       </div>
     </aside>
   )

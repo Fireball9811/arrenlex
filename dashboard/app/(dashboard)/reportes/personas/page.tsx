@@ -10,6 +10,7 @@ import { UsuariosSistemaTab } from "./components/UsuariosSistemaTab"
 import { HistorialInquilinosTab } from "./components/HistorialInquilinosTab"
 import { RolesPermisosTab } from "./components/RolesPermisosTab"
 import { ContactosTab } from "./components/ContactosTab"
+import { useLang } from "@/lib/i18n/context"
 
 type Counts = {
   inquilinosActivos: number
@@ -21,6 +22,7 @@ type Counts = {
 }
 
 export default function PersonasPage() {
+  const { t } = useLang()
   const [counts, setCounts] = useState<Counts | null>(null)
   const [loading, setLoading] = useState(true)
 
@@ -43,11 +45,11 @@ export default function PersonasPage() {
     <div>
       <div className="mb-6">
         <Link href="/reportes" className="text-sm text-muted-foreground hover:underline">
-          ← Volver a Reportes
+          {t.reportes.volverReportes}
         </Link>
-        <h1 className="mt-2 text-3xl font-bold">Gestión de Personas</h1>
+        <h1 className="mt-2 text-3xl font-bold">{t.reportes.personasTitulo}</h1>
         <p className="text-muted-foreground">
-          Administra inquilinos, propietarios, usuarios y roles del sistema
+          {t.reportes.personasDesc}
         </p>
       </div>
 
@@ -55,37 +57,37 @@ export default function PersonasPage() {
       <div className="mb-6 grid gap-4 md:grid-cols-3 lg:grid-cols-6">
         <Card>
           <CardContent className="p-4">
-            <p className="text-sm text-muted-foreground">Inquilinos Activos</p>
+            <p className="text-sm text-muted-foreground">{t.reportes.tabs.inquilinosActivos}</p>
             <p className="text-2xl font-bold">{formatCount(counts?.inquilinosActivos)}</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-4">
-            <p className="text-sm text-muted-foreground">Propietarios</p>
+            <p className="text-sm text-muted-foreground">{t.reportes.tabs.propietarios}</p>
             <p className="text-2xl font-bold">{formatCount(counts?.propietarios)}</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-4">
-            <p className="text-sm text-muted-foreground">Usuarios Sistema</p>
+            <p className="text-sm text-muted-foreground">{t.reportes.tabs.usuariosSistema}</p>
             <p className="text-2xl font-bold">{formatCount(counts?.usuariosSistema)}</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-4">
-            <p className="text-sm text-muted-foreground">Historial</p>
+            <p className="text-sm text-muted-foreground">{t.reportes.tabs.historial}</p>
             <p className="text-2xl font-bold">{formatCount(counts?.historialInquilinos)}</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-4">
-            <p className="text-sm text-muted-foreground">Roles</p>
+            <p className="text-sm text-muted-foreground">{t.reportes.tabs.roles}</p>
             <p className="text-2xl font-bold">{formatCount(counts?.roles)}</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-4">
-            <p className="text-sm text-muted-foreground">Contactos</p>
+            <p className="text-sm text-muted-foreground">{t.reportes.tabs.contactos}</p>
             <p className="text-2xl font-bold">{formatCount(counts?.contactos)}</p>
           </CardContent>
         </Card>
@@ -95,22 +97,22 @@ export default function PersonasPage() {
       <Tabs defaultValue="inquilinos-activos" className="space-y-4">
         <TabsList className="grid w-full grid-cols-3 lg:grid-cols-6">
           <TabsTrigger value="inquilinos-activos" className="text-sm">
-            Inquilinos Activos
+            {t.reportes.tabs.inquilinosActivos}
           </TabsTrigger>
           <TabsTrigger value="propietarios" className="text-sm">
-            Propietarios
+            {t.reportes.tabs.propietarios}
           </TabsTrigger>
           <TabsTrigger value="usuarios-sistema" className="text-sm">
-            Usuarios Sistema
+            {t.reportes.tabs.usuariosSistema}
           </TabsTrigger>
           <TabsTrigger value="historial-inquilinos" className="text-sm">
-            Historial
+            {t.reportes.tabs.historial}
           </TabsTrigger>
           <TabsTrigger value="roles-permisos" className="text-sm">
-            Roles
+            {t.reportes.tabs.roles}
           </TabsTrigger>
           <TabsTrigger value="contactos" className="text-sm">
-            Contactos
+            {t.reportes.tabs.contactos}
           </TabsTrigger>
         </TabsList>
 

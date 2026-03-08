@@ -14,8 +14,10 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
+import { useLang } from "@/lib/i18n/context"
 
 function LoginContent() {
+  const { t, lang, setLang } = useLang()
   const router = useRouter()
   const searchParams = useSearchParams()
   const mensaje = searchParams.get("mensaje")
@@ -30,7 +32,7 @@ function LoginContent() {
     setLoading(true)
 
     if (!usuario.trim() || !contrasena.trim()) {
-      setError("Usuario y contraseña son obligatorios")
+      setError(t.auth.errorCamposObligatorios)
       setLoading(false)
       return
     }
@@ -59,7 +61,7 @@ function LoginContent() {
       }).catch(() => {})
       // #endregion
       setError(signInError.message === "Invalid login credentials"
-        ? "Correo o contraseña incorrectos"
+        ? t.auth.errorCredenciales
         : signInError.message)
       setLoading(false)
       return
@@ -72,7 +74,7 @@ function LoginContent() {
 
       if (mustChange && expiresAt && Date.now() > expiresAt) {
         await supabase.auth.signOut()
-        setError("La contraseña temporal ha expirado. Contacta al administrador para una nueva invitación.")
+        setError(t.auth.errorContrasenaExpirada)
         setLoading(false)
         return
       }
@@ -101,12 +103,22 @@ function LoginContent() {
 
   return (
     <main className="min-h-screen bg-gray-100 flex items-center justify-center">
+      <div className="absolute top-4 right-4">
+        <button
+          onClick={() => setLang(lang === "es" ? "en" : "es")}
+          className="flex items-center gap-1 rounded-lg border border-gray-300 bg-white px-3 py-2 text-xs font-semibold text-gray-600 transition hover:border-gray-500 hover:text-gray-900"
+        >
+          <span className={lang === "es" ? "text-gray-900 font-bold" : "text-gray-400"}>ES</span>
+          <span className="text-gray-300">|</span>
+          <span className={lang === "en" ? "text-gray-900 font-bold" : "text-gray-400"}>EN</span>
+        </button>
+      </div>
       <Card className="w-full max-w-md">
         <form onSubmit={handleSubmit}>
           <CardHeader className="text-center">
-            <CardTitle className="text-2xl">Arrenlex Inmobiliaria</CardTitle>
+            <CardTitle className="text-2xl">{t.auth.titulo}</CardTitle>
             <CardDescription>
-              Ingrese sus credenciales para acceder
+              {t.auth.descripcionLogin}
             </CardDescription>
           </CardHeader>
 
@@ -118,7 +130,7 @@ function LoginContent() {
             )}
             <div>
               <label htmlFor="usuario" className="block text-sm font-medium mb-1">
-                Usuario o correo
+                {t.auth.usuarioOCorreo}
               </label>
               <Input
                 id="usuario"
@@ -132,7 +144,7 @@ function LoginContent() {
 
             <div>
               <label htmlFor="contrasena" className="block text-sm font-medium mb-1">
-                Contraseña
+                {t.auth.contrasena}
               </label>
               <Input
                 id="contrasena"
@@ -151,13 +163,13 @@ function LoginContent() {
 
           <CardFooter className="flex flex-col gap-3">
             <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? "Ingresando..." : "Iniciar sesión"}
+              {loading ? t.auth.ingresando : t.auth.iniciarSesion}
             </Button>
             <Link
               href="/recuperar-contrasena"
               className="text-center text-sm text-muted-foreground hover:underline"
             >
-              ¿Olvidaste tu contraseña?
+              {t.auth.olvidasteContrasena}
             </Link>
           </CardFooter>
         </form>

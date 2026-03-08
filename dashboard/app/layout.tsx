@@ -1,5 +1,6 @@
 import "./globals.css"
 import { ReactNode } from "react"
+import { LangProvider } from "@/lib/i18n/context"
 
 export const metadata = {
   title: "Arrenlex",
@@ -14,7 +15,9 @@ export default function RootLayout({
   return (
     <html lang="es">
       <body>
-        {children}
+        <LangProvider>
+          {children}
+        </LangProvider>
       </body>
     </html>
   )

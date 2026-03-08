@@ -3,10 +3,12 @@
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { useLang } from "@/lib/i18n/context"
 
 export default function PropietarioDashboardPage() {
   const router = useRouter()
+  const { t } = useLang()
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -26,41 +28,41 @@ export default function PropietarioDashboardPage() {
       .catch(() => router.replace("/login"))
   }, [router])
 
-  if (loading) return <p className="text-muted-foreground">Cargando...</p>
+  if (loading) return <p className="text-muted-foreground">{t.comun.cargando}</p>
 
   return (
     <div>
-      <h1 className="mb-6 text-3xl font-bold">Panel de Propietario</h1>
+      <h1 className="mb-6 text-3xl font-bold">{t.dashboard.propietario.titulo}</h1>
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
         <Link href="/propietario/propiedades">
           <Card className="h-full transition hover:shadow-md">
             <CardHeader>
-              <CardTitle>Propiedades</CardTitle>
-              <CardDescription>Gestionar mis propiedades</CardDescription>
+              <CardTitle>{t.dashboard.propietario.propiedades}</CardTitle>
+              <CardDescription>{t.dashboard.propietario.gestionarPropiedades}</CardDescription>
             </CardHeader>
           </Card>
         </Link>
         <Link href="/propietario/contratos">
           <Card className="h-full transition hover:shadow-md">
             <CardHeader>
-              <CardTitle>Contratos</CardTitle>
-              <CardDescription>Ver y crear contratos</CardDescription>
+              <CardTitle>{t.dashboard.propietario.contratos}</CardTitle>
+              <CardDescription>{t.dashboard.propietario.verCrearContratos}</CardDescription>
             </CardHeader>
           </Card>
         </Link>
         <Link href="/propietario/invitaciones">
           <Card className="h-full transition hover:shadow-md">
             <CardHeader>
-              <CardTitle>Invitaciones</CardTitle>
-              <CardDescription>Invitar inquilinos</CardDescription>
+              <CardTitle>{t.dashboard.propietario.invitaciones}</CardTitle>
+              <CardDescription>{t.dashboard.propietario.invitarInquilinos}</CardDescription>
             </CardHeader>
           </Card>
         </Link>
         <Link href="/propietario/reportes/gestion-pagos">
           <Card className="h-full transition hover:shadow-md">
             <CardHeader>
-              <CardTitle>Gestión de Pagos</CardTitle>
-              <CardDescription>Ver pagos</CardDescription>
+              <CardTitle>{t.dashboard.propietario.gestionPagos}</CardTitle>
+              <CardDescription>{t.dashboard.propietario.verPagos}</CardDescription>
             </CardHeader>
           </Card>
         </Link>

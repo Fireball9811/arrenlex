@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { useLang } from "@/lib/i18n/context"
 
 const ROTATE_MS = 5000
 
@@ -10,6 +11,7 @@ type PropiedadPublica = {
 }
 
 export function LandingHero() {
+  const { t } = useLang()
   const [imagenes, setImagenes] = useState<string[]>([])
   const [index, setIndex] = useState(0)
   const [loading, setLoading] = useState(true)
@@ -67,7 +69,7 @@ export function LandingHero() {
         <div className="relative h-[280px] w-full max-w-4xl overflow-hidden rounded-2xl bg-white/10 shadow-2xl md:h-[360px]">
           {loading ? (
             <div className="flex h-full w-full items-center justify-center text-white/80">
-              Cargando…
+              {t.landing.cargandoFotos}
             </div>
           ) : imagenes.length > 0 ? (
             <>
@@ -106,7 +108,7 @@ export function LandingHero() {
             </>
           ) : (
             <div className="flex h-full w-full items-center justify-center text-white/80">
-              Próximamente fotos destacadas
+              {t.landing.proximamenteFotos}
             </div>
           )}
         </div>

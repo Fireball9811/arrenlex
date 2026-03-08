@@ -1,10 +1,9 @@
 import { ReactNode } from "react"
 import Image from "next/image"
 import Link from "next/link"
-import { SignOutButton } from "@/components/auth/sign-out-button"
 import { UserEmail } from "@/components/auth/user-email"
-import { AdjuntarDocumentos } from "@/components/layout/adjuntar-documentos"
 import { DashboardNav } from "@/components/layout/dashboard-nav"
+import { DashboardSidebarFooter } from "@/components/layout/dashboard-sidebar-footer"
 import { RoleGuard } from "@/components/layout/role-guard"
 
 export default function DashboardLayout({
@@ -30,17 +29,7 @@ export default function DashboardLayout({
         </Link>
 
         <DashboardNav />
-
-        <div className="space-y-2 border-t border-gray-700 p-4">
-          <Link
-            href="/cambio-contrasena"
-            className="block rounded p-2 text-left text-sm text-white transition hover:bg-gray-800"
-          >
-            Cambio de contraseña
-          </Link>
-          <AdjuntarDocumentos sidebar />
-          <SignOutButton>Cerrar sesión</SignOutButton>
-        </div>
+        <DashboardSidebarFooter />
       </aside>
 
       {/* Main Content */}

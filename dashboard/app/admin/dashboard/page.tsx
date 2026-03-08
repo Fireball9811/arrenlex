@@ -34,7 +34,10 @@ interface DashboardMetrics {
   }
 }
 
+import { useLang } from "@/lib/i18n/context"
+
 export default function AdminDashboardPage() {
+  const { t } = useLang()
   const router = useRouter()
   const [loading, setLoading] = useState(true)
   const [metrics, setMetrics] = useState<DashboardMetrics | null>(null)
@@ -61,19 +64,19 @@ export default function AdminDashboardPage() {
   }, [router])
 
   if (loading) {
-    return <p className="text-muted-foreground">Cargando...</p>
+    return <p className="text-muted-foreground">{t.comun.cargando}</p>
   }
 
   return (
     <div>
-      <h1 className="mb-6 text-3xl font-bold">Panel de Administración</h1>
+      <h1 className="mb-6 text-3xl font-bold">{t.dashboard.admin.titulo}</h1>
 
       {/* Tarjetas de métricas con gráficas - Grid de 3 columnas */}
       <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3 mb-16">
         {/* Usuarios */}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Usuarios</CardTitle>
+            <CardTitle className="text-sm font-medium">{t.dashboard.admin.usuarios}</CardTitle>
             <Users className="h-4 w-4 text-gray-400" />
           </CardHeader>
           <CardContent>
@@ -133,7 +136,7 @@ export default function AdminDashboardPage() {
         {/* Contratos */}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Contratos</CardTitle>
+            <CardTitle className="text-sm font-medium">{t.dashboard.admin.contratos}</CardTitle>
             <FileText className="h-4 w-4 text-gray-400" />
           </CardHeader>
           <CardContent>
@@ -155,7 +158,7 @@ export default function AdminDashboardPage() {
         {/* Mensajes */}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Mensajes</CardTitle>
+            <CardTitle className="text-sm font-medium">{t.dashboard.admin.mensajes}</CardTitle>
             <MessageSquare className="h-4 w-4 text-gray-400" />
           </CardHeader>
           <CardContent>
@@ -177,7 +180,7 @@ export default function AdminDashboardPage() {
         {/* Mantenimientos */}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Mantenimientos</CardTitle>
+            <CardTitle className="text-sm font-medium">{t.dashboard.admin.mantenimientos}</CardTitle>
             <Wrench className="h-4 w-4 text-gray-400" />
           </CardHeader>
           <CardContent>
@@ -199,7 +202,7 @@ export default function AdminDashboardPage() {
         {/* Propiedades */}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Propiedades</CardTitle>
+            <CardTitle className="text-sm font-medium">{t.dashboard.admin.propiedades}</CardTitle>
             <Building className="h-4 w-4 text-gray-400" />
           </CardHeader>
           <CardContent>
@@ -221,26 +224,26 @@ export default function AdminDashboardPage() {
         {/* Movimiento de Rentas - NUEVA TARJETA */}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Movimiento de Rentas</CardTitle>
+            <CardTitle className="text-sm font-medium">{t.dashboard.admin.movimientoRentas}</CardTitle>
             <TrendingUp className="h-4 w-4 text-gray-400" />
           </CardHeader>
           <CardContent>
             {metrics && (
               <div className="space-y-3">
                 <div className="flex justify-between items-center border-b pb-2">
-                  <span className="text-sm text-gray-600">Propiedades Rentadas</span>
+                  <span className="text-sm text-gray-600">{t.dashboard.admin.propiedadesRentadas}</span>
                   <span className="font-semibold">{metrics.movimientoRentas.propiedadesRentadas}</span>
                 </div>
                 <div className="flex justify-between items-center border-b pb-2">
-                  <span className="text-sm text-gray-600">Promedio Veces Rentada</span>
+                  <span className="text-sm text-gray-600">{t.dashboard.admin.promedioVeces}</span>
                   <span className="font-semibold">{metrics.movimientoRentas.promedioVecesRentada}x</span>
                 </div>
                 <div className="flex justify-between items-center border-b pb-2">
-                  <span className="text-sm text-gray-600">Duración Promedio</span>
-                  <span className="font-semibold">{metrics.movimientoRentas.promedioDuracionMeses} meses</span>
+                  <span className="text-sm text-gray-600">{t.dashboard.admin.duracionPromedio}</span>
+                  <span className="font-semibold">{metrics.movimientoRentas.promedioDuracionMeses} {t.dashboard.admin.meses}</span>
                 </div>
                 <div className="flex justify-between items-center pt-1">
-                  <span className="text-sm text-gray-600">Total Contratos</span>
+                  <span className="text-sm text-gray-600">{t.dashboard.admin.totalContratos}</span>
                   <span className="font-bold text-lg">{metrics.movimientoRentas.totalContratos}</span>
                 </div>
               </div>
@@ -252,7 +255,7 @@ export default function AdminDashboardPage() {
       {/* Acciones Rápidas - Parte inferior con más espaciado */}
       <Card className="mt-8">
         <CardHeader>
-          <CardTitle>Acciones Rápidas</CardTitle>
+          <CardTitle>{t.dashboard.admin.accionesRapidas}</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
@@ -262,7 +265,7 @@ export default function AdminDashboardPage() {
               onClick={() => router.push("/admin/usuarios?create=true")}
             >
               <UserPlus className="h-5 w-5" />
-              <span className="text-sm">Nuevo Usuario</span>
+              <span className="text-sm">{t.dashboard.admin.nuevoUsuario}</span>
             </Button>
 
             <Button
@@ -271,7 +274,7 @@ export default function AdminDashboardPage() {
               onClick={() => router.push("/admin/usuarios")}
             >
               <Users className="h-5 w-5" />
-              <span className="text-sm">Gestionar Usuarios</span>
+              <span className="text-sm">{t.dashboard.admin.gestionarUsuarios}</span>
             </Button>
 
             <Button
@@ -280,7 +283,7 @@ export default function AdminDashboardPage() {
               onClick={() => router.push("/mantenimiento")}
             >
               <Wrench className="h-5 w-5" />
-              <span className="text-sm">Mantenimiento</span>
+              <span className="text-sm">{t.dashboard.admin.mantenimientoBtn}</span>
             </Button>
 
             <Button
@@ -289,7 +292,7 @@ export default function AdminDashboardPage() {
               onClick={() => router.push("/mensajes")}
             >
               <MessageSquare className="h-5 w-5" />
-              <span className="text-sm">Mensajes</span>
+              <span className="text-sm">{t.dashboard.admin.mensajesBtn}</span>
             </Button>
           </div>
         </CardContent>

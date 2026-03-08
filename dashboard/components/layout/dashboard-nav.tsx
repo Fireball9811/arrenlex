@@ -1,12 +1,13 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import Image from "next/image"
 import Link from "next/link"
 import { BarChart3, User, FileText, Home, Building2, FileCheck, Mail, CreditCard, MessageSquare, Wrench } from "lucide-react"
 import type { UserRole } from "@/lib/auth/role"
+import { useLang } from "@/lib/i18n/context"
 
 export function DashboardNav() {
+  const { t } = useLang()
   const [role, setRole] = useState<UserRole | null>(null)
   const [pendientesCount, setPendientesCount] = useState<number>(0)
   const [intakeCount, setIntakeCount] = useState<number>(0)
@@ -57,54 +58,54 @@ export function DashboardNav() {
       {(isAdmin || isPropietario) && (
         <Link href="/dashboard" className={linkClass}>
           <BarChart3 />
-          Dashboard
+          {t.sidebar.dashboard}
         </Link>
       )}
 
       <Link href="/nuevo" className={linkClass}>
         <User />
-        {isInquilino ? "Mis datos" : "Nuevo Arrendatario"}
+        {isInquilino ? t.sidebar.misDatos : t.sidebar.nuevoArrendatario}
       </Link>
 
       {isInquilino && (
         <Link href="/mis-contratos" className={linkClass}>
           <FileText />
-          Mis Contratos
+          {t.sidebar.misContratos}
         </Link>
       )}
 
       {isInquilino && (
         <Link href="/catalogo" className={linkClass}>
           <Home />
-          Ver Propiedades
+          {t.sidebar.verPropiedades}
         </Link>
       )}
 
       {(isAdmin || isPropietario) && (
         <Link href="/propiedades" className={linkClass}>
           <Building2 />
-          Propiedades
+          {t.sidebar.propiedades}
         </Link>
       )}
 
       {(isAdmin || isPropietario) && (
         <Link href="/contratos" className={linkClass}>
           <FileCheck />
-          Contratos
+          {t.sidebar.contratos}
         </Link>
       )}
 
       {(isAdmin || isPropietario) && (
         <Link href="/invitaciones" className={linkClass}>
           <Mail />
-          Invitaciones
+          {t.sidebar.invitaciones}
         </Link>
       )}
 
       {(isAdmin || isPropietario) && (
         <Link href="/mensajes" className={linkClass}>
           <MessageSquare />
-          Mensajes
+          {t.sidebar.mensajes}
           {(pendientesCount + intakeCount) > 0 && (
             <span className="ml-auto rounded-full bg-amber-500/90 px-2 py-0.5 text-xs font-medium text-white">
               {pendientesCount + intakeCount}
@@ -115,7 +116,7 @@ export function DashboardNav() {
 
       <Link href="/mantenimiento" className={linkClass}>
         <Wrench />
-        Mantenimiento
+        {t.sidebar.mantenimiento}
         {(isAdmin || isPropietario) && mantenimientoPendientesCount > 0 && (
           <span className="ml-auto rounded-full bg-amber-500/90 px-2 py-0.5 text-xs font-medium text-white">
             {mantenimientoPendientesCount}
@@ -126,13 +127,13 @@ export function DashboardNav() {
       {(isAdmin || isPropietario) && (
         <Link href="/reportes/gestion-pagos" className={linkClass}>
           <CreditCard />
-          Gestión de Pagos
+          {t.sidebar.gestionPagos}
         </Link>
       )}
 
       <Link href={isInquilino ? "/reportes/mis-pagos" : "/reportes"} className={linkClass}>
         <BarChart3 />
-        {isInquilino ? "Mis Pagos" : "Reportes"}
+        {isInquilino ? t.sidebar.misPagos : t.sidebar.reportes}
       </Link>
     </nav>
   )

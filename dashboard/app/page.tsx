@@ -1,9 +1,13 @@
+"use client"
+
 import Image from "next/image"
 import Link from "next/link"
 import { ChevronRight } from "lucide-react"
 import { LandingHero } from "@/components/landing/landing-hero"
+import { useLang } from "@/lib/i18n/context"
 
 export default function HomePage() {
+  const { t, lang, setLang } = useLang()
   const currentYear = new Date().getFullYear()
 
   return (
@@ -20,37 +24,45 @@ export default function HomePage() {
             className="h-10 w-auto object-contain"
           />
         </Link>
-        <Link
-          href="/login"
-          className="rounded-lg bg-gray-900 px-4 py-2 text-sm font-medium uppercase tracking-wide text-white transition hover:bg-gray-800"
-        >
-          LOG IN
-        </Link>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => setLang(lang === "es" ? "en" : "es")}
+            className="flex items-center gap-1 rounded-lg border border-gray-300 px-3 py-2 text-xs font-semibold text-gray-600 transition hover:border-gray-500 hover:text-gray-900"
+          >
+            <span className={lang === "es" ? "text-gray-900 font-bold" : "text-gray-400"}>ES</span>
+            <span className="text-gray-300">|</span>
+            <span className={lang === "en" ? "text-gray-900 font-bold" : "text-gray-400"}>EN</span>
+          </button>
+          <Link
+            href="/login"
+            className="rounded-lg bg-gray-900 px-4 py-2 text-sm font-medium uppercase tracking-wide text-white transition hover:bg-gray-800"
+          >
+            LOG IN
+          </Link>
+        </div>
       </header>
 
-      {/* Hero: gradiente, marca de agua, banner central con fotos, Exclusive Estate */}
       <LandingHero />
 
-      {/* Tarjeta CTA: blanco, bordes superiores redondeados; títulos y botón más arriba */}
       <section className="relative z-20 -mt-8 rounded-t-[2rem] bg-white px-6 pb-10 pt-6 shadow-lg md:-mt-12 md:rounded-t-[3rem] md:px-12 md:pt-8">
         <p className="mb-1 text-center text-sm font-medium uppercase tracking-[0.25em] text-cyan-600 md:text-base">
-          El hub inmobiliario líder en Colombia
+          {t.landing.hub}
         </p>
         <h1 className="mb-4 text-center text-3xl font-bold tracking-tight text-gray-900 md:text-4xl lg:text-5xl">
-          Encuentra tu próximo{" "}
-          <span className="text-cyan-500">futuro</span>
+          {t.landing.titulo}{" "}
+          <span className="text-cyan-500">{t.landing.futuro}</span>
         </h1>
         <div className="mb-8 flex justify-center">
           <Link
             href="/catalogo"
             className="inline-flex items-center gap-2 rounded-full bg-cyan-500 px-6 py-3 text-base font-medium uppercase tracking-wide text-white transition hover:bg-cyan-600 md:px-8 md:py-4 md:text-lg"
           >
-            ECHAR UN VISTAZO
+            {t.landing.botonCatalogo}
             <ChevronRight className="h-5 w-5" />
           </Link>
         </div>
         <p className="text-center text-xs text-gray-500 md:text-sm">
-          PROPIEDAD DE ARRENLEX INMOBILIARIA © {currentYear}
+          {t.landing.copyright} {currentYear}
         </p>
       </section>
     </div>

@@ -6,16 +6,14 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Button } from "@/components/ui/button"
 import type { SolicitudMantenimientoConPropiedad } from "@/lib/types/database"
 import type { UserRole } from "@/lib/auth/role"
+import { useLang } from "@/lib/i18n/context"
 
-const STATUS_OPTIONS = [
-  { value: "pendiente", label: "Pendiente" },
-  { value: "ejecucion", label: "En ejecución" },
-  { value: "completado", label: "Completado" },
-] as const
+const STATUS_MANT_VALUES = ["pendiente", "ejecucion", "completado"] as const
 
 type PropiedadOption = { id: string; direccion: string; ciudad: string; barrio: string }
 
 export default function MantenimientoPage() {
+  const { t } = useLang()
   const [solicitudes, setSolicitudes] = useState<SolicitudMantenimientoConPropiedad[]>([])
   const [loading, setLoading] = useState(true)
   const [role, setRole] = useState<UserRole | null>(null)
@@ -172,51 +170,50 @@ export default function MantenimientoPage() {
   if (role === null) {
     return (
       <div className="p-6">
-        <p className="text-muted-foreground">Cargando…</p>
+        <p className="text-muted-foreground">{t.comun.cargando}</p>
       </div>
     )
   }
 
-  // Inquilino: solo formulario
   if (role === "inquilino") {
     return (
       <div>
         <div className="mb-6">
-          <h1 className="text-3xl font-bold">Mantenimiento</h1>
+          <h1 className="text-3xl font-bold">{t.mantenimiento.titulo}</h1>
           <p className="text-muted-foreground">
-            Reporta un problema en tu inmueble. Indica el detalle y desde cuándo ocurre.
+            {t.mantenimiento.descripcionInquilino}
           </p>
         </div>
         <Card className="max-w-2xl">
           <CardHeader>
-            <CardTitle>Solicitud de mantenimiento</CardTitle>
+            <CardTitle>{t.mantenimiento.cardTitulo}</CardTitle>
             <CardDescription>
-              Completa los campos. Se enviará un correo a Arrenlex con el detalle de tu solicitud.
+              {t.mantenimiento.cardDesc}
             </CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmitForm} className="space-y-4">
               <div>
-                <label className="mb-1 block text-sm font-medium">Nombre completo *</label>
+                <label className="mb-1 block text-sm font-medium">{t.mantenimiento.nombreCompleto}</label>
                 <input
                   type="text"
                   required
                   className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                   value={nombreCompleto}
                   onChange={(e) => setNombreCompleto(e.target.value)}
-                  placeholder="Tu nombre completo"
+                  placeholder={t.mantenimiento.placeholderNombre}
                 />
               </div>
               {propiedades.length > 1 && (
                 <div>
-                  <label className="mb-1 block text-sm font-medium">Propiedad *</label>
+                  <label className="mb-1 block text-sm font-medium">{t.mantenimiento.propiedad}</label>
                   <select
                     required
                     className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                     value={propiedadId}
                     onChange={(e) => setPropiedadId(e.target.value)}
                   >
-                    <option value="">Selecciona la propiedad</option>
+                    <option value="">{t.mantenimiento.seleccionaPropiedad}</option>
                     {propiedades.map((p) => (
                       <option key={p.id} value={p.id}>
                         {[p.direccion, p.ciudad].filter(Boolean).join(", ")}
@@ -226,25 +223,25 @@ export default function MantenimientoPage() {
                 </div>
               )}
               <div>
-                <label className="mb-1 block text-sm font-medium">Detalle del problema *</label>
+                <label className="mb-1 block text-sm font-medium">{t.mantenimiento.detalle}</label>
                 <textarea
                   required
                   rows={4}
                   className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                   value={detalle}
                   onChange={(e) => setDetalle(e.target.value)}
-                  placeholder="Describe el problema que tiene el inmueble..."
+                  placeholder={t.mantenimiento.placeholderDetalle}
                 />
               </div>
               <div>
-                <label className="mb-1 block text-sm font-medium">Desde cuándo está el problema *</label>
+                <label className="mb-1 block text-sm font-medium">{t.mantenimiento.desdeCuando}</label>
                 <input
                   type="text"
                   required
                   className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                   value={desdeCuando}
                   onChange={(e) => setDesdeCuando(e.target.value)}
-                  placeholder="Ej: hace 2 semanas, desde el lunes, desde ayer..."
+                  placeholder={t.mantenimiento.placeholderDesdeCuando}
                 />
               </div>
               {formMessage && (
@@ -259,7 +256,7 @@ export default function MantenimientoPage() {
                 </div>
               )}
               <Button type="submit" disabled={formLoading}>
-                {formLoading ? "Enviando…" : "Enviar solicitud"}
+                {formLoading ? t.mantenimiento.enviando : t.mantenimiento.enviar}
               </Button>
             </form>
           </CardContent>
@@ -268,46 +265,45 @@ export default function MantenimientoPage() {
     )
   }
 
-  // Admin / Propietario: lista con tabs + formulario para crear solicitud
   return (
     <div>
       <div className="mb-6">
-        <h1 className="text-3xl font-bold">Mantenimiento</h1>
+        <h1 className="text-3xl font-bold">{t.mantenimiento.titulo}</h1>
         <p className="text-muted-foreground">
-          Solicitudes de mantenimiento. Puedes crear nuevas solicitudes o gestionar las existentes.
+          {t.mantenimiento.descripcionAdmin}
         </p>
       </div>
 
       {!showFormAdminProp ? (
         <div className="mb-6">
           <Button onClick={() => setShowFormAdminProp(true)} variant="default">
-            Nueva solicitud de mantenimiento
+            {t.mantenimiento.nuevaSolicitud}
           </Button>
         </div>
       ) : (
         <Card className="mb-6 max-w-2xl">
           <CardHeader className="flex flex-row items-center justify-between space-y-0">
             <div>
-              <CardTitle>Nueva solicitud de mantenimiento</CardTitle>
+              <CardTitle>{t.mantenimiento.nuevaSolicitud}</CardTitle>
               <CardDescription>
-                Completa los campos para reportar un problema en una propiedad.
+                {t.mantenimiento.cardDescAdmin}
               </CardDescription>
             </div>
             <Button variant="ghost" size="sm" onClick={() => setShowFormAdminProp(false)}>
-              Cerrar
+              {t.comun.cerrar}
             </Button>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmitForm} className="space-y-4">
               <div>
-                <label className="mb-1 block text-sm font-medium">Propiedad *</label>
+                <label className="mb-1 block text-sm font-medium">{t.mantenimiento.propiedad}</label>
                 <select
                   required
                   className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                   value={propiedadId}
                   onChange={(e) => setPropiedadId(e.target.value)}
                 >
-                  <option value="">Selecciona la propiedad</option>
+                  <option value="">{t.mantenimiento.seleccionaPropiedad}</option>
                   {propiedades.map((p) => (
                     <option key={p.id} value={p.id}>
                       {[p.direccion, p.ciudad].filter(Boolean).join(", ")}
@@ -316,36 +312,36 @@ export default function MantenimientoPage() {
                 </select>
               </div>
               <div>
-                <label className="mb-1 block text-sm font-medium">Nombre completo *</label>
+                <label className="mb-1 block text-sm font-medium">{t.mantenimiento.nombreCompleto}</label>
                 <input
                   type="text"
                   required
                   className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                   value={nombreCompleto}
                   onChange={(e) => setNombreCompleto(e.target.value)}
-                  placeholder="Nombre de quien reporta"
+                  placeholder={t.mantenimiento.placeholderNombreAdmin}
                 />
               </div>
               <div>
-                <label className="mb-1 block text-sm font-medium">Detalle del problema *</label>
+                <label className="mb-1 block text-sm font-medium">{t.mantenimiento.detalle}</label>
                 <textarea
                   required
                   rows={4}
                   className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                   value={detalle}
                   onChange={(e) => setDetalle(e.target.value)}
-                  placeholder="Describe el problema que tiene el inmueble..."
+                  placeholder={t.mantenimiento.placeholderDetalle}
                 />
               </div>
               <div>
-                <label className="mb-1 block text-sm font-medium">Desde cuándo está el problema *</label>
+                <label className="mb-1 block text-sm font-medium">{t.mantenimiento.desdeCuando}</label>
                 <input
                   type="text"
                   required
                   className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                   value={desdeCuando}
                   onChange={(e) => setDesdeCuando(e.target.value)}
-                  placeholder="Ej: hace 2 semanas, desde el lunes..."
+                  placeholder={t.mantenimiento.placeholderDesdeCuando}
                 />
               </div>
               {formMessage && (
@@ -361,7 +357,7 @@ export default function MantenimientoPage() {
               )}
               <div className="flex gap-2">
                 <Button type="submit" disabled={formLoading}>
-                  {formLoading ? "Enviando…" : "Enviar solicitud"}
+                  {formLoading ? t.mantenimiento.enviando : t.mantenimiento.enviar}
                 </Button>
                 <Button
                   type="button"
@@ -369,7 +365,7 @@ export default function MantenimientoPage() {
                   disabled={formLoading}
                   onClick={() => setShowFormAdminProp(false)}
                 >
-                  Cancelar
+                  {t.mantenimiento.cancelar}
                 </Button>
               </div>
             </form>
@@ -379,43 +375,43 @@ export default function MantenimientoPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Solicitudes de mantenimiento</CardTitle>
+          <CardTitle>{t.mantenimiento.cardTitulo}</CardTitle>
         </CardHeader>
         <CardContent>
           {loading ? (
-            <p className="text-muted-foreground">Cargando…</p>
+            <p className="text-muted-foreground">{t.comun.cargando}</p>
           ) : (
             <Tabs value={tab} onValueChange={setTab}>
               <TabsList className="grid w-full max-w-md grid-cols-3">
                 <TabsTrigger value="pendiente">
-                  Pendientes ({solicitudes.filter((s) => s.status === "pendiente").length})
+                  {t.mantenimiento.estados.pendiente} ({solicitudes.filter((s) => s.status === "pendiente").length})
                 </TabsTrigger>
                 <TabsTrigger value="ejecucion">
-                  En ejecución ({solicitudes.filter((s) => s.status === "ejecucion").length})
+                  {t.mantenimiento.estados.ejecucion} ({solicitudes.filter((s) => s.status === "ejecucion").length})
                 </TabsTrigger>
                 <TabsTrigger value="completado">
-                  Completados ({solicitudes.filter((s) => s.status === "completado").length})
+                  {t.mantenimiento.estados.completado} ({solicitudes.filter((s) => s.status === "completado").length})
                 </TabsTrigger>
               </TabsList>
 
-              {STATUS_OPTIONS.map(({ value }) => {
+              {STATUS_MANT_VALUES.map((value) => {
                 const filtered = solicitudes.filter((s) => s.status === value)
                 return (
                 <TabsContent key={value} value={value} className="mt-4">
                   {filtered.length === 0 ? (
-                    <p className="py-8 text-muted-foreground">No hay solicitudes en esta categoría.</p>
+                    <p className="py-8 text-muted-foreground">{t.mantenimiento.sinSolicitudes}</p>
                   ) : (
                     <div className="overflow-x-auto">
                       <table className="w-full text-sm">
                         <thead>
                           <tr className="border-b">
-                            <th className="p-2 text-left font-medium">Nombre</th>
-                            <th className="p-2 text-left font-medium">Propiedad</th>
-                            <th className="p-2 text-left font-medium">Detalle</th>
-                            <th className="p-2 text-left font-medium">Desde cuándo</th>
-                            <th className="p-2 text-left font-medium">Responsable</th>
-                            <th className="p-2 text-left font-medium">Fecha</th>
-                            <th className="p-2 text-left font-medium">Estado</th>
+                            <th className="p-2 text-left font-medium">{t.mantenimiento.columnas.nombre}</th>
+                            <th className="p-2 text-left font-medium">{t.mantenimiento.columnas.propiedad}</th>
+                            <th className="p-2 text-left font-medium">{t.mantenimiento.columnas.detalle}</th>
+                            <th className="p-2 text-left font-medium">{t.mantenimiento.columnas.desdeCuando}</th>
+                            <th className="p-2 text-left font-medium">{t.mantenimiento.columnas.responsable}</th>
+                            <th className="p-2 text-left font-medium">{t.mantenimiento.columnas.fecha}</th>
+                            <th className="p-2 text-left font-medium">{t.mantenimiento.columnas.estado}</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -438,14 +434,14 @@ export default function MantenimientoPage() {
                                   disabled={updatingId === s.id}
                                   className="rounded border bg-background px-2 py-1 text-sm"
                                 >
-                                  {STATUS_OPTIONS.map((opt) => (
-                                    <option key={opt.value} value={opt.value}>
-                                      {opt.label}
+                                  {STATUS_MANT_VALUES.map((val) => (
+                                    <option key={val} value={val}>
+                                      {t.mantenimiento.estados[val as keyof typeof t.mantenimiento.estados]}
                                     </option>
                                   ))}
                                 </select>
                                 {updatingId === s.id && (
-                                  <span className="ml-1 text-xs text-muted-foreground">Guardando…</span>
+                                  <span className="ml-1 text-xs text-muted-foreground">{t.mantenimiento.guardando}</span>
                                 )}
                               </td>
                             </tr>

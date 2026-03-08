@@ -2,81 +2,84 @@
 
 import Link from "next/link"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { useLang } from "@/lib/i18n/context"
 
 export default function DocumentosPage() {
+  const { t } = useLang()
+
   return (
     <div>
       <div className="mb-6">
         <Link href="/reportes" className="text-sm text-muted-foreground hover:underline">
-          ← Volver a Reportes
+          {t.reportes.volverReportes}
         </Link>
-        <h1 className="mt-2 text-3xl font-bold">Documentos</h1>
+        <h1 className="mt-2 text-3xl font-bold">{t.reportes.documentosTitulo}</h1>
         <p className="text-muted-foreground">
-          Gestión de documentos y contratos
+          {t.reportes.descDocumentos}
         </p>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         <Card>
           <CardHeader>
-            <CardTitle>📄 Contratos Activos</CardTitle>
-            <CardDescription>Contratos de arrendamiento vigentes</CardDescription>
+            <CardTitle>{t.reportes.documentosCards.contratosActivos}</CardTitle>
+            <CardDescription>{t.reportes.documentosCards.descContratosActivos}</CardDescription>
           </CardHeader>
           <CardContent>
             <p className="text-3xl font-bold">24</p>
-            <p className="text-sm text-muted-foreground">contratos activos</p>
+            <p className="text-sm text-muted-foreground">{t.reportes.documentosCards.contratosActivos2}</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader>
-            <CardTitle>📋 Contratos Históricos</CardTitle>
-            <CardDescription>Archivo de contratos finalizados</CardDescription>
+            <CardTitle>{t.reportes.documentosCards.contratosHistoricos}</CardTitle>
+            <CardDescription>{t.reportes.documentosCards.descHistoricos}</CardDescription>
           </CardHeader>
           <CardContent>
             <p className="text-3xl font-bold">156</p>
-            <p className="text-sm text-muted-foreground">contratos archivados</p>
+            <p className="text-sm text-muted-foreground">{t.reportes.documentosCards.contratosArchivados}</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader>
-            <CardTitle>✍️ Generar Contrato</CardTitle>
-            <CardDescription>Crear nuevo contrato de arrendamiento</CardDescription>
+            <CardTitle>{t.reportes.documentosCards.generarContrato}</CardTitle>
+            <CardDescription>{t.reportes.documentosCards.descGenerar}</CardDescription>
           </CardHeader>
           <CardContent>
-            <p className="text-muted-foreground">Generar...</p>
+            <p className="text-muted-foreground">{t.reportes.documentosCards.generar}</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader>
-            <CardTitle>📎 Documentos Firmados</CardTitle>
-            <CardDescription>Documentos con firma digital</CardDescription>
+            <CardTitle>{t.reportes.documentosCards.documentosFirmados}</CardTitle>
+            <CardDescription>{t.reportes.documentosCards.descFirmados}</CardDescription>
           </CardHeader>
           <CardContent>
             <p className="text-3xl font-bold">18</p>
-            <p className="text-sm text-muted-foreground">documentos</p>
+            <p className="text-sm text-muted-foreground">{t.reportes.documentosCards.documentos}</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader>
-            <CardTitle>📁 Cargar Documento</CardTitle>
-            <CardDescription>Subir nuevos documentos al sistema</CardDescription>
+            <CardTitle>{t.reportes.documentosCards.cargarDocumento}</CardTitle>
+            <CardDescription>{t.reportes.documentosCards.descCargar}</CardDescription>
           </CardHeader>
           <CardContent>
-            <p className="text-muted-foreground">Cargar...</p>
+            <p className="text-muted-foreground">{t.reportes.documentosCards.cargar}</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader>
-            <CardTitle>🔍 Buscar Documentos</CardTitle>
-            <CardDescription>Buscar en el repositorio de documentos</CardDescription>
+            <CardTitle>{t.reportes.documentosCards.buscarDocumentos}</CardTitle>
+            <CardDescription>{t.reportes.documentosCards.descBuscar}</CardDescription>
           </CardHeader>
           <CardContent>
-            <p className="text-muted-foreground">Buscar...</p>
+            <p className="text-muted-foreground">{t.reportes.documentosCards.buscar}</p>
           </CardContent>
         </Card>
       </div>

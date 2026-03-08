@@ -9,33 +9,36 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
+import { useLang } from "@/lib/i18n/context"
 
 export default function FinancieroPage() {
+  const { t } = useLang()
+
   const reportes = [
     {
-      title: "Historial de Pagos",
-      description: "Ver todos los pagos recibidos con detalles de inquilinos",
+      title: t.reportes.historialPagos,
+      description: t.reportes.descHistorial,
       href: "/reportes/financiero/historial",
       icon: "📋",
       color: "bg-blue-50 border-blue-200",
     },
     {
-      title: "Reporte por Concepto",
-      description: "Resumen de ingresos agrupados por concepto",
+      title: t.reportes.reporteConcepto,
+      description: t.reportes.descConcepto,
       href: "/reportes/financiero/concepto",
       icon: "📑",
       color: "bg-purple-50 border-purple-200",
     },
     {
-      title: "Consignar Pago",
-      description: "Formulario PSE para que los inquilinos realicen consignaciones",
+      title: t.reportes.consignarPago,
+      description: t.reportes.descConsignar,
       href: "/reportes/financiero/consignar",
       icon: "💳",
       color: "bg-green-50 border-green-200",
     },
     {
-      title: "Pendientes por Pagar",
-      description: "Ver pagos pendientes y vencidos",
+      title: t.reportes.pendientesPagar,
+      description: t.reportes.descPendientes,
       href: "/reportes/financiero/pendientes",
       icon: "⏳",
       color: "bg-amber-50 border-amber-200",
@@ -46,11 +49,11 @@ export default function FinancieroPage() {
     <div>
       <div className="mb-6">
         <Link href="/reportes" className="text-sm text-muted-foreground hover:underline">
-          ← Volver a Reportes
+          {t.reportes.volverReportes}
         </Link>
-        <h1 className="mt-2 text-3xl font-bold">Reportes Financieros</h1>
+        <h1 className="mt-2 text-3xl font-bold">{t.reportes.finTitulo}</h1>
         <p className="text-muted-foreground">
-          Gestion de pagos, consignaciones e ingresos
+          {t.reportes.finDesc}
         </p>
       </div>
 
@@ -72,7 +75,7 @@ export default function FinancieroPage() {
             </CardHeader>
             <CardContent>
               <Button asChild variant="outline" size="sm">
-                <Link href={reporte.href}>Abrir</Link>
+                <Link href={reporte.href}>{t.reportes.abrir}</Link>
               </Button>
             </CardContent>
           </Card>

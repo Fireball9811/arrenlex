@@ -15,12 +15,14 @@ import {
 } from "@/components/ui/card"
 import { CIUDADES_COLOMBIA } from "@/lib/ciudades-colombia"
 import type { UserRole } from "@/lib/auth/role"
+import { useLang } from "@/lib/i18n/context"
 
 type PerfilOption = { id: string; email: string; nombre?: string | null; role: string }
 
 const TIPOS = ["apartamento", "casa", "local", "oficina", "habitación"]
 
 export default function NuevaPropiedadPage() {
+  const { t } = useLang()
   const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -65,7 +67,7 @@ export default function NuevaPropiedadPage() {
     e.preventDefault()
     setError(null)
     if (role === "admin" && !user_id) {
-      setError("Seleccione un propietario")
+      setError(t.propiedades.seleccionePropietario)
       return
     }
     setLoading(true)
@@ -99,14 +101,14 @@ export default function NuevaPropiedadPage() {
 
   return (
     <div>
-      <h1 className="mb-6 text-3xl font-bold">Nueva propiedad</h1>
+      <h1 className="mb-6 text-3xl font-bold">{t.propiedades.nuevaPropiedad}</h1>
 
       <Card className="max-w-2xl">
         <form onSubmit={handleSubmit}>
           <CardHeader>
-            <CardTitle>Datos de la propiedad</CardTitle>
+            <CardTitle>{t.propiedades.datosTitulo}</CardTitle>
             <CardDescription>
-              Complete la información del inmueble a arrendar
+              {t.propiedades.datosDesc}
             </CardDescription>
           </CardHeader>
 
@@ -114,7 +116,7 @@ export default function NuevaPropiedadPage() {
             {role === "admin" && (
               <div className="sm:col-span-2">
                 <label htmlFor="propietario" className="mb-1 block text-sm font-medium">
-                  Propietario
+                  {t.propiedades.propietario.replace(":", "")}
                 </label>
                 <select
                   id="propietario"
@@ -123,7 +125,7 @@ export default function NuevaPropiedadPage() {
                   className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm"
                   required
                 >
-                  <option value="">Seleccionar propietario...</option>
+                  <option value="">{t.propiedades.seleccionarPropietario}</option>
                   {propietarios.map((p) => (
                     <option key={p.id} value={p.id}>
                       {p.nombre ? `${p.nombre} (${p.email})` : p.email}
@@ -135,7 +137,7 @@ export default function NuevaPropiedadPage() {
 
             <div className="sm:col-span-2">
               <label htmlFor="direccion" className="mb-1 block text-sm font-medium">
-                Dirección
+                {t.propiedades.direccion}
               </label>
               <Input
                 id="direccion"
@@ -148,7 +150,7 @@ export default function NuevaPropiedadPage() {
 
             <div>
               <label htmlFor="ciudad" className="mb-1 block text-sm font-medium">
-                Ciudad
+                {t.propiedades.ciudad}
               </label>
               <Input
                 id="ciudad"
@@ -167,7 +169,7 @@ export default function NuevaPropiedadPage() {
 
             <div>
               <label htmlFor="barrio" className="mb-1 block text-sm font-medium">
-                Barrio
+                {t.propiedades.barrio}
               </label>
               <Input
                 id="barrio"
@@ -179,7 +181,7 @@ export default function NuevaPropiedadPage() {
 
             <div>
               <label htmlFor="tipo" className="mb-1 block text-sm font-medium">
-                Tipo
+                {t.propiedades.tipo}
               </label>
               <select
                 id="tipo"
@@ -197,7 +199,7 @@ export default function NuevaPropiedadPage() {
 
             <div>
               <label htmlFor="habitaciones" className="mb-1 block text-sm font-medium">
-                Habitaciones
+                {t.propiedades.habitaciones}
               </label>
               <Input
                 id="habitaciones"
@@ -210,7 +212,7 @@ export default function NuevaPropiedadPage() {
 
             <div>
               <label htmlFor="banos" className="mb-1 block text-sm font-medium">
-                Baños
+                {t.propiedades.banos}
               </label>
               <Input
                 id="banos"
@@ -223,7 +225,7 @@ export default function NuevaPropiedadPage() {
 
             <div>
               <label htmlFor="area" className="mb-1 block text-sm font-medium">
-                Área (m²)
+                {t.propiedades.area}
               </label>
               <Input
                 id="area"
@@ -236,7 +238,7 @@ export default function NuevaPropiedadPage() {
 
             <div>
               <label htmlFor="valorArriendo" className="mb-1 block text-sm font-medium">
-                Valor arriendo (COP)
+                {t.propiedades.valorArriendo}
               </label>
               <Input
                 id="valorArriendo"
@@ -250,7 +252,7 @@ export default function NuevaPropiedadPage() {
 
             <div className="sm:col-span-2">
               <label htmlFor="descripcion" className="mb-1 block text-sm font-medium">
-                Descripción
+                {t.propiedades.descripcion}
               </label>
               <textarea
                 id="descripcion"
@@ -269,10 +271,10 @@ export default function NuevaPropiedadPage() {
 
           <CardFooter className="flex gap-3">
             <Button type="submit" disabled={loading}>
-              {loading ? "Guardando..." : "Guardar"}
+              {loading ? t.comun.guardando : t.comun.guardar}
             </Button>
             <Button variant="outline" asChild>
-              <Link href="/propiedades">Cancelar</Link>
+              <Link href="/propiedades">{t.comun.cancelar}</Link>
             </Button>
           </CardFooter>
         </form>

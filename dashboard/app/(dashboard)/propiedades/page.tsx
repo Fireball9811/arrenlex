@@ -12,12 +12,14 @@ import {
 } from "@/components/ui/card"
 import { Camera } from "lucide-react"
 import type { Propiedad } from "@/lib/types/database"
+import { useLang } from "@/lib/i18n/context"
 
 type PropiedadConPropietario = Propiedad & {
   propietario?: { id: string; nombre: string | null; email: string } | null
 }
 
 export default function PropiedadesPage() {
+  const { t } = useLang()
   const [propiedades, setPropiedades] = useState<PropiedadConPropietario[]>([])
   const [loading, setLoading] = useState(true)
   const [imagenPorPropiedadId, setImagenPorPropiedadId] = useState<Record<string, string | null>>({})
@@ -117,7 +119,7 @@ export default function PropiedadesPage() {
   }
 
   async function handleDelete(id: string) {
-    if (!confirm("¿Eliminar esta propiedad?")) return
+    if (!confirm(t.propiedades.confirmarEliminar)) return
     const res = await fetch(`/api/propiedades/${id}`, { method: "DELETE" })
     if (res.ok) {
       setPropiedades((prev) => prev.filter((p) => p.id !== id))
@@ -141,25 +143,25 @@ export default function PropiedadesPage() {
   return (
     <div>
       <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-3xl font-bold">Propiedades</h1>
+        <h1 className="text-3xl font-bold">{t.propiedades.titulo}</h1>
         <Button asChild>
-          <Link href="/propiedades/nuevo">Nueva propiedad</Link>
+          <Link href="/propiedades/nuevo">{t.propiedades.nuevaPropiedad}</Link>
         </Button>
       </div>
 
       {loading ? (
-        <p className="text-muted-foreground">Cargando propiedades...</p>
+        <p className="text-muted-foreground">{t.propiedades.cargando}</p>
       ) : propiedades.length === 0 ? (
         <Card>
           <CardHeader>
-            <CardTitle>Sin propiedades</CardTitle>
+            <CardTitle>{t.propiedades.sinPropiedades}</CardTitle>
             <CardDescription>
-              Aún no hay propiedades registradas. Crea la primera.
+              {t.propiedades.sinPropiedadesDesc}
             </CardDescription>
           </CardHeader>
           <CardContent>
             <Button asChild>
-              <Link href="/propiedades/nuevo">Nueva propiedad</Link>
+              <Link href="/propiedades/nuevo">{t.propiedades.nuevaPropiedad}</Link>
             </Button>
           </CardContent>
         </Card>
@@ -196,7 +198,7 @@ export default function PropiedadesPage() {
                 />
                 {subiendoPorId[p.id] ? (
                   <div className="flex h-full min-h-[200px] items-center justify-center">
-                    <span className="text-sm text-muted-foreground">Subiendo…</span>
+                    <span className="text-sm text-muted-foreground">{t.propiedades.subiendo}</span>
                   </div>
                 ) : imagenPorPropiedadId[p.id] ? (
                   <img
@@ -207,8 +209,8 @@ export default function PropiedadesPage() {
                 ) : (
                   <span className="pointer-events-none flex h-full min-h-[200px] flex-col items-center justify-center gap-2 p-4 text-center text-muted-foreground hover:text-foreground transition hover:bg-muted/80">
                     <Camera className="h-12 w-12" />
-                    <span className="text-sm font-medium">Subir foto</span>
-                    <span className="text-xs text-muted-foreground">o arrastra aquí</span>
+                    <span className="text-sm font-medium">{t.propiedades.subirFoto}</span>
+                    <span className="text-xs text-muted-foreground">{t.propiedades.arrastraAqui}</span>
                   </span>
                 )}
               </div>
@@ -221,7 +223,7 @@ export default function PropiedadesPage() {
                 </CardDescription>
                 {p.propietario && (
                   <p className="mt-1 text-xs text-muted-foreground">
-                    Propietario: {p.propietario.nombre ?? p.propietario.email}
+                    {t.propiedades.propietario} {p.propietario.nombre ?? p.propietario.email}
                   </p>
                 )}
                 <CardContent className="flex-1 space-y-2 p-0 pt-2">
@@ -237,7 +239,7 @@ export default function PropiedadesPage() {
                 </CardContent>
                 <div className="flex gap-2 pt-3">
                   <Button variant="outline" size="sm" asChild>
-                    <Link href={`/propiedades/${p.id}/editar`}>Editar</Link>
+                    <Link href={`/propiedades/${p.id}/editar`}>{t.comun.editar}</Link>
                   </Button>
                   <Button
                     variant="outline"
@@ -245,7 +247,7 @@ export default function PropiedadesPage() {
                     className="text-destructive hover:bg-destructive hover:text-destructive-foreground"
                     onClick={() => handleDelete(p.id)}
                   >
-                    Eliminar
+                    {t.comun.eliminar}
                   </Button>
                 </div>
               </div>

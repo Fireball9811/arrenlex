@@ -10,8 +10,10 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import { Mail, Send, CheckCircle, AlertCircle } from "lucide-react"
+import { useLang } from "@/lib/i18n/context"
 
 export default function InvitacionesPage() {
+  const { t } = useLang()
   const [email, setEmail] = useState("")
   const [nombre, setNombre] = useState("")
   const [loading, setLoading] = useState(false)
@@ -48,9 +50,9 @@ export default function InvitacionesPage() {
   return (
     <div>
       <div className="mb-6">
-        <h1 className="text-3xl font-bold">Invitaciones</h1>
+        <h1 className="text-3xl font-bold">{t.invitaciones.titulo}</h1>
         <p className="text-muted-foreground">
-          Envía invitaciones por correo electrónico a nuevos inquilinos
+          {t.invitaciones.descripcion}
         </p>
       </div>
 
@@ -58,17 +60,17 @@ export default function InvitacionesPage() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Mail className="h-5 w-5" />
-            Enviar Invitación
+            {t.invitaciones.cardTitulo}
           </CardTitle>
           <CardDescription>
-            El inquilino recibirá un correo con un enlace para registrarse en la plataforma
+            {t.invitaciones.cardDesc}
           </CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={sendInvitation} className="space-y-4">
             <div>
               <label className="block text-sm font-medium mb-1">
-                Nombre completo del inquilino *
+                {t.invitaciones.nombreLabel}
               </label>
               <input
                 type="text"
@@ -82,7 +84,7 @@ export default function InvitacionesPage() {
 
             <div>
               <label className="block text-sm font-medium mb-1">
-                Correo electrónico del inquilino *
+                {t.invitaciones.emailLabel}
               </label>
               <input
                 type="email"
@@ -113,14 +115,13 @@ export default function InvitacionesPage() {
 
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
               <p className="text-sm text-blue-800">
-                <strong>Información:</strong> El inquilino podrá acceder a la plataforma
-                para ver su información personal y los pagos asociados a sus contratos.
+                {t.invitaciones.cardDesc2}
               </p>
             </div>
 
             <Button type="submit" disabled={loading || !email || !nombre.trim()}>
               <Send className="mr-2 h-4 w-4" />
-              {loading ? "Enviando..." : "Enviar Invitación"}
+              {loading ? t.invitaciones.enviando : t.invitaciones.enviar}
             </Button>
           </form>
         </CardContent>

@@ -13,8 +13,10 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
+import { useLang } from "@/lib/i18n/context"
 
 export default function RecuperarContrasenaPage() {
+  const { t } = useLang()
   const [email, setEmail] = useState("")
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -25,7 +27,7 @@ export default function RecuperarContrasenaPage() {
     setError(null)
     setSuccess(false)
     if (!email.trim()) {
-      setError("Ingresa tu correo electrónico")
+      setError(t.auth.ingresaCorreo)
       return
     }
     setLoading(true)
@@ -53,21 +55,21 @@ export default function RecuperarContrasenaPage() {
       <Card className="w-full max-w-md">
         <form onSubmit={handleSubmit}>
           <CardHeader className="text-center">
-            <CardTitle className="text-2xl">¿Olvidaste tu contraseña?</CardTitle>
+            <CardTitle className="text-2xl">{t.auth.recuperarTitulo}</CardTitle>
             <CardDescription>
-              Ingresa tu correo y te enviaremos un enlace para restablecer tu contraseña.
+              {t.auth.recuperarDescripcion}
             </CardDescription>
           </CardHeader>
 
           <CardContent className="space-y-4">
             <div>
               <label htmlFor="email" className="mb-1 block text-sm font-medium">
-                Correo electrónico
+                {t.auth.correoElectronico}
               </label>
               <Input
                 id="email"
                 type="email"
-                placeholder="Ej: usuario@ejemplo.com"
+                placeholder={t.auth.placeholderCorreo}
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 autoComplete="email"
@@ -78,20 +80,20 @@ export default function RecuperarContrasenaPage() {
             {error && <p className="text-sm text-destructive">{error}</p>}
             {success && (
               <p className="text-sm font-medium text-green-600">
-                Revisa tu correo. Te enviamos un enlace para restablecer tu contraseña.
+                {t.auth.revisa}
               </p>
             )}
           </CardContent>
 
           <CardFooter className="flex flex-col gap-3">
             <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? "Enviando..." : "Enviar enlace"}
+              {loading ? t.auth.enviandoEnlace : t.auth.enviarEnlace}
             </Button>
             <Link
               href="/login"
               className="text-center text-sm text-muted-foreground hover:underline"
             >
-              Volver al login
+              {t.auth.volverLogin}
             </Link>
           </CardFooter>
         </form>

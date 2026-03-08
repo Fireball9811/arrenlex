@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Calendar, Home, User } from "lucide-react"
 import Link from "next/link"
+import { useLang } from "@/lib/i18n/context"
 
 type Contrato = {
   id: string
@@ -18,6 +19,7 @@ type Contrato = {
 }
 
 export default function InquilinoMisContratosPage() {
+  const { t } = useLang()
   const [contratos, setContratos] = useState<Contrato[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -40,25 +42,30 @@ export default function InquilinoMisContratosPage() {
   const formatPeso = (n: number) => new Intl.NumberFormat("es-CO", { style: "currency", currency: "COP" }).format(n)
   const formatDate = (d: string) => new Date(d).toLocaleDateString("es-CO", { day: "2-digit", month: "short", year: "numeric" })
   const estadoColors: Record<string, string> = { borrador: "bg-gray-100 text-gray-800", activo: "bg-green-100 text-green-800", terminado: "bg-blue-100 text-blue-800", vencido: "bg-red-100 text-red-800" }
-  const estadoLabels: Record<string, string> = { borrador: "Borrador", activo: "Activo", terminado: "Terminado", vencido: "Vencido" }
+  const estadoLabels: Record<string, string> = {
+    borrador: t.contratos.estados.borrador,
+    activo: t.contratos.estados.activo,
+    terminado: t.contratos.estados.terminado,
+    vencido: t.contratos.estados.vencido,
+  }
 
-  if (loading) return <p className="text-muted-foreground">Cargando contratos...</p>
+  if (loading) return <p className="text-muted-foreground">{t.contratos.cargando}</p>
 
   return (
     <div>
       <div className="mb-6">
-        <Link href="/inquilino/dashboard" className="text-sm text-muted-foreground hover:underline">← Volver</Link>
-        <h1 className="mt-2 text-3xl font-bold">Mis Contratos</h1>
-        <p className="text-muted-foreground">Contratos de arrendamiento donde tú eres el arrendatario</p>
+        <Link href="/inquilino/dashboard" className="text-sm text-muted-foreground hover:underline">← {t.comun.volver}</Link>
+        <h1 className="mt-2 text-3xl font-bold">{t.misContratos.titulo}</h1>
+        <p className="text-muted-foreground">{t.misContratos.descripcion}</p>
       </div>
       {contratos.length === 0 ? (
         <Card>
           <CardHeader>
-            <CardTitle>Sin contratos</CardTitle>
-            <CardDescription>Aún no tienes contratos registrados.</CardDescription>
+            <CardTitle>{t.misContratos.sinContratos}</CardTitle>
+            <CardDescription>{t.misContratos.sinContratosDesc}</CardDescription>
           </CardHeader>
           <CardContent>
-            <Button asChild><Link href="/catalogo">Ver Propiedades Disponibles</Link></Button>
+            <Button asChild><Link href="/catalogo">{t.misContratos.verPropiedades}</Link></Button>
           </CardContent>
         </Card>
       ) : (
@@ -76,10 +83,10 @@ export default function InquilinoMisContratosPage() {
                 <div className="flex items-center gap-2 text-sm text-muted-foreground"><User className="h-4 w-4" /><span>{c.arrendatarios?.nombre}</span></div>
                 <div className="flex items-center gap-2 text-sm text-muted-foreground"><Calendar className="h-4 w-4" /><span>{formatDate(c.fecha_inicio)} - {formatDate(c.fecha_fin)}</span></div>
                 <div className="flex items-center gap-2 text-sm text-muted-foreground"><Home className="h-4 w-4" /><span>{c.propiedades?.ciudad}</span></div>
-                <p className="text-sm text-muted-foreground">Canon mensual:</p>
+                <p className="text-sm text-muted-foreground">{t.misContratos.canonMensual}</p>
                 <p className="text-lg font-semibold">{formatPeso(c.canon_mensual)}</p>
                 <Button variant="outline" size="sm" className="w-full" asChild>
-                  <Link href={`/catalogo/propiedades/${c.propiedades?.id || c.id}`}>Ver Propiedad</Link>
+                  <Link href={`/catalogo/propiedades/${c.propiedades?.id || c.id}`}>{t.misContratos.verPropiedad}</Link>
                 </Button>
               </CardContent>
             </Card>

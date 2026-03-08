@@ -3,6 +3,7 @@
 import { useRef, useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { createClient } from "@/lib/supabase/client"
+import { useLang } from "@/lib/i18n/context"
 
 const MAX_SIZE_BYTES = 20 * 1024 * 1024 // 20 MB
 const ALLOWED_TYPES = [
@@ -22,6 +23,7 @@ function isAllowedFile(file: File): boolean {
 type AdjuntarDocumentosProps = { sidebar?: boolean }
 
 export function AdjuntarDocumentos({ sidebar }: AdjuntarDocumentosProps) {
+  const { t } = useLang()
   const inputRef = useRef<HTMLInputElement>(null)
   const [uploading, setUploading] = useState(false)
   const [uploadProgress, setUploadProgress] = useState<{ current: number; total: number } | null>(null)
@@ -36,11 +38,11 @@ export function AdjuntarDocumentos({ sidebar }: AdjuntarDocumentosProps) {
     const rejected: string[] = []
     for (const file of files) {
       if (!isAllowedFile(file)) {
-        rejected.push(`${file.name} (tipo no permitido)`)
+        rejected.push(`${file.name} (${t.adjuntar.tipoNoPermitido})`)
         continue
       }
       if (file.size > MAX_SIZE_BYTES) {
-        rejected.push(`${file.name} (supera 20 MB)`)
+        rejected.push(`${file.name} (${t.adjuntar.superaLimite})`)
         continue
       }
       valid.push(file)
@@ -49,7 +51,7 @@ export function AdjuntarDocumentos({ sidebar }: AdjuntarDocumentosProps) {
     if (valid.length === 0) {
       setMessage({
         type: "error",
-        text: rejected.length > 0 ? rejected.join(". ") : "Ningún archivo válido (JPG, PDF o Word, máx. 20 MB).",
+        text: rejected.length > 0 ? rejected.join(". ") : t.adjuntar.ningunValido,
       })
       return
     }
@@ -62,7 +64,7 @@ export function AdjuntarDocumentos({ sidebar }: AdjuntarDocumentosProps) {
       const supabase = createClient()
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) {
-        setMessage({ type: "error", text: "Debes iniciar sesión para adjuntar documentos." })
+        setMessage({ type: "error", text: t.adjuntar.debesIniciar })
         setUploading(false)
         setUploadProgress(null)
         return
@@ -87,7 +89,7 @@ export function AdjuntarDocumentos({ sidebar }: AdjuntarDocumentosProps) {
       if (fail === 0) {
         setMessage({
           type: "ok",
-          text: valid.length === 1 ? `"${valid[0]!.name}" subido correctamente.` : `${ok} archivos subidos correctamente.`,
+          text: valid.length === 1 ? `"${valid[0]!.name}" ${t.adjuntar.subidoOk}` : `${ok} ${t.adjuntar.variosSubidos}`,
         })
       } else {
         setMessage({
@@ -96,7 +98,7 @@ export function AdjuntarDocumentos({ sidebar }: AdjuntarDocumentosProps) {
         })
       }
     } catch {
-      setMessage({ type: "error", text: "Error al subir los archivos." })
+      setMessage({ type: "error", text: t.adjuntar.errorSubir })
       setUploadProgress(null)
     } finally {
       setUploading(false)
@@ -105,15 +107,15 @@ export function AdjuntarDocumentos({ sidebar }: AdjuntarDocumentosProps) {
 
   useEffect(() => {
     if (!message) return
-    const t = setTimeout(() => setMessage(null), 5000)
-    return () => clearTimeout(t)
+    const timer = setTimeout(() => setMessage(null), 5000)
+    return () => clearTimeout(timer)
   }, [message])
 
   const progressText = uploadProgress
-    ? `Subiendo ${uploadProgress.current} de ${uploadProgress.total}…`
+    ? t.adjuntar.subiendoN.replace("{n}", String(uploadProgress.current)).replace("{total}", String(uploadProgress.total))
     : uploading
-      ? "Subiendo…"
-      : "Adjuntar documentos"
+      ? t.adjuntar.subiendo
+      : t.adjuntar.titulo
 
   if (sidebar) {
     return (

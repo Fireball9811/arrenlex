@@ -11,6 +11,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
+import { useLang } from "@/lib/i18n/context"
 
 type PropiedadPublica = {
   id: string
@@ -20,6 +21,7 @@ type PropiedadPublica = {
 }
 
 function CatalogoContent() {
+  const { t } = useLang()
   const router = useRouter()
   const searchParams = useSearchParams()
   const [ciudades, setCiudades] = useState<string[]>([])
@@ -62,10 +64,10 @@ function CatalogoContent() {
       <div className="mb-6">
         <Button variant="ghost" size="sm" className="mb-4 -ml-2" asChild>
           <Link href="/">
-            ← Volver a inicio
+            {t.catalogo.volverInicio}
           </Link>
         </Button>
-        <h1 className="text-3xl font-bold mb-6">Catálogo de Propiedades</h1>
+        <h1 className="text-3xl font-bold mb-6">{t.catalogo.titulo}</h1>
 
         {/* Selector de ciudad */}
         <div className="flex flex-wrap gap-2">
@@ -73,7 +75,7 @@ function CatalogoContent() {
             variant={!ciudadSeleccionada ? "default" : "outline"}
             onClick={() => setCiudadSeleccionada("")}
           >
-            Todas las ciudades
+            {t.catalogo.todasCiudades}
           </Button>
           {ciudades.map((ciudad) => (
             <Button
@@ -88,22 +90,22 @@ function CatalogoContent() {
       </div>
 
       {loading ? (
-        <p className="text-muted-foreground">Cargando propiedades...</p>
+        <p className="text-muted-foreground">{t.catalogo.cargando}</p>
       ) : !ciudadSeleccionada ? (
         <Card>
           <CardHeader>
-            <CardTitle>Selecciona una ciudad</CardTitle>
+            <CardTitle>{t.catalogo.seleccionaCiudad}</CardTitle>
             <CardDescription>
-              Selecciona una ciudad del listado para ver las propiedades disponibles.
+              {t.catalogo.seleccionaDescripcion}
             </CardDescription>
           </CardHeader>
         </Card>
       ) : propiedades.length === 0 ? (
         <Card>
           <CardHeader>
-            <CardTitle>Sin propiedades</CardTitle>
+            <CardTitle>{t.catalogo.sinPropiedades}</CardTitle>
             <CardDescription>
-              No hay propiedades disponibles en {ciudadSeleccionada} en este momento.
+              {t.catalogo.sinPropiedadesDesc.replace("{ciudad}", ciudadSeleccionada)}
             </CardDescription>
           </CardHeader>
         </Card>
@@ -131,20 +133,20 @@ function CatalogoContent() {
               </div>
 
               <CardHeader>
-                <CardTitle className="text-lg">Tamaño: {propiedad.area} m²</CardTitle>
+                <CardTitle className="text-lg">{t.catalogo.tamano}: {propiedad.area} m²</CardTitle>
                 {propiedad.descripcion ? (
                   <CardDescription className="line-clamp-3">
                     {propiedad.descripcion}
                   </CardDescription>
                 ) : (
-                  <CardDescription>Sin descripción</CardDescription>
+                  <CardDescription>{t.catalogo.sinDescripcion}</CardDescription>
                 )}
               </CardHeader>
 
               <CardContent>
                 <Button variant="outline" className="w-full" asChild>
                   <Link href={`/catalogo/propiedades/${propiedad.id}`} onClick={(e) => e.stopPropagation()}>
-                    Ver detalle
+                    {t.catalogo.verDetalle}
                   </Link>
                 </Button>
               </CardContent>
@@ -158,7 +160,7 @@ function CatalogoContent() {
 
 export default function CatalogoPage() {
   return (
-    <Suspense fallback={<p className="text-muted-foreground">Cargando catálogo...</p>}>
+    <Suspense fallback={<p className="text-muted-foreground">Cargando…</p>}>
       <CatalogoContent />
     </Suspense>
   )

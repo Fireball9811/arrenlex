@@ -11,8 +11,10 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import type { ContratoConRelaciones } from "@/lib/types/database"
+import { useLang } from "@/lib/i18n/context"
 
 export default function ContratosPage() {
+  const { t } = useLang()
   const [contratos, setContratos] = useState<ContratoConRelaciones[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -24,7 +26,7 @@ export default function ContratosPage() {
   }, [])
 
   async function handleDelete(id: string) {
-    if (!confirm("¿Eliminar este contrato?")) return
+    if (!confirm(t.contratos.confirmarEliminar)) return
     const res = await fetch(`/api/contratos/${id}`, { method: "DELETE" })
     if (res.ok) {
       setContratos((prev) => prev.filter((c) => c.id !== id))
@@ -50,34 +52,34 @@ export default function ContratosPage() {
   }
 
   const estadoLabels: Record<string, string> = {
-    borrador: "Borrador",
-    activo: "Activo",
-    terminado: "Terminado",
-    vencido: "Vencido",
+    borrador: t.contratos.estados.borrador,
+    activo: t.contratos.estados.activo,
+    terminado: t.contratos.estados.terminado,
+    vencido: t.contratos.estados.vencido,
   }
 
   return (
     <div>
       <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-3xl font-bold">Contratos</h1>
+        <h1 className="text-3xl font-bold">{t.contratos.titulo}</h1>
         <Button asChild>
-          <Link href="/contratos/nuevo">Nuevo contrato</Link>
+          <Link href="/contratos/nuevo">{t.contratos.nuevoContrato}</Link>
         </Button>
       </div>
 
       {loading ? (
-        <p className="text-muted-foreground">Cargando contratos...</p>
+        <p className="text-muted-foreground">{t.contratos.cargando}</p>
       ) : contratos.length === 0 ? (
         <Card>
           <CardHeader>
-            <CardTitle>Sin contratos</CardTitle>
+            <CardTitle>{t.contratos.sinContratos}</CardTitle>
             <CardDescription>
-              Aún no hay contratos registrados. Crea el primero.
+              {t.contratos.sinContratosDesc}
             </CardDescription>
           </CardHeader>
           <CardContent>
             <Button asChild>
-              <Link href="/contratos/nuevo">Nuevo contrato</Link>
+              <Link href="/contratos/nuevo">{t.contratos.nuevoContrato}</Link>
             </Button>
           </CardContent>
         </Card>
@@ -101,25 +103,25 @@ export default function ContratosPage() {
               <CardContent className="flex-1 space-y-2">
                 <div className="grid grid-cols-2 gap-2 text-sm">
                   <div>
-                    <p className="text-muted-foreground">Inicio:</p>
+                    <p className="text-muted-foreground">{t.contratos.inicio}</p>
                     <p className="font-medium">{formatDate(c.fecha_inicio)}</p>
                   </div>
                   <div>
-                    <p className="text-muted-foreground">Fin:</p>
+                    <p className="text-muted-foreground">{t.contratos.fin}</p>
                     <p className="font-medium">{formatDate(c.fecha_fin)}</p>
                   </div>
                 </div>
                 <div>
-                  <p className="text-muted-foreground">Canon mensual:</p>
+                  <p className="text-muted-foreground">{t.contratos.canonMensual}</p>
                   <p className="text-lg font-semibold">{formatPeso(c.canon_mensual)}</p>
                 </div>
               </CardContent>
               <div className="flex gap-2 p-4 pt-0">
                 <Button variant="outline" size="sm" asChild className="flex-1">
-                  <Link href={`/contratos/${c.id}`}>Ver</Link>
+                  <Link href={`/contratos/${c.id}`}>{t.comun.ver}</Link>
                 </Button>
                 <Button variant="outline" size="sm" asChild>
-                  <Link href={`/contratos/${c.id}/editar`}>Editar</Link>
+                  <Link href={`/contratos/${c.id}/editar`}>{t.comun.editar}</Link>
                 </Button>
                 <Button
                   variant="outline"
@@ -127,7 +129,7 @@ export default function ContratosPage() {
                   className="text-destructive hover:bg-destructive hover:text-destructive-foreground"
                   onClick={() => handleDelete(c.id)}
                 >
-                  Eliminar
+                  {t.comun.eliminar}
                 </Button>
               </div>
             </Card>
