@@ -453,6 +453,9 @@ export default function MensajesPage() {
   const [subTabIntake, setSubTabIntake] = useState<"pendientes" | "gestionados">("pendientes")
   const [seleccionados, setSeleccionados] = useState<Set<string>>(new Set())
   const [mostrarComparacion, setMostrarComparacion] = useState(false)
+  const [pasando, setPasando] = useState(false)
+  const [pasadoOk, setPasadoOk] = useState<string | null>(null)
+  const [pasadoError, setPasadoError] = useState<string | null>(null)
 
   const fetchSolicitudes = useCallback(async () => {
     const res = await fetch("/api/solicitudes-visita")
@@ -496,6 +499,9 @@ export default function MensajesPage() {
 
   const handleAbrirDetalle = useCallback(async (registro: IntakeFormulario) => {
     setIntakeSeleccionado(registro)
+    setPasando(false)
+    setPasadoOk(null)
+    setPasadoError(null)
     if (!registro.gestionado) {
       await fetch(`/api/intake/${registro.id}`, { method: "PATCH" })
       setIntakeRegistros((prev) =>
@@ -662,18 +668,61 @@ export default function MensajesPage() {
 
             <SeccionCalificacion registro={intakeSeleccionado} />
 
-            <div className="mt-4 pt-4 border-t flex justify-between items-center">
-              <p className="text-xs text-muted-foreground">
-                Autorización: {intakeSeleccionado.autorizacion ? intakeSeleccionado.autorizacion.slice(0, 60) + "…" : "—"}
-              </p>
-              {/* TODO: implementar lógica para pasar datos al módulo de arrendatarios */}
-              <button
-                disabled
-                className="rounded-lg bg-primary/40 px-4 py-2 text-sm font-medium text-primary-foreground cursor-not-allowed opacity-60"
-                title="Próximamente"
-              >
-                Pasar a Arrendatarios
-              </button>
+            <div className="mt-4 pt-4 border-t space-y-3">
+              {pasadoOk && (
+                <div className="rounded-lg bg-green-50 border border-green-200 px-4 py-3 text-sm text-green-800 dark:bg-green-950/30 dark:border-green-800 dark:text-green-300">
+                  ✓ Arrendatario creado. Acceso enviado a <strong>{pasadoOk}</strong>
+                </div>
+              )}
+              {pasadoError && (
+                <div className="rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-800 dark:bg-red-950/30 dark:border-red-800 dark:text-red-300">
+                  {pasadoError}
+                </div>
+              )}
+              <div className="flex justify-between items-center">
+                <p className="text-xs text-muted-foreground">
+                  Autorización: {intakeSeleccionado.autorizacion ? intakeSeleccionado.autorizacion.slice(0, 60) + "…" : "—"}
+                </p>
+                <button
+                  disabled={pasando || !!pasadoOk}
+                  onClick={async () => {
+                    setPasando(true)
+                    setPasadoOk(null)
+                    setPasadoError(null)
+                    try {
+                      const res = await fetch("/api/mensajes/pasar-arrendatario", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ intakeId: intakeSeleccionado.id }),
+                      })
+                      const json = await res.json()
+                      if (!res.ok) {
+                        setPasadoError(json.error ?? "Error al procesar la solicitud")
+                      } else {
+                        setPasadoOk(json.email ?? "—")
+                        setIntakeRegistros((prev) =>
+                          prev.map((r) =>
+                            r.id === intakeSeleccionado.id ? { ...r, gestionado: true } : r
+                          )
+                        )
+                      }
+                    } catch {
+                      setPasadoError("Error de conexión. Intenta de nuevo.")
+                    } finally {
+                      setPasando(false)
+                    }
+                  }}
+                  className={`rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
+                    pasadoOk
+                      ? "bg-green-600/40 text-green-900 dark:text-green-300 cursor-not-allowed opacity-60"
+                      : pasando
+                      ? "bg-primary/60 text-primary-foreground cursor-wait opacity-80"
+                      : "bg-primary text-primary-foreground hover:bg-primary/90 cursor-pointer"
+                  }`}
+                >
+                  {pasando ? "Procesando…" : pasadoOk ? "✓ Creado" : "Pasar a Arrendatarios"}
+                </button>
+              </div>
             </div>
           </div>
         </div>
