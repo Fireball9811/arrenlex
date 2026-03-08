@@ -229,6 +229,8 @@ export async function POST(request: Request) {
       nombre: nombreTrim,
       cedula: cedulaTrim,
       telefono: toNullableText(telefono),
+      salario: toNullableNum(salario),
+      salario2: toNullableNum(salario_2),
       ingresos: toNullableNum(ingresos),
       personas: toNullableInt(personas),
       ninos: toNullableInt(ninos),

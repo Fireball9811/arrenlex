@@ -94,6 +94,8 @@ export function buildAplicacionWhatsAppText(params: {
   nombre: string
   cedula: string
   telefono: string | null
+  salario: number | null
+  salario2: number | null
   ingresos: number | null
   personas: number | null
   ninos: number | null
@@ -118,9 +120,11 @@ export function buildAplicacionWhatsAppText(params: {
     "",
     `🏠 Propiedad: ${params.propiedadRef}${params.canonArriendo ? ` · Canon: ${cop(params.canonArriendo)}/mes` : ""}`,
     "",
-    `👤 Candidato: ${params.nombre}`,
+    `👤 Arrendatario: ${params.nombre}`,
     `🪪 Cédula: ${v(params.cedula)}`,
     `📞 Teléfono: ${v(params.telefono)}`,
+    `💼 Salario arrendatario: ${cop(params.salario)}`,
+    ...(params.salario2 ? [`💼 Salario coarrendatario: ${cop(params.salario2)}`] : []),
     `💰 Ingresos grupales: ${cop(params.ingresos)}`,
     "",
     `👥 Adultos: ${v(params.personas)}  ·  Niños: ${v(params.ninos)}  ·  Mascotas: ${v(params.mascotas)}`,

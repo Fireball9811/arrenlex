@@ -299,19 +299,6 @@ function Paso2({
           />
         </div>
       </div>
-      <div>
-        <FieldLabel htmlFor="ingresos" required>Ingresos mensuales grupales</FieldLabel>
-        <Input
-          id="ingresos"
-          type="number"
-          min="0"
-          value={form.ingresos}
-          onChange={(e) => onChange("ingresos", e.target.value)}
-          placeholder="Total ingresos del grupo familiar"
-          required
-          disabled={disabled}
-        />
-      </div>
     </div>
   )
 }
@@ -327,27 +314,27 @@ function Paso3({
 }) {
   return (
     <div className="space-y-4">
-      <p className="text-sm text-gray-500 -mt-1 mb-2">
-        Si no hay coarrendatario puedes dejar estos campos vacíos
-      </p>
+      <p className="text-sm text-gray-500 -mt-1 mb-2">Datos del coarrendatario</p>
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <FieldLabel htmlFor="nombre_coarrendatario">Nombre completo</FieldLabel>
+          <FieldLabel htmlFor="nombre_coarrendatario" required>Nombre completo</FieldLabel>
           <Input
             id="nombre_coarrendatario"
             value={form.nombre_coarrendatario}
             onChange={(e) => onChange("nombre_coarrendatario", e.target.value)}
             placeholder="Nombre del coarrendatario"
+            required
             disabled={disabled}
           />
         </div>
         <div>
-          <FieldLabel htmlFor="cedula_coarrendatario">Cédula</FieldLabel>
+          <FieldLabel htmlFor="cedula_coarrendatario" required>Cédula</FieldLabel>
           <Input
             id="cedula_coarrendatario"
             value={form.cedula_coarrendatario}
             onChange={(e) => onChange("cedula_coarrendatario", e.target.value)}
             placeholder="1234567890"
+            required
             disabled={disabled}
           />
         </div>
@@ -613,11 +600,13 @@ export default function AplicacionPage() {
       )
     }
     if (step === 2) {
-      return form.ingresos.trim() !== ""
+      return true
     }
     if (step === 3) {
-      // Paso 3 es todo opcional, siempre se puede avanzar
-      return true
+      return (
+        form.nombre_coarrendatario.trim() !== "" &&
+        form.cedula_coarrendatario.trim() !== ""
+      )
     }
     return false
   }
@@ -768,6 +757,7 @@ export default function AplicacionPage() {
                 onClick={handleBack}
                 disabled={step === 1 || submitting}
                 className="text-gray-500"
+                tabIndex={-1}
               >
                 <ArrowLeft className="mr-1 h-4 w-4" />
                 Anterior
