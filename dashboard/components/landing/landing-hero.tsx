@@ -3,12 +3,7 @@
 import { useEffect, useState } from "react"
 import { useLang } from "@/lib/i18n/context"
 
-const ROTATE_MS = 5000
-
-type PropiedadPublica = {
-  id: string
-  imagen_principal: string | null
-}
+const ROTATE_MS = 4500
 
 export function LandingHero() {
   const { t } = useLang()
@@ -17,12 +12,12 @@ export function LandingHero() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    fetch("/api/propiedades/public")
+    fetch("/api/propiedades/banner")
       .then((res) => (res.ok ? res.json() : []))
-      .then((data: PropiedadPublica[]) => {
-        const urls = (Array.isArray(data) ? data : [])
-          .map((p) => p.imagen_principal)
-          .filter((url): url is string => typeof url === "string" && url.length > 0)
+      .then((data: unknown) => {
+        const urls = Array.isArray(data)
+          ? data.filter((u): u is string => typeof u === "string" && u.length > 0)
+          : []
         setImagenes(urls)
       })
       .catch(() => setImagenes([]))
@@ -31,15 +26,15 @@ export function LandingHero() {
 
   useEffect(() => {
     if (imagenes.length <= 1) return
-    const t = setInterval(() => {
+    const timer = setInterval(() => {
       setIndex((i) => (i + 1) % imagenes.length)
     }, ROTATE_MS)
-    return () => clearInterval(t)
+    return () => clearInterval(timer)
   }, [imagenes.length])
 
   return (
     <section
-      className="relative flex min-h-[70vh] flex-col justify-between px-6 pb-8 pt-12 md:min-h-[80vh] md:px-10"
+      className="relative flex min-h-[70vh] flex-col justify-between px-6 pb-8 pt-10 md:min-h-[80vh] md:px-10"
       style={{
         background:
           "linear-gradient(135deg, #0f172a 0%, #1e3a5f 40%, #0e7490 70%, #06b6d4 100%)",
@@ -47,28 +42,30 @@ export function LandingHero() {
     >
       {/* Marca de agua */}
       <div
-        className="pointer-events-none absolute inset-0 opacity-[0.08]"
+        className="pointer-events-none absolute inset-0 opacity-[0.07]"
         style={{
           backgroundImage: "url(/Logo.png)",
           backgroundRepeat: "repeat",
-          backgroundSize: "280px",
+          backgroundSize: "260px",
         }}
         aria-hidden
       />
+
+      {/* Texto central superpuesto */}
       <div
         className="pointer-events-none absolute inset-0 flex items-center justify-center"
         aria-hidden
       >
-        <span className="whitespace-nowrap text-2xl font-semibold tracking-[0.4em] text-white md:text-3xl md:tracking-[0.6em]">
-          ARRENLEX INMOBILIARIA
+        <span className="whitespace-nowrap text-xl font-semibold tracking-[0.35em] text-white/90 md:text-3xl md:tracking-[0.55em]">
+          ARRENLEX · GESTIÓN DE ARRIENDOS
         </span>
       </div>
 
-      {/* Centro: banner con fotos principales de propiedades */}
+      {/* Banner con fotos */}
       <div className="relative z-10 flex flex-1 items-center justify-center py-8">
-        <div className="relative h-[280px] w-full max-w-4xl overflow-hidden rounded-2xl bg-white/10 shadow-2xl md:h-[360px]">
+        <div className="relative h-[280px] w-full max-w-4xl overflow-hidden rounded-2xl bg-white/10 shadow-2xl md:h-[380px]">
           {loading ? (
-            <div className="flex h-full w-full items-center justify-center text-white/80">
+            <div className="flex h-full w-full items-center justify-center text-white/70 text-sm">
               {t.landing.cargandoFotos}
             </div>
           ) : imagenes.length > 0 ? (
@@ -76,7 +73,7 @@ export function LandingHero() {
               {imagenes.map((url, i) => (
                 <div
                   key={`${url}-${i}`}
-                  className="absolute inset-0 transition-opacity duration-700 ease-in-out"
+                  className="absolute inset-0 transition-opacity duration-1000 ease-in-out"
                   style={{
                     opacity: i === index ? 1 : 0,
                     zIndex: i === index ? 1 : 0,
@@ -89,16 +86,17 @@ export function LandingHero() {
                   />
                 </div>
               ))}
+
               {/* Puntos indicadores */}
               {imagenes.length > 1 && (
                 <div className="absolute bottom-3 left-1/2 z-10 flex -translate-x-1/2 gap-2">
-                  {imagenes.map((_, i) => (
+                  {imagenes.slice(0, 12).map((_, i) => (
                     <button
                       key={i}
                       type="button"
-                      aria-label={`Slide ${i + 1}`}
+                      aria-label={`Foto ${i + 1}`}
                       className={`h-2 w-2 rounded-full transition-colors ${
-                        i === index ? "bg-cyan-400" : "bg-white/40"
+                        i === index % 12 ? "bg-cyan-400" : "bg-white/30"
                       }`}
                       onClick={() => setIndex(i)}
                     />
@@ -107,17 +105,21 @@ export function LandingHero() {
               )}
             </>
           ) : (
-            <div className="flex h-full w-full items-center justify-center text-white/80">
+            <div className="flex h-full w-full items-center justify-center text-white/70 text-sm">
               {t.landing.proximamenteFotos}
             </div>
           )}
         </div>
       </div>
 
-      {/* Abajo izquierda: solo Exclusive Estate */}
-      <div className="relative z-10 flex flex-col gap-2">
-        <p className="text-lg font-semibold text-cyan-400 md:text-xl">Exclusive Estate</p>
-      </div>
+      {/* Contador de fotos */}
+      {imagenes.length > 0 && (
+        <div className="relative z-10">
+          <p className="text-xs text-white/40">
+            {index + 1} / {imagenes.length}
+          </p>
+        </div>
+      )}
     </section>
   )
 }
