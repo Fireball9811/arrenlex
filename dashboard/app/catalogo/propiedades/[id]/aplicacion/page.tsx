@@ -91,6 +91,26 @@ function formatCOP(val: number) {
   }).format(val)
 }
 
+// Validación de email
+function isEmailValido(email: string): boolean {
+  if (!email.trim()) return false
+  return email.includes("@")
+}
+
+// Validación de salario: mínimo 7 dígitos
+function isSalarioValido(salario: string): boolean {
+  if (!salario.trim()) return false
+  const soloDigitos = salario.replace(/\D/g, "")
+  return soloDigitos.length >= 7
+}
+
+// Validación de teléfono: mínimo 10 dígitos
+function isTelefonoValido(telefono: string): boolean {
+  if (!telefono.trim()) return false
+  const soloDigitos = telefono.replace(/\D/g, "")
+  return soloDigitos.length >= 10
+}
+
 // ─── Sub-componentes de UI ────────────────────────────────────────────────────
 
 function FieldLabel({ htmlFor, children, required }: { htmlFor: string; children: React.ReactNode; required?: boolean }) {
@@ -184,6 +204,9 @@ function Paso1({
   onChange: (field: keyof FormData, value: string) => void
   disabled: boolean
 }) {
+  const emailError = form.email && !isEmailValido(form.email)
+  const telefonoError = form.telefono && !isTelefonoValido(form.telefono)
+  
   return (
     <div className="space-y-4">
       <p className="text-sm text-gray-500 -mt-1 mb-2">Datos del arrendatario principal</p>
@@ -193,7 +216,7 @@ function Paso1({
           id="nombre"
           value={form.nombre}
           onChange={(e) => onChange("nombre", e.target.value)}
-          placeholder="Ej. María García López"
+          placeholder=""
           required
           disabled={disabled}
         />
@@ -205,10 +228,16 @@ function Paso1({
           type="email"
           value={form.email}
           onChange={(e) => onChange("email", e.target.value)}
-          placeholder="tu@correo.com"
+          placeholder=""
           required
           disabled={disabled}
+          className={`${emailError ? "border-red-500 focus:ring-red-500" : ""}`}
         />
+        {emailError && (
+          <p className="text-xs text-red-600 mt-1">
+            El email debe contener @.
+          </p>
+        )}
       </div>
       <div className="grid grid-cols-2 gap-3">
         <div>
@@ -217,7 +246,7 @@ function Paso1({
             id="cedula"
             value={form.cedula}
             onChange={(e) => onChange("cedula", e.target.value)}
-            placeholder="1234567890"
+            placeholder=""
             required
             disabled={disabled}
           />
@@ -242,10 +271,16 @@ function Paso1({
           type="tel"
           value={form.telefono}
           onChange={(e) => onChange("telefono", e.target.value)}
-          placeholder="300 123 4567"
+          placeholder=""
           required
           disabled={disabled}
+          className={`${telefonoError ? "border-red-500 focus:ring-red-500" : ""}`}
         />
+        {telefonoError && (
+          <p className="text-xs text-red-600 mt-1">
+            El teléfono debe tener al menos 10 dígitos.
+          </p>
+        )}
       </div>
     </div>
   )
@@ -260,43 +295,54 @@ function Paso2({
   onChange: (field: keyof FormData, value: string) => void
   disabled: boolean
 }) {
+  const salarioError = form.salario && !isSalarioValido(form.salario)
+  
   return (
     <div className="space-y-4">
       <p className="text-sm text-gray-500 -mt-1 mb-2">Información laboral del arrendatario</p>
       <div>
-        <FieldLabel htmlFor="empresa_arrendatario">Empresa donde labora</FieldLabel>
+        <FieldLabel htmlFor="empresa_arrendatario" required>Empresa donde labora</FieldLabel>
         <Input
           id="empresa_arrendatario"
           value={form.empresa_arrendatario}
           onChange={(e) => onChange("empresa_arrendatario", e.target.value)}
-          placeholder="Nombre de la empresa"
+          placeholder=""
+          required
           disabled={disabled}
         />
       </div>
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <FieldLabel htmlFor="antiguedad_meses">Antigüedad (meses)</FieldLabel>
+          <FieldLabel htmlFor="antiguedad_meses" required>Antigüedad (meses)</FieldLabel>
           <Input
             id="antiguedad_meses"
             type="number"
             min="0"
             value={form.antiguedad_meses}
             onChange={(e) => onChange("antiguedad_meses", e.target.value)}
-            placeholder="Ej. 24"
+            placeholder=""
+            required
             disabled={disabled}
           />
         </div>
         <div>
-          <FieldLabel htmlFor="salario">Salario mensual</FieldLabel>
+          <FieldLabel htmlFor="salario" required>Salario mensual</FieldLabel>
           <Input
             id="salario"
             type="number"
             min="0"
             value={form.salario}
             onChange={(e) => onChange("salario", e.target.value)}
-            placeholder="Ej. 1800000"
+            placeholder=""
+            required
             disabled={disabled}
+            className={`${salarioError ? "border-red-500 focus:ring-red-500" : ""}`}
           />
+          {salarioError && (
+            <p className="text-xs text-red-600 mt-1">
+              El salario debe tener al menos 7 dígitos o está muy bajo para ser considerado.
+            </p>
+          )}
         </div>
       </div>
     </div>
@@ -312,6 +358,9 @@ function Paso3({
   onChange: (field: keyof FormData, value: string) => void
   disabled: boolean
 }) {
+  const salarioError = form.salario_2 && !isSalarioValido(form.salario_2)
+  const telefonoError = form.telefono_coarrendatario && !isTelefonoValido(form.telefono_coarrendatario)
+  
   return (
     <div className="space-y-4">
       <p className="text-sm text-gray-500 -mt-1 mb-2">Datos del coarrendatario</p>
@@ -322,7 +371,7 @@ function Paso3({
             id="nombre_coarrendatario"
             value={form.nombre_coarrendatario}
             onChange={(e) => onChange("nombre_coarrendatario", e.target.value)}
-            placeholder="Nombre del coarrendatario"
+            placeholder=""
             required
             disabled={disabled}
           />
@@ -333,68 +382,85 @@ function Paso3({
             id="cedula_coarrendatario"
             value={form.cedula_coarrendatario}
             onChange={(e) => onChange("cedula_coarrendatario", e.target.value)}
-            placeholder="1234567890"
+            placeholder=""
             required
             disabled={disabled}
           />
         </div>
       </div>
       <div>
-        <FieldLabel htmlFor="fecha_expedicion_cedula_coarrendatario">Fecha de expedición cédula</FieldLabel>
+        <FieldLabel htmlFor="fecha_expedicion_cedula_coarrendatario" required>Fecha de expedición cédula</FieldLabel>
         <input
           id="fecha_expedicion_cedula_coarrendatario"
           type="date"
           value={form.fecha_expedicion_cedula_coarrendatario}
           onChange={(e) => onChange("fecha_expedicion_cedula_coarrendatario", e.target.value)}
+          required
           disabled={disabled}
           className="flex h-9 w-full rounded-md border border-gray-300 bg-white px-3 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500 disabled:opacity-50"
         />
       </div>
       <div>
-        <FieldLabel htmlFor="empresa_coarrendatario">Empresa donde labora</FieldLabel>
+        <FieldLabel htmlFor="empresa_coarrendatario" required>Empresa donde labora</FieldLabel>
         <Input
           id="empresa_coarrendatario"
           value={form.empresa_coarrendatario}
           onChange={(e) => onChange("empresa_coarrendatario", e.target.value)}
-          placeholder="Nombre de la empresa"
+          placeholder=""
+          required
           disabled={disabled}
         />
       </div>
       <div className="grid grid-cols-3 gap-3">
         <div>
-          <FieldLabel htmlFor="antiguedad_meses_2">Antigüedad (meses)</FieldLabel>
+          <FieldLabel htmlFor="antiguedad_meses_2" required>Antigüedad (meses)</FieldLabel>
           <Input
             id="antiguedad_meses_2"
             type="number"
             min="0"
             value={form.antiguedad_meses_2}
             onChange={(e) => onChange("antiguedad_meses_2", e.target.value)}
-            placeholder="Ej. 12"
+            placeholder=""
+            required
             disabled={disabled}
           />
         </div>
         <div>
-          <FieldLabel htmlFor="salario_2">Salario mensual</FieldLabel>
+          <FieldLabel htmlFor="salario_2" required>Salario mensual</FieldLabel>
           <Input
             id="salario_2"
             type="number"
             min="0"
             value={form.salario_2}
             onChange={(e) => onChange("salario_2", e.target.value)}
-            placeholder="Ej. 1500000"
+            placeholder=""
+            required
             disabled={disabled}
+            className={`${salarioError ? "border-red-500 focus:ring-red-500" : ""}`}
           />
+          {salarioError && (
+            <p className="text-xs text-red-600 mt-1">
+              El salario debe tener al menos 7 dígitos.
+            </p>
+          )}
         </div>
         <div>
-          <FieldLabel htmlFor="telefono_coarrendatario">Teléfono</FieldLabel>
+          <FieldLabel htmlFor="telefono_coarrendatario" required>Teléfono</FieldLabel>
           <Input
             id="telefono_coarrendatario"
             type="tel"
             value={form.telefono_coarrendatario}
             onChange={(e) => onChange("telefono_coarrendatario", e.target.value)}
-            placeholder="300 123 4567"
+            placeholder=""
+            required
             disabled={disabled}
+            className={`${telefonoError ? "border-red-500 focus:ring-red-500" : ""}`}
           />
+          {telefonoError && (
+            <p className="text-xs text-red-600 mt-1">
+              El teléfono debe tener al menos 10 dígitos.
+            </p>
+          )}
         </div>
       </div>
     </div>
@@ -594,18 +660,32 @@ export default function AplicacionPage() {
       return (
         form.nombre.trim() !== "" &&
         form.email.trim() !== "" &&
+        isEmailValido(form.email) &&
         form.cedula.trim() !== "" &&
         form.fecha_expedicion_cedula !== "" &&
-        form.telefono.trim() !== ""
+        form.telefono.trim() !== "" &&
+        isTelefonoValido(form.telefono)
       )
     }
     if (step === 2) {
-      return true
+      return (
+        form.empresa_arrendatario.trim() !== "" &&
+        form.antiguedad_meses.trim() !== "" &&
+        form.salario.trim() !== "" &&
+        isSalarioValido(form.salario)
+      )
     }
     if (step === 3) {
       return (
         form.nombre_coarrendatario.trim() !== "" &&
-        form.cedula_coarrendatario.trim() !== ""
+        form.cedula_coarrendatario.trim() !== "" &&
+        form.fecha_expedicion_cedula_coarrendatario !== "" &&
+        form.empresa_coarrendatario.trim() !== "" &&
+        form.antiguedad_meses_2.trim() !== "" &&
+        form.salario_2.trim() !== "" &&
+        isSalarioValido(form.salario_2) &&
+        form.telefono_coarrendatario.trim() !== "" &&
+        isTelefonoValido(form.telefono_coarrendatario)
       )
     }
     return false
