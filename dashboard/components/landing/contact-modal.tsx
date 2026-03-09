@@ -12,6 +12,8 @@ import {
   Shield,
   CheckCircle,
   ArrowLeft,
+  Search,
+  Headphones,
 } from "lucide-react"
 import { useLang } from "@/lib/i18n/context"
 
@@ -52,11 +54,7 @@ export function ContactModal({ open, onClose }: ContactModalProps) {
 
   function handleRoleSelect(role: Tipo) {
     setTipo(role)
-    if (role === "propietario") {
-      setStep(2)
-    } else {
-      setStep(3)
-    }
+    setStep(2)
   }
 
   function handleBack() {
@@ -114,12 +112,25 @@ export function ContactModal({ open, onClose }: ContactModalProps) {
 
   if (!open) return null
 
-  const ventajas = [
+  const ventajasPropietario = [
     { icon: Megaphone, titulo: ct.ventaja1Titulo, desc: ct.ventaja1Desc },
     { icon: FileText, titulo: ct.ventaja2Titulo, desc: ct.ventaja2Desc },
     { icon: Settings, titulo: ct.ventaja3Titulo, desc: ct.ventaja3Desc },
     { icon: Shield, titulo: ct.ventaja4Titulo, desc: ct.ventaja4Desc },
   ]
+
+  const ventajasArrendatario = [
+    { icon: Search, titulo: ct.ventajaArrendatario1Titulo, desc: ct.ventajaArrendatario1Desc },
+    { icon: CheckCircle, titulo: ct.ventajaArrendatario2Titulo, desc: ct.ventajaArrendatario2Desc },
+    { icon: Home, titulo: ct.ventajaArrendatario3Titulo, desc: ct.ventajaArrendatario3Desc },
+    { icon: Headphones, titulo: ct.ventajaArrendatario4Titulo, desc: ct.ventajaArrendatario4Desc },
+  ]
+
+  const ventajas = tipo === "arrendatario" ? ventajasArrendatario : ventajasPropietario
+  const ventajasTitulo =
+    tipo === "arrendatario" ? ct.ventajasArrendatarioTitulo : ct.ventajasTitulo
+  const ventajasSubtitulo =
+    tipo === "arrendatario" ? ct.ventajasArrendatarioSubtitulo : ct.ventajasSubtitulo
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
@@ -210,11 +221,11 @@ export function ContactModal({ open, onClose }: ContactModalProps) {
               </button>
             </div>
           ) : step === 2 ? (
-            /* ── Paso 2: Ventajas (solo propietario) ── */
+            /* ── Paso 2: Ventajas (propietario o arrendatario) ── */
             <div className="flex flex-col gap-5">
               <div className="text-center">
-                <h3 className="text-base font-bold text-slate-800 md:text-lg">{ct.ventajasTitulo}</h3>
-                <p className="mt-1 text-sm text-slate-500">{ct.ventajasSubtitulo}</p>
+                <h3 className="text-base font-bold text-slate-800 md:text-lg">{ventajasTitulo}</h3>
+                <p className="mt-1 text-sm text-slate-500">{ventajasSubtitulo}</p>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
@@ -223,7 +234,9 @@ export function ContactModal({ open, onClose }: ContactModalProps) {
                     key={titulo}
                     className="rounded-xl border border-teal-200 bg-teal-50/60 p-4"
                   >
-                    <Icon className="mb-2 h-5 w-5 text-teal-600" />
+                    <div className="mb-2 flex h-9 w-9 items-center justify-center rounded-full bg-emerald-100">
+                      <Icon className="h-4 w-4 text-teal-600" />
+                    </div>
                     <p className="text-sm font-semibold text-slate-800">{titulo}</p>
                     <p className="mt-1 text-xs leading-relaxed text-slate-500">{desc}</p>
                   </div>
