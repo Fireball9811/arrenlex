@@ -262,6 +262,7 @@ export type IntakeFormulario = {
   empresa_coarrendatario: string | null
   autorizacion: string | null
   raw_data: Record<string, unknown> | null
+  data: Record<string, unknown> | null
   fecha_envio: string | null
   created_at: string
   gestionado: boolean

@@ -667,6 +667,60 @@ export default function MensajesPage() {
                   <p><span className="font-medium">Salario:</span> {formatCurrency(intakeSeleccionado.salario_2)}</p>
                 </div>
               )}
+
+              {/* Mostrar datos adicionales del formulario Google Forms si existen */}
+              {intakeSeleccionado.data && Object.keys(intakeSeleccionado.data).length > 0 && (
+                <div className="space-y-1">
+                  <p className="font-semibold text-muted-foreground uppercase text-xs tracking-wide">{t.mensajes.detalle.datosAdicionales}</p>
+                  {(() => {
+                    const dataObj = intakeSeleccionado.data as Record<string, any>
+                    const datasToShow: [string, any][] = []
+                    
+                    // Mapear campos conocidos del formulario Google Forms
+                    const fieldsMap: Record<string, string> = {
+                      'salario': 'Salario Arrendatario',
+                      'numero_de_ninos': 'Número de Niños',
+                      'numero_de_macotas': 'Número de Mascotas',
+                      'cedula_arrendatario': 'Cédula Arrendatario',
+                      'telefono_de_contacto': 'Teléfono de Contacto',
+                      'cedula_coarrendatario': 'Cédula Co-arrendatario',
+                      'nombre_coarrendatario': 'Nombre Co-arrendatario',
+                      'personas_que_trabajan': 'Personas que Trabajan',
+                      'numero_de_personas_adultas': 'Número de Personas Adultas',
+                      'ingresos_mensuales_grupales': 'Ingresos Mensuales Grupales',
+                      'tiempo_de_antiguedad_en_meses': 'Antigüedad (meses)',
+                      'la_casa_la_quieren_para_negocio': 'Uso para Negocio',
+                      'nombre_completo_de_arrendatario': 'Nombre Completo Arrendatario',
+                      'telefono_de_contacto_arrendatario': 'Teléfono Arrendatario',
+                      'empresa_donde_labora_arrenadatario': 'Empresa Arrendatario',
+                      'empresa_donde_labora_coarrenadatario': 'Empresa Co-arrendatario',
+                      'fecha_de_expedicion_cedula_arrendatario': 'Fecha Expedición Cédula Arrendatario',
+                      'fecha_de_expedicion_cedula_coarrendatario': 'Fecha Expedición Cédula Co-arrendatario',
+                    }
+                    
+                    for (const [key, value] of Object.entries(dataObj)) {
+                      if (key.length < 200 && typeof value === 'string' && value.length < 200) {
+                        const label = fieldsMap[key] || key.replace(/_/g, ' ')
+                        datasToShow.push([label, value])
+                      }
+                    }
+                    
+                    if (datasToShow.length === 0) {
+                      return <p className="text-xs text-muted-foreground">No hay datos adicionales</p>
+                    }
+                    
+                    return (
+                      <div className="space-y-1.5">
+                        {datasToShow.map(([label, value]) => (
+                          <p key={label} className="text-xs">
+                            <span className="font-medium">{label}:</span> {value}
+                          </p>
+                        ))}
+                      </div>
+                    )
+                  })()}
+                </div>
+              )}
             </div>
 
             <SeccionCalificacion registro={intakeSeleccionado} />
