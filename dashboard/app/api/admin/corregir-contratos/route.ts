@@ -32,7 +32,8 @@ export async function POST() {
 
     const correcciones = []
     for (const contrato of contratos || []) {
-      const propietarioId = contrato.propiedades?.user_id
+      const propiedad = Array.isArray(contrato.propiedades) ? contrato.propiedades[0] : contrato.propiedades
+      const propietarioId = propiedad?.user_id
       const contratoUserId = contrato.user_id
 
       // Si el user_id del contrato es diferente al user_id de la propiedad
