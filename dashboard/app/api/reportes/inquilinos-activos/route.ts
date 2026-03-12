@@ -52,10 +52,8 @@ export async function GET() {
     const emailsArrendatarios = contratosActivos
       ?.map(c => {
         const arrendatarios = c.arrendatarios
-        if (Array.isArray(arrendatarios)) {
-          return arrendatarios[0]?.email
-        }
-        return arrendatarios?.email || null
+        const arrendatario = Array.isArray(arrendatarios) ? arrendatarios[0] : arrendatarios
+        return arrendatario?.email ?? null
       })
       .filter(Boolean) || []
 
