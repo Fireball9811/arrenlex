@@ -4,15 +4,16 @@ import { createAdminClient } from "@/lib/supabase/admin"
 
 export async function GET(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params
   const admin = createAdminClient()
 
   // Intentar obtener el perfil con todas las columnas posibles
   const { data, error } = await admin
     .from("perfiles")
     .select("*")
-    .eq("id", params.id)
+    .eq("id", id)
     .single()
 
   if (error) {
