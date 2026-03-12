@@ -75,10 +75,8 @@ export async function GET() {
 
     for (const contrato of contratosActivos || []) {
       // Manejar tanto si arrendatarios es array como si es objeto
-      let arrendatario = contrato.arrendatarios
-      if (Array.isArray(arrendatario)) {
-        arrendatario = arrendatario[0]
-      }
+      const arrendatariosRaw = contrato.arrendatarios
+      const arrendatario = Array.isArray(arrendatariosRaw) ? arrendatariosRaw[0] : arrendatariosRaw
       if (!arrendatario) continue
 
       const usuarioExistente = usuariosPorEmail.get(arrendatario.email)
