@@ -60,13 +60,16 @@ export async function GET(request: Request) {
     console.log("✓ Admin client creado")
 
     let query = admin.from("propiedades").select("*")
-    
+
     if (role === "propietario") {
       query = query.eq("user_id", user.id)
       console.log("✓ Query: propiedades where user_id =", user.id)
     } else {
       console.log("✓ Query: todas las propiedades (admin)")
     }
+
+    // NO filtrar por estado - el propietario debe ver TODAS sus propiedades
+    // query = query.eq("estado", "disponible")
 
     query = query.order("created_at", { ascending: false })
 

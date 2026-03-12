@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
+import { createAdminClient } from "@/lib/supabase/admin"
 
 /**
  * GET - Obtiene contadores dinámicos para cada categoría de personas
@@ -7,14 +8,14 @@ import { createClient } from "@/lib/supabase/server"
  */
 export async function GET() {
   const supabase = await createClient()
+  const admin = createAdminClient()
 
   try {
-    // Contar inquilinos activos
-    const { count: inquilinosActivos, error: errInquilinos } = await supabase
-      .from("perfiles")
+    // Contar inquilinos activos = SOLO arrendatarios con contratos activos
+    const { count: inquilinosActivos, error: errInquilinos } = await admin
+      .from("contratos")
       .select("*", { count: "exact", head: true })
-      .eq("role", "inquilino")
-      .eq("activo", true)
+      .eq("estado", "activo")
 
     // Contar propietarios (todos, sin importar si están activos)
     const { count: propietarios, error: errPropietarios } = await supabase
@@ -41,8 +42,14 @@ export async function GET() {
       .eq("role", "inquilino")
       .eq("activo", false)
 
-    // Total de usuarios del sistema
-    const usuariosSistema = (inquilinosActivos || 0) +
+    // Usuarios inquilinos (todos, activos e inactivos)
+    const { count: inquilinosUsuariosTotal, error: errInquilinosTotal } = await supabase
+      .from("perfiles")
+      .select("*", { count: "exact", head: true })
+      .eq("role", "inquilino")
+
+    // Total de usuarios del sistema (cuenta todos los usuarios en perfiles)
+    const usuariosSistema = (inquilinosUsuariosTotal || 0) +
                            (propietarios || 0) +
                            (admins || 0) +
                            (rolesEspeciales || 0)

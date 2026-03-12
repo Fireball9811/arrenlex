@@ -32,7 +32,13 @@ export async function GET(request: Request) {
 
   const admin = createAdminClient()
 
-  let query = admin.from("recibos_pago").select("*").order("fecha_recibo", { ascending: false })
+  let query = admin
+    .from("recibos_pago")
+    .select(`
+      *,
+      propiedad:propiedades(id, direccion, ciudad, barrio)
+    `)
+    .order("fecha_recibo", { ascending: false })
 
   if (role === "propietario") {
     query = query.eq("user_id", user.id)
@@ -95,6 +101,7 @@ export async function POST(request: Request) {
     }
   }
 
+  // NO enviar numero_recibo - se autogenera en la base de datos
   const { data, error } = await admin
     .from("recibos_pago")
     .insert({
@@ -110,7 +117,7 @@ export async function POST(request: Request) {
       fecha_fin_periodo: body.fecha_fin_periodo,
       tipo_pago: body.tipo_pago,
       fecha_recibo: body.fecha_recibo,
-      numero_recibo: body.numero_recibo,
+      // numero_recibo se autogenera
       cuenta_consignacion: body.cuenta_consignacion,
       referencia_pago: body.referencia_pago,
       nota: body.nota,

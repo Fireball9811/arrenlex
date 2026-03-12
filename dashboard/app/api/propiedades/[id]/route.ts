@@ -93,6 +93,7 @@ export async function PUT(
   const admin = createAdminClient()
 
   const updatePayload: Record<string, unknown> = {
+    titulo: body.titulo,
     direccion: body.direccion,
     ciudad: body.ciudad,
     barrio: body.barrio,
@@ -100,7 +101,7 @@ export async function PUT(
     habitaciones: Number(body.habitaciones) || 0,
     banos: Number(body.banos) || 0,
     area: Number(body.area) || 0,
-    valor_arriendo: (Number(body.valorArriendo) ?? Number(body.valor_arriendo)) || 0,
+    valor_arriendo: Number(body.valor_arriendo) || 0,
     descripcion: body.descripcion,
     estado: body.estado,
     matricula_inmobiliaria: body.matricula_inmobiliaria ?? null,

@@ -28,7 +28,13 @@ export async function GET(
 
   const admin = createAdminClient()
 
-  let query = admin.from("recibos_pago").select("*").eq("id", id)
+  let query = admin
+    .from("recibos_pago")
+    .select(`
+      *,
+      propiedad:propiedades(id, direccion, ciudad, barrio)
+    `)
+    .eq("id", id)
 
   if (role === "propietario") {
     query = query.eq("user_id", user.id)

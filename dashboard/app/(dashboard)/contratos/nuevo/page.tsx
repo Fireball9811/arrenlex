@@ -78,9 +78,12 @@ export default function NuevoContratoPage() {
 
     if (res.ok) {
       const data = await res.json()
+      console.log("✓ Contrato creado exitosamente:", data)
+      alert(`¡Contrato creado exitosamente!\n\nID: ${data.id}\nRedirigiendo a la página del contrato...`)
       router.push(`/contratos/${data.id}`)
     } else {
       const error = await res.json()
+      console.error("❌ Error al crear contrato:", error)
       alert(error.error || "Error al crear contrato")
       setSaving(false)
     }

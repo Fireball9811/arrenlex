@@ -10,18 +10,32 @@ import { ArrowLeft, Save, X } from "lucide-react"
 
 interface Propiedad {
   id: string
-  titulo: string
+  direccion: string
   ciudad: string
+  barrio?: string
   valor_arriendo?: number
+  user_id: string
+}
+
+interface Arrendatario {
+  id: string
+  nombre: string
+  cedula: string
 }
 
 interface Contrato {
   id: string
-  inquilino_id: string
-  inquilinos?: {
-    nombre: string
-    cedula: string
-  }
+  arrendatario_id: string
+  arrendatario?: Arrendatario
+  estado: string
+}
+
+interface AuthUser {
+  id: string
+  email: string
+  role: string
+  nombre: string
+  cedula: string
 }
 
 export default function NuevoReciboPagoPage() {
@@ -34,7 +48,6 @@ export default function NuevoReciboPagoPage() {
   const [error, setError] = useState<string | null>(null)
 
   const [propiedades, setPropiedades] = useState<Propiedad[]>([])
-  const [contratos, setContratos] = useState<Contrato[]>([])
 
   const [formData, setFormData] = useState({
     propiedad_id: propiedadIdParam,
@@ -57,34 +70,70 @@ export default function NuevoReciboPagoPage() {
   useEffect(() => {
     fetch("/api/auth/me")
       .then((res) => (res.ok ? res.json() : null))
-      .then((data: { role?: string } | null) => {
-        if (data?.role === "admin") {
+      .then(async (data: AuthUser | null) => {
+        if (!data) {
+          setError("Error de autenticación")
+          setLoading(false)
+          return
+        }
+        if (data.role === "admin") {
           router.replace("/admin/dashboard")
           return
         }
-        if (data?.role === "inquilino") {
+        if (data.role === "inquilino") {
           router.replace("/inquilino/dashboard")
           return
         }
 
+        // Precargar datos del propietario (usuario autenticado)
+        setFormData((prev) => ({
+          ...prev,
+          propietario_nombre: data.nombre || "",
+          propietario_cedula: data.cedula || "",
+        }))
+
         // Cargar propiedades del propietario
         return fetch("/api/propiedades")
           .then((res) => (res.ok ? res.json() : []))
-          .then((propiedadesData: Propiedad[]) => {
+          .then(async (propiedadesData: Propiedad[]) => {
             setPropiedades(propiedadesData)
-            // Si llegó propiedad_id por URL, pre-cargar valor de arriendo
+            setLoading(false)
+
+            // Si llegó propiedad_id por URL, cargar TODOS los datos automáticamente
             if (propiedadIdParam) {
               const prop = propiedadesData.find((p: Propiedad) => p.id === propiedadIdParam)
-              if (prop?.valor_arriendo) {
+              if (prop) {
+                const valorArriendo = prop.valor_arriendo || 0
+
+                // Precargar datos básicos
                 setFormData((prev) => ({
                   ...prev,
                   propiedad_id: propiedadIdParam,
-                  valor_arriendo: String(prop.valor_arriendo),
-                  valor_arriendo_letras: numerosEnLetras(prop.valor_arriendo!),
+                  valor_arriendo: String(valorArriendo),
+                  valor_arriendo_letras: valorArriendo > 0 ? numerosEnLetras(valorArriendo) : "",
                 }))
+
+                // Cargar contrato activo con arrendatario
+                try {
+                  const resContratos = await fetch(`/api/contratos?propiedad_id=${propiedadIdParam}&estado=activo`)
+                  if (resContratos.ok) {
+                    const contratos = await resContratos.json()
+                    if (contratos.length > 0) {
+                      if (contratos[0].arrendatario) {
+                        const arrendatario = contratos[0].arrendatario
+                        setFormData((prev) => ({
+                          ...prev,
+                          arrendador_nombre: arrendatario.nombre || "",
+                          arrendador_cedula: arrendatario.cedula || "",
+                        }))
+                      }
+                    }
+                  }
+                } catch (e) {
+                  // Error al cargar contrato, continuar sin arrendatario
+                }
               }
             }
-            setLoading(false)
           })
       })
       .catch(() => {
@@ -93,19 +142,60 @@ export default function NuevoReciboPagoPage() {
       })
   }, [router, propiedadIdParam])
 
-  // Cargar contratos cuando se selecciona propiedad
+  // Cargar datos cuando se selecciona propiedad
   useEffect(() => {
-    if (formData.propiedad_id) {
-      fetch(`/api/contratos?propiedad_id=${formData.propiedad_id}`)
+    const cargarDatosPropiedad = async () => {
+      if (!formData.propiedad_id) {
+        return
+      }
+
+      // Buscar la propiedad seleccionada
+      const propiedad = propiedades.find((p) => p.id === formData.propiedad_id)
+      if (!propiedad) return
+
+      // Cargar valor de arriendo
+      const valorArriendo = propiedad.valor_arriendo || 0
+
+      // Cargar contrato activo con arrendatario
+      fetch(`/api/contratos?propiedad_id=${formData.propiedad_id}&estado=activo`)
         .then((res) => (res.ok ? res.json() : []))
-        .then((data) => {
-          setContratos(data)
+        .then((contratosData: Contrato[]) => {
+          if (contratosData.length > 0) {
+            const contrato = contratosData[0]
+            // Si hay contrato, obtener datos del arrendatario
+            const arrendatario = contrato.arrendatario
+            if (arrendatario) {
+              setFormData((prev) => ({
+                ...prev,
+                arrendador_nombre: arrendatario.nombre || "",
+                arrendador_cedula: arrendatario.cedula || "",
+                valor_arriendo: String(valorArriendo),
+                valor_arriendo_letras: valorArriendo > 0 ? numerosEnLetras(valorArriendo) : "",
+              }))
+            }
+          } else {
+            // Si no hay contrato, limpiar campos de arrendatario pero mantener valor
+            setFormData((prev) => ({
+              ...prev,
+              arrendador_nombre: "",
+              arrendador_cedula: "",
+              valor_arriendo: String(valorArriendo),
+              valor_arriendo_letras: valorArriendo > 0 ? numerosEnLetras(valorArriendo) : "",
+            }))
+          }
         })
         .catch(() => {
-          setContratos([])
+          // Error al cargar contratos, solo actualizar valor de arriendo
+          setFormData((prev) => ({
+            ...prev,
+            valor_arriendo: String(valorArriendo),
+            valor_arriendo_letras: valorArriendo > 0 ? numerosEnLetras(valorArriendo) : "",
+          }))
         })
     }
-  }, [formData.propiedad_id])
+
+    cargarDatosPropiedad()
+  }, [formData.propiedad_id, propiedades])
 
   const handleChange = (field: string, value: string | number) => {
     setFormData({
@@ -135,7 +225,8 @@ export default function NuevoReciboPagoPage() {
 
       const data = await res.json()
       alert("Recibo creado correctamente")
-      router.push(`/propietario/recibos/${data.id}`)
+      // Redirigir a vista previa en lugar de la vista del recibo
+      router.push(`/propietario/recibos/vista-previa?recibo_id=${data.id}`)
     } catch (err: any) {
       setError(`Error al guardar: ${err.message}`)
     } finally {
@@ -144,6 +235,9 @@ export default function NuevoReciboPagoPage() {
   }
 
   const numerosEnLetras = (numero: number): string => {
+    if (numero === 0) return "Cero"
+    if (numero < 0) return "Menos " + numerosEnLetras(-numero)
+
     const unidades = [
       "",
       "Uno",
@@ -155,6 +249,16 @@ export default function NuevoReciboPagoPage() {
       "Siete",
       "Ocho",
       "Nueve",
+      "Diez",
+      "Once",
+      "Doce",
+      "Trece",
+      "Catorce",
+      "Quince",
+      "Dieciséis",
+      "Diecisiete",
+      "Dieciocho",
+      "Diecinueve",
     ]
     const decenas = [
       "",
@@ -181,31 +285,50 @@ export default function NuevoReciboPagoPage() {
       "Novecientos",
     ]
 
-    const numero_str = Math.floor(numero).toString().padStart(9, "0")
-    let resultado = ""
+    const convertirGrupo = (n: number): string => {
+      if (n === 0) return ""
+      if (n < 20) return unidades[n]
+      if (n < 100) {
+        const dec = Math.floor(n / 10)
+        const uni = n % 10
+        return decenas[dec] + (uni > 0 ? " y " + unidades[uni] : "")
+      }
+      const cent = Math.floor(n / 100)
+      const rest = n % 100
+      return centenas[cent] + (rest > 0 ? " " + convertirGrupo(rest) : "")
+    }
 
-    const millones = parseInt(numero_str.substring(0, 3))
-    const miles = parseInt(numero_str.substring(3, 6))
-    const unidad = parseInt(numero_str.substring(6, 9))
+    if (numero < 1000) {
+      return convertirGrupo(numero)
+    }
+
+    const millones = Math.floor(numero / 1000000)
+    const restoMillones = numero % 1000000
+    const miles = Math.floor(restoMillones / 1000)
+    const resto = restoMillones % 1000
+
+    let resultado = ""
 
     if (millones > 0) {
       if (millones === 1) {
-        resultado += "Un Millón "
+        resultado += "Un Millón"
       } else {
-        resultado += `${numerosEnLetras(millones)} Millones `
+        resultado += convertirGrupo(millones) + " Millones"
       }
     }
 
     if (miles > 0) {
+      if (resultado) resultado += " "
       if (miles === 1) {
-        resultado += "Mil "
+        resultado += "Mil"
       } else {
-        resultado += `${numerosEnLetras(miles)} Mil `
+        resultado += convertirGrupo(miles) + " Mil"
       }
     }
 
-    if (unidad > 0) {
-      resultado += numerosEnLetras(unidad)
+    if (resto > 0) {
+      if (resultado) resultado += " "
+      resultado += convertirGrupo(resto)
     }
 
     return resultado.trim()
@@ -253,11 +376,24 @@ export default function NuevoReciboPagoPage() {
                 <option value="">Selecciona una propiedad</option>
                 {propiedades.map((prop) => (
                   <option key={prop.id} value={prop.id}>
-                    {prop.titulo} ({prop.ciudad})
+                    {prop.direccion}{prop.barrio ? `, ${prop.barrio}` : ""} ({prop.ciudad})
                   </option>
                 ))}
               </select>
             </div>
+
+            {/* Información de la propiedad seleccionada */}
+            {formData.propiedad_id && (() => {
+              const prop = propiedades.find((p) => p.id === formData.propiedad_id)
+              return prop ? (
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <p className="text-sm text-blue-800">
+                    <span className="font-semibold">Propiedad seleccionada:</span> {prop.direccion}
+                    {prop.barrio ? `, ${prop.barrio}` : ""}, {prop.ciudad}
+                  </p>
+                </div>
+              ) : null
+            })()}
 
             {/* Información de Partes */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -266,7 +402,7 @@ export default function NuevoReciboPagoPage() {
                 <Input
                   value={formData.arrendador_nombre}
                   onChange={(e) => handleChange("arrendador_nombre", e.target.value)}
-                  placeholder="Nombre completo del arrendador"
+                  placeholder=""
                 />
               </div>
               <div>
@@ -274,7 +410,7 @@ export default function NuevoReciboPagoPage() {
                 <Input
                   value={formData.arrendador_cedula}
                   onChange={(e) => handleChange("arrendador_cedula", e.target.value)}
-                  placeholder="Ej: 1234567890"
+                  placeholder=""
                 />
               </div>
               <div>
@@ -282,7 +418,7 @@ export default function NuevoReciboPagoPage() {
                 <Input
                   value={formData.propietario_nombre}
                   onChange={(e) => handleChange("propietario_nombre", e.target.value)}
-                  placeholder="Nombre completo del propietario"
+                  placeholder=""
                 />
               </div>
               <div>
@@ -290,7 +426,7 @@ export default function NuevoReciboPagoPage() {
                 <Input
                   value={formData.propietario_cedula}
                   onChange={(e) => handleChange("propietario_cedula", e.target.value)}
-                  placeholder="Ej: 1234567890"
+                  placeholder=""
                 />
               </div>
             </div>
@@ -308,7 +444,7 @@ export default function NuevoReciboPagoPage() {
                       handleChange("valor_arriendo_letras", numerosEnLetras(parseInt(e.target.value)))
                     }
                   }}
-                  placeholder="0"
+                  placeholder=""
                   min="0"
                 />
               </div>
@@ -317,7 +453,7 @@ export default function NuevoReciboPagoPage() {
                 <Input
                   value={formData.valor_arriendo_letras}
                   onChange={(e) => handleChange("valor_arriendo_letras", e.target.value)}
-                  placeholder="Auto-completado"
+                  placeholder=""
                   readOnly
                   className="bg-muted"
                 />
@@ -375,7 +511,7 @@ export default function NuevoReciboPagoPage() {
                 <Input
                   value={formData.cuenta_consignacion}
                   onChange={(e) => handleChange("cuenta_consignacion", e.target.value)}
-                  placeholder="Ej: Cuenta Corriente No. 1234567890"
+                  placeholder=""
                 />
               </div>
               <div>
@@ -383,7 +519,7 @@ export default function NuevoReciboPagoPage() {
                 <Input
                   value={formData.referencia_pago}
                   onChange={(e) => handleChange("referencia_pago", e.target.value)}
-                  placeholder="Ej: Transferencia, Consignación, Cheque"
+                  placeholder=""
                 />
               </div>
             </div>
@@ -394,7 +530,7 @@ export default function NuevoReciboPagoPage() {
               <textarea
                 value={formData.nota}
                 onChange={(e) => handleChange("nota", e.target.value)}
-                placeholder="Notas que desees incluir en el recibo..."
+                placeholder=""
                 rows={3}
                 className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
               />
