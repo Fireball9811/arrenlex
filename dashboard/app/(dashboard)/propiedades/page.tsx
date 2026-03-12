@@ -145,7 +145,7 @@ export default function PropiedadesPage() {
       <div className="mb-6 flex items-center justify-between">
         <h1 className="text-3xl font-bold">{t.propiedades.titulo}</h1>
         <Button asChild>
-          <Link href="/propiedades/nuevo">{t.propiedades.nuevaPropiedad}</Link>
+          <Link href="/propietario/propiedades/nuevo">{t.propiedades.nuevaPropiedad}</Link>
         </Button>
       </div>
 
@@ -161,7 +161,7 @@ export default function PropiedadesPage() {
           </CardHeader>
           <CardContent>
             <Button asChild>
-              <Link href="/propiedades/nuevo">{t.propiedades.nuevaPropiedad}</Link>
+              <Link href="/propietario/propiedades/nuevo">{t.propiedades.nuevaPropiedad}</Link>
             </Button>
           </CardContent>
         </Card>
@@ -239,7 +239,7 @@ export default function PropiedadesPage() {
                 </CardContent>
                 <div className="flex gap-2 pt-3">
                   <Button variant="outline" size="sm" asChild>
-                    <Link href={`/propiedades/${p.id}/editar`}>{t.comun.editar}</Link>
+                    <Link href={`/propietario/propiedades/${p.id}/editar`}>{t.comun.editar}</Link>
                   </Button>
                   <Button
                     variant="outline"

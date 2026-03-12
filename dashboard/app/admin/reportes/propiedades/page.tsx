@@ -333,13 +333,14 @@ function InventarioTable({
                     </td>
                     <td className="p-3 text-center">{getEstadoBadge(p.estado)}</td>
                     <td className="p-3 text-center">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => (window.location.href = `/admin/propiedades/${p.id}`)}
-                      >
-                        <Pencil className="h-3 w-3" />
-                      </Button>
+                      <Link href={`/propietario/propiedades/${p.id}/editar`}>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                        >
+                          <Pencil className="h-3 w-3" />
+                        </Button>
+                      </Link>
                     </td>
                   </tr>
                 ))}

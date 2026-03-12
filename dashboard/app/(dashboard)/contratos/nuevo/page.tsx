@@ -107,7 +107,7 @@ export default function NuevoContratoPage() {
         </CardHeader>
         <CardContent>
           <Button asChild>
-            <Link href="/propiedades/nuevo">Nueva propiedad</Link>
+            <Link href="/propietario/propiedades/nuevo">Nueva propiedad</Link>
           </Button>
         </CardContent>
       </Card>

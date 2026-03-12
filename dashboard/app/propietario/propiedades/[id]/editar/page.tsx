@@ -21,6 +21,11 @@ interface Propiedad {
   barrio?: string
   tipo?: string
   estado?: string
+  matricula_inmobiliaria?: string
+  cuenta_bancaria_entidad?: string
+  cuenta_bancaria_tipo?: string
+  cuenta_bancaria_numero?: string
+  cuenta_bancaria_titular?: string
 }
 
 export default function EditarPropiedadPage() {
@@ -35,36 +40,54 @@ export default function EditarPropiedadPage() {
 
   // Cargar datos de la propiedad
   useEffect(() => {
-    fetch("/api/auth/me")
-      .then((res) => (res.ok ? res.json() : null))
-      .then((data: { role?: string } | null) => {
-        if (data?.role === "admin") {
-          router.replace("/admin/dashboard")
+    const cargarDatos = async () => {
+      try {
+        // Primero verificar autenticación
+        const authRes = await fetch("/api/auth/me")
+        if (!authRes.ok) {
+          console.error("Error en auth/me:", authRes.status)
+          setError("Error de autenticación")
+          setLoading(false)
           return
         }
-        if (data?.role === "inquilino") {
+
+        const authData = await authRes.json()
+        console.log("Auth data:", authData)
+
+        if (authData.role === "inquilino") {
           router.replace("/inquilino/dashboard")
           return
         }
 
-        return fetch(`/api/propiedades/${propiedadId}`)
-          .then((res) => {
-            if (!res.ok) throw new Error(`HTTP ${res.status}`)
-            return res.json()
-          })
-          .then((data: Propiedad) => {
-            setPropiedad(data)
-            setLoading(false)
-          })
-          .catch((err) => {
-            setError(`Error: ${err.message}`)
-            setLoading(false)
-          })
-      })
-      .catch(() => {
-        setError("Error de autenticación")
+        // Admin y propietario pueden editar propiedades
+        if (authData.role !== "admin" && authData.role !== "propietario") {
+          setError("No tienes permiso para editar propiedades")
+          setLoading(false)
+          return
+        }
+
+        // Cargar la propiedad
+        const propRes = await fetch(`/api/propiedades/${propiedadId}`)
+        if (!propRes.ok) {
+          const errorData = await propRes.json().catch(() => ({ error: "Error desconocido" }))
+          console.error("Error cargando propiedad:", propRes.status, errorData)
+          setError(`Error al cargar propiedad: ${errorData.error || propRes.statusText}`)
+          setLoading(false)
+          return
+        }
+
+        const propData = await propRes.json()
+        console.log("Propiedad cargada:", propData)
+        setPropiedad(propData)
         setLoading(false)
-      })
+      } catch (err) {
+        console.error("Error general:", err)
+        setError(`Error: ${err instanceof Error ? err.message : "Error desconocido"}`)
+        setLoading(false)
+      }
+    }
+
+    cargarDatos()
   }, [router, propiedadId])
 
   const handleChange = (field: keyof Propiedad, value: any) => {
@@ -91,8 +114,7 @@ export default function EditarPropiedadPage() {
         throw new Error(`HTTP ${res.status}`)
       }
 
-      alert("Propiedad actualizada correctamente")
-      router.push("/propietario/propiedades")
+      router.push("/propiedades")
     } catch (err: any) {
       setError(`Error al guardar: ${err.message}`)
     } finally {
@@ -127,7 +149,7 @@ export default function EditarPropiedadPage() {
   return (
     <div suppressHydrationWarning>
       <div className="mb-6 flex items-center gap-4">
-        <Link href="/propietario/propiedades">
+        <Link href="/propiedades">
           <Button variant="outline" size="sm">
             <ArrowLeft className="mr-2 h-4 w-4" />
             Volver
@@ -163,14 +185,57 @@ export default function EditarPropiedadPage() {
               />
             </div>
 
-            {/* Ciudad */}
-            <div>
-              <label className="block text-sm font-medium mb-1">Ciudad</label>
-              <Input
-                value={propiedad.ciudad}
-                onChange={(e) => handleChange("ciudad", e.target.value)}
-                placeholder="Ej: Bogotá"
-              />
+            {/* Ciudad y Barrio */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium mb-1">Ciudad</label>
+                <Input
+                  value={propiedad.ciudad}
+                  onChange={(e) => handleChange("ciudad", e.target.value)}
+                  placeholder="Ej: Bogotá"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Barrio</label>
+                <Input
+                  value={propiedad.barrio || ""}
+                  onChange={(e) => handleChange("barrio", e.target.value)}
+                  placeholder="Ej: Chapinero"
+                />
+              </div>
+            </div>
+
+            {/* Tipo y Estado */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium mb-1">Tipo</label>
+                <select
+                  value={propiedad.tipo || "apartamento"}
+                  onChange={(e) => handleChange("tipo", e.target.value)}
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                >
+                  <option value="apartamento">Apartamento</option>
+                  <option value="casa">Casa</option>
+                  <option value="habitacion">Habitación</option>
+                  <option value="local">Local</option>
+                  <option value="oficina">Oficina</option>
+                  <option value="lote">Lote</option>
+                  <option value="finca">Finca</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Estado</label>
+                <select
+                  value={propiedad.estado || "disponible"}
+                  onChange={(e) => handleChange("estado", e.target.value)}
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                >
+                  <option value="disponible">Disponible</option>
+                  <option value="arrendado">Arrendado</option>
+                  <option value="mantenimiento">En Mantenimiento</option>
+                  <option value="pendiente">Pendiente</option>
+                </select>
+              </div>
             </div>
 
             {/* Specs Grid */}
@@ -225,13 +290,68 @@ export default function EditarPropiedadPage() {
               />
             </div>
 
+            {/* Información Legal y Bancaria */}
+            <div className="border-t pt-4">
+              <h3 className="text-lg font-semibold mb-4">Información Legal y Bancaria</h3>
+
+              <div className="mb-4">
+                <label className="block text-sm font-medium mb-1">Matrícula Inmobiliaria</label>
+                <Input
+                  value={propiedad.matricula_inmobiliaria || ""}
+                  onChange={(e) => handleChange("matricula_inmobiliaria", e.target.value)}
+                  placeholder="Ej: 050-123456"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium mb-1">Entidad Bancaria</label>
+                  <Input
+                    value={propiedad.cuenta_bancaria_entidad || ""}
+                    onChange={(e) => handleChange("cuenta_bancaria_entidad", e.target.value)}
+                    placeholder="Ej: Bancolombia"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Tipo de Cuenta</label>
+                  <select
+                    value={propiedad.cuenta_bancaria_tipo || ""}
+                    onChange={(e) => handleChange("cuenta_bancaria_tipo", e.target.value)}
+                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                  >
+                    <option value="">Seleccionar...</option>
+                    <option value="ahorros">Ahorros</option>
+                    <option value="corriente">Corriente</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="mt-4">
+                <label className="block text-sm font-medium mb-1">Número de Cuenta</label>
+                <Input
+                  value={propiedad.cuenta_bancaria_numero || ""}
+                  onChange={(e) => handleChange("cuenta_bancaria_numero", e.target.value)}
+                  placeholder="Ej: 123-456-789"
+                />
+              </div>
+
+              <div className="mt-4">
+                <label className="block text-sm font-medium mb-1">Titular de la Cuenta</label>
+                <Input
+                  value={propiedad.cuenta_bancaria_titular || ""}
+                  onChange={(e) => handleChange("cuenta_bancaria_titular", e.target.value)}
+                  placeholder="Nombre del titular de la cuenta"
+                />
+              </div>
+            </div>
+
             {/* Action Buttons */}
             <div className="flex gap-2 pt-4">
               <Button onClick={handleSave} disabled={saving} className="flex-1">
                 <Save className="mr-2 h-4 w-4" />
                 {saving ? "Guardando..." : "Guardar Cambios"}
               </Button>
-              <Link href="/propietario/propiedades" className="flex-1">
+              <Link href="/propiedades" className="flex-1">
                 <Button variant="outline" className="w-full">
                   <X className="mr-2 h-4 w-4" />
                   Cancelar
