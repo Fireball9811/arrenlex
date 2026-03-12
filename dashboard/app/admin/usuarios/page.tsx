@@ -4,7 +4,7 @@ import { useEffect, useState, Suspense } from "react"
 import { useSearchParams } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { UserPlus, Pencil } from "lucide-react"
+import { UserPlus, Pencil, RefreshCw } from "lucide-react"
 import { MetricPieChart } from "@/components/admin/pie-chart"
 
 interface Usuario {
@@ -51,6 +51,10 @@ function UsuariosContent() {
   })
   const [editSubmitting, setEditSubmitting] = useState(false)
   const [editMessage, setEditMessage] = useState<{ type: "success" | "error"; text: string } | null>(null)
+
+  // Estados para resetear contraseña
+  const [resettingPassword, setResettingPassword] = useState(false)
+  const [resetPasswordMessage, setResetPasswordMessage] = useState<{ type: "success" | "error"; text: string } | null>(null)
 
   useEffect(() => {
     fetchUsuarios()
@@ -169,6 +173,38 @@ function UsuariosContent() {
       setEditMessage({ type: "error", text: "Error de conexión" })
     } finally {
       setEditSubmitting(false)
+    }
+  }
+
+  async function restablecerContrasena() {
+    if (!editingUser) return
+
+    setResettingPassword(true)
+    setResetPasswordMessage(null)
+
+    try {
+      const res = await fetch(`/api/admin/usuarios/${editingUser.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ accion: "resetear_contrasena" }),
+      })
+
+      const data = await res.json()
+
+      if (res.ok) {
+        setResetPasswordMessage({
+          type: "success",
+          text: data.message || `Contraseña temporal enviada a ${editingUser.email}`,
+        })
+        // Limpiar el mensaje después de 4 segundos
+        setTimeout(() => setResetPasswordMessage(null), 4000)
+      } else {
+        setResetPasswordMessage({ type: "error", text: data.error || "Error al enviar contraseña temporal" })
+      }
+    } catch (err) {
+      setResetPasswordMessage({ type: "error", text: "Error de conexión" })
+    } finally {
+      setResettingPassword(false)
     }
   }
 
@@ -433,12 +469,37 @@ function UsuariosContent() {
                   </div>
                 )}
 
-                <div className="flex gap-2">
-                  <Button type="submit" disabled={editSubmitting}>
-                    {editSubmitting ? "Guardando..." : "Guardar Cambios"}
-                  </Button>
-                  <Button type="button" variant="outline" onClick={closeEditModal}>
-                    Cancelar
+                {resetPasswordMessage && (
+                  <div
+                    className={`flex items-center gap-2 p-3 rounded-lg ${
+                      resetPasswordMessage.type === "success"
+                        ? "bg-blue-50 text-blue-800 border border-blue-200"
+                        : "bg-red-50 text-red-800 border border-red-200"
+                    }`}
+                  >
+                    <span className="text-sm">{resetPasswordMessage.text}</span>
+                  </div>
+                )}
+
+                <div className="flex flex-col gap-2">
+                  <div className="flex gap-2">
+                    <Button type="submit" disabled={editSubmitting}>
+                      {editSubmitting ? "Guardando..." : "Guardar Cambios"}
+                    </Button>
+                    <Button type="button" variant="outline" onClick={closeEditModal}>
+                      Cancelar
+                    </Button>
+                  </div>
+                  
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    onClick={restablecerContrasena}
+                    disabled={resettingPassword}
+                    className="w-full"
+                  >
+                    <RefreshCw className="mr-2 h-4 w-4" />
+                    {resettingPassword ? "Enviando contraseña temporal..." : "Reestablecer contraseña"}
                   </Button>
                 </div>
               </form>

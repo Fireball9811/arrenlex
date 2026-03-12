@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { Eye, EyeOff } from "lucide-react"
 import {
   Card,
   CardContent,
@@ -23,6 +24,7 @@ function LoginContent() {
   const mensaje = searchParams.get("mensaje")
   const [usuario, setUsuario] = useState("")
   const [contrasena, setContrasena] = useState("")
+  const [mostrarContrasena, setMostrarContrasena] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
 
@@ -146,14 +148,29 @@ function LoginContent() {
               <label htmlFor="contrasena" className="block text-sm font-medium mb-1">
                 {t.auth.contrasena}
               </label>
-              <Input
-                id="contrasena"
-                type="password"
-                placeholder="********"
-                value={contrasena}
-                onChange={(e) => setContrasena(e.target.value)}
-                autoComplete="current-password"
-              />
+              <div className="relative">
+                <Input
+                  id="contrasena"
+                  type={mostrarContrasena ? "text" : "password"}
+                  placeholder="********"
+                  value={contrasena}
+                  onChange={(e) => setContrasena(e.target.value)}
+                  autoComplete="current-password"
+                  className="pr-10"
+                />
+                <button
+                  type="button"
+                  onClick={() => setMostrarContrasena(!mostrarContrasena)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 transition"
+                  aria-label={mostrarContrasena ? "Ocultar contraseña" : "Mostrar contraseña"}
+                >
+                  {mostrarContrasena ? (
+                    <EyeOff className="h-4 w-4" />
+                  ) : (
+                    <Eye className="h-4 w-4" />
+                  )}
+                </button>
+              </div>
             </div>
 
             {error && (

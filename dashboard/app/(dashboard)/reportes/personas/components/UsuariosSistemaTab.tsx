@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { UserPlus, Pencil } from "lucide-react"
+import { UserPlus, Pencil, RefreshCw, Trash2 } from "lucide-react"
 
 interface Usuario {
   id: string
@@ -37,6 +37,15 @@ export function UsuariosSistemaTab() {
   })
   const [editSubmitting, setEditSubmitting] = useState(false)
   const [editMessage, setEditMessage] = useState<{ type: "success" | "error"; text: string } | null>(null)
+
+  // Estados para resetear contraseña
+  const [resettingPassword, setResettingPassword] = useState(false)
+  const [resetPasswordMessage, setResetPasswordMessage] = useState<{ type: "success" | "error"; text: string } | null>(null)
+
+  // Estados para eliminar usuario
+  const [userProperties, setUserProperties] = useState<{ [key: string]: number }>({})
+  const [deletingUser, setDeletingUser] = useState(false)
+  const [deleteMessage, setDeleteMessage] = useState<{ type: "success" | "error"; text: string } | null>(null)
 
   useEffect(() => {
     fetchUsuarios()
@@ -96,6 +105,21 @@ export function UsuariosSistemaTab() {
       role: usuario.role,
     })
     setEditMessage(null)
+    setResetPasswordMessage(null)
+    setDeleteMessage(null)
+    
+    // Cargar conteo de propiedades del usuario
+    fetchUserPropertiesCount(usuario.id)
+  }
+
+  async function fetchUserPropertiesCount(userId: string) {
+    try {
+      const res = await fetch(`/api/admin/usuarios/${userId}/properties-count`)
+      const data = await res.json()
+      setUserProperties((prev) => ({ ...prev, [userId]: data.count ?? 0 }))
+    } catch (error) {
+      console.error("Error fetching properties count:", error)
+    }
   }
 
   function closeEditModal() {
@@ -131,6 +155,75 @@ export function UsuariosSistemaTab() {
       setEditMessage({ type: "error", text: "Error de conexión" })
     } finally {
       setEditSubmitting(false)
+    }
+  }
+
+  async function restablecerContrasena() {
+    if (!editingUser) return
+
+    setResettingPassword(true)
+    setResetPasswordMessage(null)
+
+    try {
+      const res = await fetch(`/api/admin/usuarios/${editingUser.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ accion: "resetear_contrasena" }),
+      })
+
+      const data = await res.json()
+
+      if (res.ok) {
+        setResetPasswordMessage({
+          type: "success",
+          text: data.message || `Contraseña temporal enviada a ${editingUser.email}`,
+        })
+        setTimeout(() => setResetPasswordMessage(null), 4000)
+      } else {
+        setResetPasswordMessage({ type: "error", text: data.error || "Error al enviar contraseña temporal" })
+      }
+    } catch (err) {
+      setResetPasswordMessage({ type: "error", text: "Error de conexión" })
+    } finally {
+      setResettingPassword(false)
+    }
+  }
+
+  async function eliminarUsuario() {
+    if (!editingUser) return
+
+    const propCount = userProperties[editingUser.id] ?? 0
+    if (propCount > 0) {
+      alert(`Este usuario tiene ${propCount} propiedad(es) asignada(s). No se puede eliminar.`)
+      return
+    }
+
+    if (!confirm(`¿Estás seguro de que deseas eliminar al usuario ${editingUser.email}? Esta acción no se puede deshacer.`)) {
+      return
+    }
+
+    setDeletingUser(true)
+    setDeleteMessage(null)
+
+    try {
+      const res = await fetch(`/api/admin/usuarios/${editingUser.id}`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+      })
+
+      const data = await res.json()
+
+      if (res.ok) {
+        setDeleteMessage({ type: "success", text: "Usuario eliminado exitosamente" })
+        fetchUsuarios()
+        setTimeout(() => closeEditModal(), 1500)
+      } else {
+        setDeleteMessage({ type: "error", text: data.error || "Error al eliminar usuario" })
+      }
+    } catch (err) {
+      setDeleteMessage({ type: "error", text: "Error de conexión" })
+    } finally {
+      setDeletingUser(false)
     }
   }
 
@@ -316,13 +409,69 @@ export function UsuariosSistemaTab() {
                   </div>
                 )}
 
-                <div className="flex gap-2">
-                  <Button type="submit" disabled={editSubmitting}>
-                    {editSubmitting ? "Guardando..." : "Guardar Cambios"}
+                {resetPasswordMessage && (
+                  <div
+                    className={`p-3 rounded-lg ${
+                      resetPasswordMessage.type === "success"
+                        ? "bg-blue-50 text-blue-800 border border-blue-200"
+                        : "bg-red-50 text-red-800 border border-red-200"
+                    }`}
+                  >
+                    {resetPasswordMessage.text}
+                  </div>
+                )}
+
+                {deleteMessage && (
+                  <div
+                    className={`p-3 rounded-lg ${
+                      deleteMessage.type === "success"
+                        ? "bg-green-50 text-green-800 border border-green-200"
+                        : "bg-red-50 text-red-800 border border-red-200"
+                    }`}
+                  >
+                    {deleteMessage.text}
+                  </div>
+                )}
+
+                <div className="flex flex-col gap-2">
+                  <div className="flex gap-2">
+                    <Button type="submit" disabled={editSubmitting}>
+                      {editSubmitting ? "Guardando..." : "Guardar Cambios"}
+                    </Button>
+                    <Button type="button" variant="outline" onClick={closeEditModal}>
+                      Cancelar
+                    </Button>
+                  </div>
+
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    onClick={restablecerContrasena}
+                    disabled={resettingPassword}
+                    className="w-full"
+                  >
+                    <RefreshCw className="mr-2 h-4 w-4" />
+                    {resettingPassword ? "Enviando contraseña temporal..." : "Reestablecer contraseña"}
                   </Button>
-                  <Button type="button" variant="outline" onClick={closeEditModal}>
-                    Cancelar
-                  </Button>
+
+                  {(userProperties[editingUser.id] ?? 0) === 0 && (
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      onClick={eliminarUsuario}
+                      disabled={deletingUser}
+                      className="w-full"
+                    >
+                      <Trash2 className="mr-2 h-4 w-4" />
+                      {deletingUser ? "Eliminando..." : "Eliminar usuario"}
+                    </Button>
+                  )}
+                  
+                  {(userProperties[editingUser.id] ?? 0) > 0 && (
+                    <div className="p-2 bg-yellow-50 border border-yellow-200 rounded text-xs text-yellow-800">
+                      Este usuario tiene {userProperties[editingUser.id]} propiedad(es) asignada(s). No se puede eliminar.
+                    </div>
+                  )}
                 </div>
               </form>
             </CardContent>

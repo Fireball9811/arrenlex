@@ -9,7 +9,7 @@ import {
 } from "@/lib/auth/password-reset-service"
 import { sendPasswordResetEmail } from "@/lib/email/send-reset"
 
-const RESET_TOKEN_EXPIRY_MINUTES = 15
+const RESET_TOKEN_EXPIRY_MINUTES = 60
 
 /**
  * POST /api/auth/request-password-reset

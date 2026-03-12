@@ -1,163 +1,94 @@
 import { NextResponse } from "next/server"
-import { createClient } from "@/lib/supabase/server"
-import { createAdminClient } from "@/lib/supabase/admin"
-import { getUserRole } from "@/lib/auth/role"
 
-/**
- * GET - Lista propiedades.
- * Admin: todas (con opcional filtro ciudad, user_id); incluye datos del propietario.
- * Propietario: solo las suyas (user_id = user.id).
- * Inquilino: 403.
- */
 export async function GET(request: Request) {
-  const supabase = await createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  console.log("🔵 [propiedades] GET iniciado")
+  
+  try {
+    // Primero verificar que el endpoint responde
+    console.log("✓ Endpoint alcanzado")
+    
+    // Importar dinámicamente para evitar errores de compilación
+    const { createClient } = await import("@/lib/supabase/server")
+    const { createAdminClient } = await import("@/lib/supabase/admin")
+    const { getUserRole } = await import("@/lib/auth/role")
+    
+    console.log("✓ Módulos importados")
 
-  if (!user) {
-    return NextResponse.json({ error: "No autorizado" }, { status: 401 })
-  }
+    const supabase = await createClient()
+    console.log("✓ Cliente Supabase creado")
+    
+    const authData = await supabase.auth.getUser()
+    const user = authData.data?.user
+    
+    console.log("✓ Usuario:", user?.id, user?.email)
 
-  const role = await getUserRole(supabase, user)
-  if (role !== "admin" && role !== "propietario") {
-    return NextResponse.json(
-      { error: "Solo administradores o propietarios pueden listar propiedades" },
-      { status: 403 }
-    )
-  }
-
-  const { searchParams } = new URL(request.url)
-  const ciudad = searchParams.get("ciudad")
-  const userIdFilter = searchParams.get("user_id")
-
-  const admin = createAdminClient()
-
-  if (role === "admin") {
-    let query = admin
-      .from("propiedades")
-      .select("*")
-      .order("created_at", { ascending: false })
-
-    if (ciudad) {
-      query = query.eq("ciudad", ciudad)
-    }
-    if (userIdFilter) {
-      query = query.eq("user_id", userIdFilter)
+    if (!user) {
+      console.log("❌ No hay usuario autenticado")
+      return NextResponse.json({ error: "No autorizado" }, { status: 401 })
     }
 
-    const { data: propiedades, error } = await query
+    // Obtener rol
+    let role: string | null = null
+    try {
+      role = await getUserRole(supabase, user)
+      console.log("✓ Rol obtenido:", role)
+    } catch (err: any) {
+      console.error("⚠️ Error en getUserRole, usando fallback:", err?.message)
+      // Fallback: consultar perfiles directamente
+      const { data: perfil, error: perfilErr } = await supabase
+        .from("perfiles")
+        .select("rol")
+        .eq("user_id", user.id)
+        .single()
+      
+      if (perfilErr) {
+        console.error("❌ Error consultando perfiles:", perfilErr?.message)
+        return NextResponse.json({ error: "No se pudo obtener rol", details: perfilErr?.message }, { status: 500 })
+      }
+      
+      role = perfil?.rol
+      console.log("✓ Rol obtenido del fallback:", role)
+    }
+    
+    if (!role || (role !== "admin" && role !== "propietario")) {
+      console.log("❌ Rol no válido:", role)
+      return NextResponse.json({ error: "No tienes permiso", your_role: role }, { status: 403 })
+    }
+
+    // Crear admin client y ejecutar query
+    const admin = createAdminClient()
+    console.log("✓ Admin client creado")
+
+    let query = admin.from("propiedades").select("*")
+    
+    if (role === "propietario") {
+      query = query.eq("user_id", user.id)
+      console.log("✓ Query: propiedades where user_id =", user.id)
+    } else {
+      console.log("✓ Query: todas las propiedades (admin)")
+    }
+
+    query = query.order("created_at", { ascending: false })
+
+    const { data, error } = await query
 
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 })
+      console.error("❌ Error en query:", error?.message, error?.code)
+      return NextResponse.json(
+        { error: "Error en consulta", details: error?.message, code: error?.code }, 
+        { status: 500 }
+      )
     }
 
-    const list = propiedades ?? []
-    if (list.length === 0) {
-      return NextResponse.json([])
-    }
-
-    const userIds = [...new Set(list.map((p: { user_id: string }) => p.user_id))]
-    const { data: perfiles } = await admin
-      .from("perfiles")
-      .select("id, nombre, email")
-      .in("id", userIds)
-
-    const perfilesMap = new Map(
-      (perfiles ?? []).map((p: { id: string; nombre: string | null; email: string }) => [
-        p.id,
-        { id: p.id, nombre: p.nombre ?? null, email: p.email },
-      ])
-    )
-
-    const withPropietario = list.map((p: Record<string, unknown>) => ({
-      ...p,
-      propietario: perfilesMap.get(p.user_id as string) ?? null,
-    }))
-
-    return NextResponse.json(withPropietario)
-  }
-
-  // Propietario: solo sus propiedades
-  let query = admin
-    .from("propiedades")
-    .select("*")
-    .eq("user_id", user.id)
-    .order("created_at", { ascending: false })
-
-  if (ciudad) {
-    query = query.eq("ciudad", ciudad)
-  }
-
-  const { data, error } = await query
-
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 })
-  }
-
-  return NextResponse.json(data ?? [])
-}
-
-/**
- * POST - Crea una propiedad.
- * Admin: puede enviar body.user_id (propietario); si no, usa user.id.
- * Propietario: user_id siempre user.id (ignora body.user_id).
- * Inquilino: 403.
- */
-export async function POST(request: Request) {
-  const supabase = await createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-
-  if (!user) {
-    return NextResponse.json({ error: "No autorizado" }, { status: 401 })
-  }
-
-  const role = await getUserRole(supabase, user)
-  if (role !== "admin" && role !== "propietario") {
+    console.log("✓ SUCCESS! Retornando", data?.length || 0, "propiedades")
+    return NextResponse.json(data ?? [])
+    
+  } catch (err: any) {
+    console.error("❌ ERROR GENERAL:", err?.message || err)
+    console.error(err)
     return NextResponse.json(
-      { error: "Solo administradores o propietarios pueden crear propiedades" },
-      { status: 403 }
+      { error: "Error interno del servidor", details: err?.message }, 
+      { status: 500 }
     )
   }
-
-  const body = await request.json()
-
-  let ownerId: string
-  if (role === "admin" && body.user_id) {
-    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
-    if (!uuidRegex.test(body.user_id)) {
-      return NextResponse.json({ error: "user_id inválido" }, { status: 400 })
-    }
-    ownerId = body.user_id
-  } else {
-    ownerId = user.id
-  }
-
-  const admin = createAdminClient()
-
-  const { data, error } = await admin
-    .from("propiedades")
-    .insert({
-      user_id: ownerId,
-      direccion: body.direccion ?? "",
-      ciudad: body.ciudad ?? "",
-      barrio: body.barrio ?? "",
-      tipo: body.tipo ?? "apartamento",
-      habitaciones: Number(body.habitaciones) || 0,
-      banos: Number(body.banos) || 0,
-      area: Number(body.area) || 0,
-      valor_arriendo: Number(body.valorArriendo) || 0,
-      descripcion: body.descripcion ?? "",
-      estado: body.estado ?? "disponible",
-    })
-    .select()
-    .single()
-
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 })
-  }
-
-  return NextResponse.json(data)
 }

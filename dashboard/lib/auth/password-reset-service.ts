@@ -3,7 +3,7 @@ import bcrypt from "bcrypt"
 import { createAdminClient } from "@/lib/supabase/admin"
 
 const RESET_TOKEN_BYTES = 32
-const RESET_TOKEN_EXPIRY_MINUTES = 15
+const RESET_TOKEN_EXPIRY_MINUTES = 60
 const BCRYPT_ROUNDS = 10
 
 const USERS_TABLE = "Users"
@@ -19,7 +19,7 @@ export function generateResetToken(): string {
   return crypto.randomBytes(RESET_TOKEN_BYTES).toString("hex")
 }
 
-/** Expiración del token: ahora + 15 minutos. */
+/** Expiración del token: ahora + 60 minutos (1 hora). */
 export function getResetTokenExpiry(): Date {
   const d = new Date()
   d.setMinutes(d.getMinutes() + RESET_TOKEN_EXPIRY_MINUTES)

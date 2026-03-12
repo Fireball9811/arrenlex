@@ -15,7 +15,7 @@ export type SendResetEmailParams = {
 export async function sendPasswordResetEmail({
   to,
   resetLink,
-  expiresMinutes = 15,
+  expiresMinutes = 60,
 }: SendResetEmailParams): Promise<{ success: boolean; error?: string }> {
   const resend = getResendClient()
   if (!resend) {

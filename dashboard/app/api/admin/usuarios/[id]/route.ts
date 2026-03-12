@@ -1,8 +1,11 @@
 import { NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 import { createAdminClient, isAdmin } from "@/lib/supabase/admin"
+import { generateTempPassword } from "@/lib/auth/temp-password"
+import { sendInvitationEmail } from "@/lib/email/send-invitation"
 
 const VALID_ROLES = ["admin", "propietario", "inquilino", "maintenance_special", "insurance_special", "lawyer_special"] as const
+const EXPIRY_DAYS = parseInt(process.env.INVITATION_TEMP_PASSWORD_EXPIRY_DAYS ?? "7", 10) || 7
 
 // PATCH - Actualizar datos del perfil: nombre, celular, cédula, dirección, rol, activo, bloqueado; o acciones (bloquear/activar/etc.)
 export async function PATCH(
@@ -129,6 +132,79 @@ export async function PATCH(
 
         break
       }
+      case "resetear_contrasena": {
+        // Generar contraseña temporal y enviar email
+        try {
+          // Obtener datos del usuario para el email
+          const { data: usuario } = await admin
+            .from("perfiles")
+            .select("id, email")
+            .eq("id", id)
+            .single()
+
+          if (!usuario || !usuario.email) {
+            return NextResponse.json({ error: "Usuario no encontrado" }, { status: 404 })
+          }
+
+          const tempPassword = generateTempPassword()
+          const tempPasswordExpiresAt = Date.now() + EXPIRY_DAYS * 24 * 60 * 60 * 1000
+
+          // Actualizar contraseña en Supabase Auth
+          const { error: updateAuthError } = await admin.auth.admin.updateUserById(id, {
+            password: tempPassword,
+            user_metadata: {
+              must_change_password: true,
+              temp_password_expires_at: tempPasswordExpiresAt,
+            },
+          })
+
+          if (updateAuthError) {
+            console.error("[api/admin/usuarios/[id]] Error actualizando contraseña:", updateAuthError)
+            return NextResponse.json(
+              { error: "Error al actualizar la contraseña: " + updateAuthError.message },
+              { status: 500 }
+            )
+          }
+
+          // Enviar email con contraseña temporal
+          const siteUrl =
+            process.env.NEXT_PUBLIC_SITE_URL ??
+            (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000")
+          const loginUrl = `${siteUrl}/login`
+
+          const emailResult = await sendInvitationEmail({
+            to: usuario.email,
+            tempPassword,
+            loginUrl,
+            expiresInDays: EXPIRY_DAYS,
+          })
+
+          if (!emailResult.success) {
+            console.error("[api/admin/usuarios/[id]] Error enviando email:", emailResult.error)
+            return NextResponse.json(
+              {
+                error: "Contraseña actualizada pero no se pudo enviar el email: " + emailResult.error,
+                message: "Contraseña temporal: " + tempPassword,
+              },
+              { status: 200 }
+            )
+          }
+
+          return NextResponse.json(
+            {
+              message: "Contraseña temporal enviada exitosamente a " + usuario.email,
+              email: usuario.email,
+            },
+            { status: 200 }
+          )
+        } catch (err) {
+          console.error("[api/admin/usuarios/[id]] Error en resetear_contrasena:", err)
+          return NextResponse.json(
+            { error: "Error al procesar: " + (err instanceof Error ? err.message : "desconocido") },
+            { status: 500 }
+          )
+        }
+      }
       default:
         return NextResponse.json({ error: "Acción no válida" }, { status: 400 })
     }
@@ -224,4 +300,75 @@ export async function PUT(
   }
 
   return NextResponse.json({ mensaje: "Usuario actualizado correctamente", ...data })
+}
+
+// DELETE - Eliminar un usuario (solo si no tiene propiedades asignadas)
+export async function DELETE(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const supabaseServer = await createClient()
+  const {
+    data: { user },
+  } = await supabaseServer.auth.getUser()
+
+  if (!user) {
+    return NextResponse.json({ error: "No autorizado" }, { status: 401 })
+  }
+
+  if (!isAdmin(user.email)) {
+    return NextResponse.json({ error: "Solo administradores pueden eliminar usuarios" }, { status: 403 })
+  }
+
+  const { id } = await params
+
+  if (id === user?.id) {
+    return NextResponse.json({ error: "No puedes eliminar tu propio usuario" }, { status: 400 })
+  }
+
+  const admin = createAdminClient()
+
+  try {
+    // Verificar si el usuario tiene propiedades asignadas
+    const { count: propiedadesCount } = await admin
+      .from("propiedades")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", id)
+
+    if ((propiedadesCount ?? 0) > 0) {
+      return NextResponse.json(
+        { error: `El usuario tiene ${propiedadesCount} propiedad(es) asignada(s). No se puede eliminar.` },
+        { status: 400 }
+      )
+    }
+
+    // Eliminar el perfil del usuario
+    const { error: deleteProfileError } = await admin
+      .from("perfiles")
+      .delete()
+      .eq("id", id)
+
+    if (deleteProfileError) {
+      return NextResponse.json({ error: deleteProfileError.message }, { status: 500 })
+    }
+
+    // Eliminar el usuario de Supabase Auth
+    const { error: deleteAuthError } = await admin.auth.admin.deleteUser(id)
+
+    if (deleteAuthError) {
+      console.warn("[DELETE /api/admin/usuarios/[id]] Error eliminando usuario de auth:", deleteAuthError)
+      // No frenamos el proceso si falla auth, ya que el perfil está eliminado
+    }
+
+    return NextResponse.json({
+      message: "Usuario eliminado exitosamente",
+      id,
+    })
+  } catch (err) {
+    console.error("[DELETE /api/admin/usuarios/[id]] Error:", err)
+    return NextResponse.json(
+      { error: err instanceof Error ? err.message : "Error al eliminar usuario" },
+      { status: 500 }
+    )
+  }
 }

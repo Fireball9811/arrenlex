@@ -1,17 +1,253 @@
 "use client"
 
-import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { useEffect, useState } from "react"
+import { useRouter } from "next/navigation"
+import Link from "next/link"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Plus, MapPin, Home, Edit2, Trash2, Receipt } from "lucide-react"
+import { useLang } from "@/lib/i18n/context"
+
+interface Propiedad {
+  id: string
+  titulo: string
+  direccion: string
+  ciudad: string
+  habitaciones: number
+  banos: number
+  area: number
+  valor_arriendo: number
+  descripcion?: string
+}
 
 export default function PropietarioPropiedadesPage() {
-  return (
-    <div>
-      <h1 className="mb-6 text-3xl font-bold">Propiedades</h1>
-      <Card>
-        <CardHeader>
-          <CardTitle>Propiedades</CardTitle>
-          <CardDescription>Gestiona tus propiedades. Contenido en construcción.</CardDescription>
-        </CardHeader>
+  const router = useRouter()
+  const { t } = useLang()
+  const [loading, setLoading] = useState(true)
+  const [propiedades, setPropiedades] = useState<Propiedad[]>([])
+  const [error, setError] = useState<string | null>(null)
+  const [ciudadFiltro, setCiudadFiltro] = useState("")
+  const [ciudades, setCiudades] = useState<string[]>([])
+
+  useEffect(() => {
+    fetch("/api/auth/me")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data: { role?: string } | null) => {
+        if (data?.role === "admin") {
+          router.replace("/admin/dashboard")
+          return
+        }
+        if (data?.role === "inquilino") {
+          router.replace("/inquilino/dashboard")
+          return
+        }
+        
+        return fetch("/api/propiedades")
+          .then((res) => {
+            if (!res.ok) {
+              throw new Error(`HTTP ${res.status}`)
+            }
+            return res.json()
+          })
+          .then((data: Propiedad[]) => {
+            setPropiedades(data)
+            const uniqueCities = [...new Set(data.map((p) => p.ciudad))].sort()
+            setCiudades(uniqueCities)
+            setLoading(false)
+          })
+          .catch((err) => {
+            setError(`Error: ${err.message}`)
+            setLoading(false)
+          })
+      })
+      .catch(() => {
+        setError("Error de autenticación")
+        setLoading(false)
+      })
+  }, [router])
+
+  const propiedadesFiltradas = propiedades.filter((p) => {
+    if (!p || !p.ciudad) return false
+    
+    // Filtro de ciudad (si está vacío, se muestran todas)
+    const matchCiudad = !ciudadFiltro || (p.ciudad || "").toLowerCase() === ciudadFiltro.toLowerCase()
+    
+    return matchCiudad
+  })
+
+  if (loading) return <p className="text-muted-foreground">{t.comun.cargando}</p>
+
+  if (error) {
+    return (
+      <Card className="border-red-200 bg-red-50">
+        <CardContent className="pt-6">
+          <p className="text-red-600 font-semibold">{error}</p>
+          <p className="text-red-500 text-sm mt-2">Si el problema persiste, contacta al administrador.</p>
+        </CardContent>
       </Card>
+    )
+  }
+
+  return (
+    <div suppressHydrationWarning>
+      <div className="mb-6 flex items-center justify-between">
+        <h1 className="text-3xl font-bold">Propiedades</h1>
+        <Link href="/propietario/nuevo">
+          <Button>
+            <Plus className="mr-2 h-4 w-4" />
+            Nueva propiedad
+          </Button>
+        </Link>
+      </div>
+
+      <Card className="mb-6">
+        <CardHeader>
+          <CardTitle>Filtrar por ciudad</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div>
+            <label className="mb-2 block text-sm font-medium">Ciudad</label>
+            <select
+              value={ciudadFiltro}
+              onChange={(e) => setCiudadFiltro(e.target.value)}
+              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+            >
+              <option value="">Todas las ciudades ({propiedades.length})</option>
+              {ciudades.map((ciudad) => {
+                const countInCity = propiedades.filter((p) => (p.ciudad || "").toLowerCase() === ciudad.toLowerCase()).length
+                return (
+                  <option key={ciudad} value={ciudad}>
+                    {ciudad} ({countInCity})
+                  </option>
+                )
+              })}
+            </select>
+          </div>
+        </CardContent>
+      </Card>
+
+      {propiedadesFiltradas.length === 0 ? (
+        <Card>
+          <CardContent className="py-12 text-center">
+            <Home className="mx-auto mb-4 h-12 w-12 text-muted-foreground" />
+            {propiedades.length === 0 ? (
+              <>
+                <p className="text-muted-foreground font-semibold">No tienes propiedades registradas</p>
+                <p className="text-muted-foreground text-sm mt-1">Comienza registrando tu primera propiedad</p>
+              </>
+            ) : (
+              <>
+                <p className="text-muted-foreground font-semibold">
+                  {ciudadFiltro ? `No hay propiedades en ${ciudadFiltro}` : "No hay resultados"}
+                </p>
+                <p className="text-muted-foreground text-sm mt-1">
+                  {ciudadFiltro 
+                    ? `Tienes ${propiedades.length} propiedad(es) pero ninguna en ${ciudadFiltro}` 
+                    : "Prueba con otros filtros"}
+                </p>
+              </>
+            )}
+            <Link href="/propietario/nuevo">
+              <Button className="mt-4" variant="default">
+                <Plus className="mr-2 h-4 w-4" />
+                Nueva propiedad
+              </Button>
+            </Link>
+          </CardContent>
+        </Card>
+      ) : (
+        <>
+          <div className="mb-4 flex items-center justify-between">
+            <div className="text-sm text-muted-foreground">
+              {ciudadFiltro ? (
+                <span>Propiedades en <strong>{ciudadFiltro}</strong>: <strong className="text-green-600">{propiedadesFiltradas.length}</strong> de <strong>{propiedades.length}</strong></span>
+              ) : (
+                <span>Total de propiedades: <strong className="text-green-600">{propiedades.length}</strong></span>
+              )}
+            </div>
+            {ciudadFiltro && (
+              <button
+                onClick={() => setCiudadFiltro("")}
+                className="text-xs text-blue-600 hover:underline font-medium"
+              >
+                ✕ Limpiar filtro de ciudad
+              </button>
+            )}
+          </div>
+          <div className="grid gap-4 md:grid-cols-2">
+            {propiedadesFiltradas.map((propiedad) => (
+              <Card key={propiedad.id}>
+                <CardHeader className="pb-3">
+                  <CardDescription>
+                    <div className="mt-1 flex items-start gap-1">
+                      <MapPin className="mt-0.5 h-4 w-4 flex-shrink-0 text-muted-foreground" />
+                      <span>{propiedad.direccion || "Sin dirección"}, {propiedad.ciudad || "Sin ciudad"}</span>
+                    </div>
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    <div className="grid grid-cols-3 gap-2 text-sm">
+                      <div>
+                        <p className="text-muted-foreground">Habitaciones</p>
+                        <p className="font-semibold">{propiedad.habitaciones || 0}</p>
+                      </div>
+                      <div>
+                        <p className="text-muted-foreground">Baños</p>
+                        <p className="font-semibold">{propiedad.banos || 0}</p>
+                      </div>
+                      <div>
+                        <p className="text-muted-foreground">Área</p>
+                        <p className="font-semibold">{propiedad.area || 0}m²</p>
+                      </div>
+                    </div>
+                    <div className="border-t pt-3">
+                      <p className="text-muted-foreground text-sm">Canon mensual</p>
+                      <p className="text-lg font-bold text-green-600">
+                        {new Intl.NumberFormat("es-CO", {
+                          style: "currency",
+                          currency: "COP",
+                          maximumFractionDigits: 0,
+                        }).format(propiedad.valor_arriendo || 0)}
+                      </p>
+                    </div>
+                    <div className="flex gap-2 pt-2">
+                      <Link href={`/propietario/propiedades/${propiedad.id}/recibos`} className="flex-1">
+                        <Button variant="outline" size="sm" className="w-full">
+                          <Receipt className="mr-2 h-4 w-4" />
+                          Recibos
+                        </Button>
+                      </Link>
+                      <Link href={`/propietario/propiedades/${propiedad.id}/editar`} className="flex-1">
+                        <Button variant="outline" size="sm" className="w-full">
+                          <Edit2 className="mr-2 h-4 w-4" />
+                          Editar
+                        </Button>
+                      </Link>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="text-destructive hover:text-destructive"
+                        onClick={() => {
+                          if (
+                            window.confirm(
+                              `¿Eliminar propiedad?`
+                            )
+                          ) {
+                            // Implementar eliminación
+                          }
+                        }}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </>
+      )}
     </div>
   )
 }

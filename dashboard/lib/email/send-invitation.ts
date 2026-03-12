@@ -42,7 +42,25 @@ export async function sendInvitationEmail({
     <p style="margin: 0;"><strong>Contraseña temporal:</strong> <code style="background: #fff; padding: 2px 6px; border-radius: 4px;">${tempPassword}</code></p>
   </div>
   <p><a href="${loginUrl}" style="display: inline-block; background: #2563eb; color: #fff; padding: 10px 20px; text-decoration: none; border-radius: 6px;">Ir a inicio de sesión</a></p>
-  <p style="font-size: 0.875rem; color: #666;">Esta contraseña temporal es válida por ${expiresInDays} días. Al entrar se te pedirá crear una nueva contraseña.</p>
+  
+  <div style="background: #fef3c7; border: 1px solid #fcd34d; border-radius: 8px; padding: 12px; margin: 16px 0;">
+    <p style="margin: 0; font-weight: bold; color: #92400e;">⚠️ Importante:</p>
+    <p style="margin: 8px 0 0 0; color: #78350f; font-size: 0.875rem;">
+      Al entrar, será <strong>obligatorio cambiar tu contraseña</strong> por una nueva. El sistema te redirigirá automáticamente al formulario de cambio de contraseña.
+    </p>
+    <p style="margin: 8px 0 0 0; color: #78350f; font-size: 0.875rem;">
+      Esta contraseña temporal es válida por ${expiresInDays} días.
+    </p>
+  </div>
+  
+  <p style="font-size: 0.875rem; color: #666;"><strong>Instrucciones:</strong></p>
+  <ol style="font-size: 0.875rem; color: #666; margin: 8px 0;">
+    <li>Abre el enlace o ve a <strong>${loginUrl}</strong></li>
+    <li>Inicia sesión con tu correo y la contraseña temporal</li>
+    <li>Completa el cambio de contraseña (requerido)</li>
+    <li>¡Listo! Ya tendrás acceso a la plataforma</li>
+  </ol>
+  
   <p style="font-size: 0.875rem; color: #666;">Si el botón no funciona, copia y pega este enlace en tu navegador:</p>
   <p style="font-size: 0.75rem; word-break: break-all;">${loginUrl}</p>
   <hr style="border: none; border-top: 1px solid #eee; margin: 24px 0;">
