@@ -92,6 +92,23 @@ export async function PUT(
 
   const admin = createAdminClient()
 
+  // Validar que la matrícula inmobiliaria no se repita (si se está cambiando)
+  if (body.matricula_inmobiliaria) {
+    const { data: existeMatricula } = await admin
+      .from("propiedades")
+      .select("id")
+      .eq("matricula_inmobiliaria", body.matricula_inmobiliaria)
+      .neq("id", id)
+      .single()
+
+    if (existeMatricula) {
+      return NextResponse.json(
+        { error: "La matrícula inmobiliaria ya está en uso en otra propiedad" },
+        { status: 400 }
+      )
+    }
+  }
+
   const updatePayload: Record<string, unknown> = {
     titulo: body.titulo,
     direccion: body.direccion,
@@ -101,6 +118,9 @@ export async function PUT(
     habitaciones: Number(body.habitaciones) || 0,
     banos: Number(body.banos) || 0,
     area: Number(body.area) || 0,
+    ascensor: Number(body.ascensor) || 0,
+    depositos: Number(body.depositos) || 0,
+    parqueaderos: Number(body.parqueaderos) || 0,
     valor_arriendo: Number(body.valor_arriendo) || 0,
     descripcion: body.descripcion,
     estado: body.estado,

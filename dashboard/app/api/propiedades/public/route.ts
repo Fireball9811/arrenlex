@@ -12,7 +12,7 @@ export async function GET(request: Request) {
 
   let query = admin
     .from("propiedades")
-    .select("id, area, descripcion")
+    .select("id, area, descripcion, numero_matricula, habitaciones, banos, ascensor, depositos, parqueaderos")
     .eq("estado", "disponible")
     .order("created_at", { ascending: false })
 

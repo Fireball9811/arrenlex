@@ -105,9 +105,11 @@ export async function POST(request: Request) {
   const nombre = typeof body.nombre === "string" ? body.nombre.trim() : ""
   const cedula = typeof body.cedula === "string" ? body.cedula.trim().replace(/\D/g, "") : ""
   const telefono = typeof body.telefono === "string" ? body.telefono.trim().replace(/\D/g, "") : ""
+  const email = typeof body.email === "string" ? body.email.trim() : null
   const coarrendatarioNombre = typeof body.coarrendatario_nombre === "string" ? body.coarrendatario_nombre.trim() : ""
   const coarrendatarioCedula = typeof body.coarrendatario_cedula === "string" ? body.coarrendatario_cedula.trim().replace(/\D/g, "") : ""
   const coarrendatarioTelefono = typeof body.coarrendatario_telefono === "string" ? body.coarrendatario_telefono.trim().replace(/\D/g, "") : ""
+  const coarrendatarioEmail = typeof body.coarrendatario_email === "string" ? body.coarrendatario_email.trim() : null
 
   if (!nombre) {
     return NextResponse.json(
@@ -282,9 +284,11 @@ export async function POST(request: Request) {
       nombre,
       cedula,
       telefono,
+      email,
       coarrendatario_nombre: coarrendatarioNombre,
       coarrendatario_cedula: coarrendatarioCedula,
       coarrendatario_telefono: coarrendatarioTelefono,
+      coarrendatario_email: coarrendatarioEmail,
       salario_principal: toNum(body.salario_principal),
       salario_secundario: toNum(body.salario_secundario),
       empresa_principal: toStr(body.empresa_principal),

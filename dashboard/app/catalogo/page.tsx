@@ -18,6 +18,12 @@ type PropiedadPublica = {
   area: number
   descripcion: string | null
   imagen_principal: string | null
+  numero_matricula?: string
+  habitaciones?: number
+  banos?: number
+  ascensor?: number
+  depositos?: number
+  parqueaderos?: number
 }
 
 function CatalogoContent() {
@@ -132,8 +138,20 @@ function CatalogoContent() {
                 )}
               </div>
 
-              <CardHeader>
+              <CardHeader className="pb-2">
+                {propiedad.numero_matricula && (
+                  <div className="bg-blue-50 border border-blue-200 px-3 py-1 rounded inline-block mb-2">
+                    <p className="text-xs text-blue-600 font-semibold">{propiedad.numero_matricula}</p>
+                  </div>
+                )}
                 <CardTitle className="text-lg">{t.catalogo.tamano}: {propiedad.area} m²</CardTitle>
+                <div className="flex flex-wrap gap-x-3 gap-y-1 text-sm text-muted-foreground mt-2">
+                  <span>🛏 {propiedad.habitaciones || 0} hab</span>
+                  <span>🚿 {propiedad.banos || 0} baños</span>
+                  <span>🛗 {propiedad.ascensor || 0} asc</span>
+                  <span>📦 {propiedad.depositos || 0} dep</span>
+                  <span>🚗 {propiedad.parqueaderos || 0} parq</span>
+                </div>
                 {propiedad.descripcion ? (
                   <CardDescription className="line-clamp-3">
                     {propiedad.descripcion}

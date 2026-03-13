@@ -90,7 +90,102 @@ export async function GET(request: Request) {
     console.error("❌ ERROR GENERAL:", err?.message || err)
     console.error(err)
     return NextResponse.json(
-      { error: "Error interno del servidor", details: err?.message }, 
+      { error: "Error interno del servidor", details: err?.message },
+      { status: 500 }
+    )
+  }
+}
+
+// POST - Crear nueva propiedad con matrícula automática
+export async function POST(request: Request) {
+  console.log("🟢 [propiedades] POST - Crear propiedad")
+
+  try {
+    const { createClient } = await import("@/lib/supabase/server")
+    const { createAdminClient } = await import("@/lib/supabase/admin")
+    const { getUserRole } = await import("@/lib/auth/role")
+
+    const supabase = await createClient()
+    const authData = await supabase.auth.getUser()
+    const user = authData.data?.user
+
+    if (!user) {
+      return NextResponse.json({ error: "No autorizado" }, { status: 401 })
+    }
+
+    const role = await getUserRole(supabase, user)
+    if (role !== "admin" && role !== "propietario") {
+      return NextResponse.json({ error: "No tienes permiso" }, { status: 403 })
+    }
+
+    const body = await request.json()
+
+    // Validar campos requeridos
+    if (!body.direccion || !body.ciudad) {
+      return NextResponse.json(
+        { error: "Dirección y ciudad son obligatorios" },
+        { status: 400 }
+      )
+    }
+
+    const admin = createAdminClient()
+
+    // Generar número de matrícula automático usando la función de PostgreSQL
+    const { data: matriculaData } = await admin.rpc("generar_numero_matricula")
+
+    if (!matriculaData) {
+      return NextResponse.json(
+        { error: "Error al generar número de matrícula" },
+        { status: 500 }
+      )
+    }
+
+    const numeroMatricula = matriculaData
+
+    // Crear propiedad
+    const { data, error } = await admin
+      .from("propiedades")
+      .insert({
+        user_id: role === "propietario" ? user.id : body.user_id || user.id,
+        titulo: body.titulo || null,
+        direccion: body.direccion,
+        ciudad: body.ciudad,
+        barrio: body.barrio || null,
+        tipo: body.tipo || "apartamento",
+        habitaciones: Number(body.habitaciones) || 0,
+        banos: Number(body.banos) || 0,
+        area: Number(body.area) || 0,
+        ascensor: Number(body.ascensor) || 0,
+        depositos: Number(body.depositos) || 0,
+        parqueaderos: Number(body.parqueaderos) || 0,
+        valor_arriendo: Number(body.valor_arriendo) || 0,
+        descripcion: body.descripcion || null,
+        estado: body.estado || "disponible",
+        matricula_inmobiliaria: body.matricula_inmobiliaria || null,
+        numero_matricula: numeroMatricula,
+        cuenta_bancaria_entidad: body.cuenta_bancaria_entidad || null,
+        cuenta_bancaria_tipo: body.cuenta_bancaria_tipo || null,
+        cuenta_bancaria_numero: body.cuenta_bancaria_numero || null,
+        cuenta_bancaria_titular: body.cuenta_bancaria_titular || null,
+      })
+      .select()
+      .single()
+
+    if (error) {
+      console.error("❌ Error creando propiedad:", error)
+      return NextResponse.json(
+        { error: error.message },
+        { status: 500 }
+      )
+    }
+
+    console.log("✓ Propiedad creada con matrícula:", numeroMatricula)
+    return NextResponse.json(data)
+
+  } catch (err: any) {
+    console.error("❌ ERROR GENERAL:", err?.message || err)
+    return NextResponse.json(
+      { error: "Error interno del servidor", details: err?.message },
       { status: 500 }
     )
   }

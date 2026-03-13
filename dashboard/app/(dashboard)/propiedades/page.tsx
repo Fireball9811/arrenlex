@@ -227,10 +227,13 @@ export default function PropiedadesPage() {
                   </p>
                 )}
                 <CardContent className="flex-1 space-y-2 p-0 pt-2">
-                  <div className="flex gap-4 text-sm text-muted-foreground">
+                  <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground">
                     <span>🛏 {p.habitaciones} hab</span>
                     <span>🚿 {p.banos} baños</span>
                     <span>📐 {p.area} m²</span>
+                    <span>🛗 {p.ascensor || 0} asc</span>
+                    <span>📦 {p.depositos || 0} dep</span>
+                    <span>🚗 {p.parqueaderos || 0} parq</span>
                   </div>
                   <p className="text-lg font-semibold">{formatPeso(p.valor_arriendo)}</p>
                   {p.descripcion && (

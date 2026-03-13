@@ -36,7 +36,7 @@ export async function GET(request: Request) {
     .from("recibos_pago")
     .select(`
       *,
-      propiedad:propiedades(id, direccion, ciudad, barrio)
+      propiedad:propiedades(id, direccion, ciudad, barrio, numero_matricula)
     `)
     .order("fecha_recibo", { ascending: false })
 
@@ -84,16 +84,30 @@ export async function POST(request: Request) {
 
   const admin = createAdminClient()
 
+  // Obtener numero_matricula de la propiedad
+  const { data: propiedadData } = await admin
+    .from("propiedades")
+    .select("id, numero_matricula")
+    .eq("id", body.propiedad_id)
+    .single()
+
+  if (!propiedadData) {
+    return NextResponse.json(
+      { error: "Propiedad no encontrada" },
+      { status: 404 }
+    )
+  }
+
   // Verificar que la propiedad pertenece al usuario
   if (role === "propietario") {
-    const { data: propiedad, error: propError } = await admin
+    const { data: propiedadOwner, error: propError } = await admin
       .from("propiedades")
       .select("id")
       .eq("id", body.propiedad_id)
       .eq("user_id", user.id)
       .single()
 
-    if (propError || !propiedad) {
+    if (propError || !propiedadOwner) {
       return NextResponse.json(
         { error: "No tienes permiso para crear recibos para esta propiedad" },
         { status: 403 }
@@ -122,6 +136,7 @@ export async function POST(request: Request) {
       referencia_pago: body.referencia_pago,
       nota: body.nota,
       estado: "borrador",
+      numero_matricula: propiedadData.numero_matricula,
     })
     .select()
     .single()

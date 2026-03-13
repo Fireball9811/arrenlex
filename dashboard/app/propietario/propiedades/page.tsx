@@ -18,6 +18,10 @@ interface Propiedad {
   area: number
   valor_arriendo: number
   descripcion?: string
+  numero_matricula?: string
+  ascensor?: number
+  depositos?: number
+  parqueaderos?: number
 }
 
 export default function PropietarioPropiedadesPage() {
@@ -178,12 +182,19 @@ export default function PropietarioPropiedadesPage() {
             {propiedadesFiltradas.map((propiedad) => (
               <Card key={propiedad.id}>
                 <CardHeader className="pb-3">
-                  <CardDescription>
-                    <div className="mt-1 flex items-start gap-1">
-                      <MapPin className="mt-0.5 h-4 w-4 flex-shrink-0 text-muted-foreground" />
-                      <span>{propiedad.direccion || "Sin dirección"}, {propiedad.ciudad || "Sin ciudad"}</span>
-                    </div>
-                  </CardDescription>
+                  <div className="flex items-start justify-between">
+                    <CardDescription>
+                      <div className="mt-1 flex items-start gap-1">
+                        <MapPin className="mt-0.5 h-4 w-4 flex-shrink-0 text-muted-foreground" />
+                        <span>{propiedad.direccion || "Sin dirección"}, {propiedad.ciudad || "Sin ciudad"}</span>
+                      </div>
+                    </CardDescription>
+                    {propiedad.numero_matricula && (
+                      <div className="bg-blue-50 border border-blue-200 px-3 py-1 rounded">
+                        <p className="text-xs text-blue-600 font-semibold">{propiedad.numero_matricula}</p>
+                      </div>
+                    )}
+                  </div>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-3">
@@ -199,6 +210,20 @@ export default function PropietarioPropiedadesPage() {
                       <div>
                         <p className="text-muted-foreground">Área</p>
                         <p className="font-semibold">{propiedad.area || 0}m²</p>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-3 gap-2 text-sm">
+                      <div>
+                        <p className="text-muted-foreground">Ascensores</p>
+                        <p className="font-semibold">{propiedad.ascensor || 0}</p>
+                      </div>
+                      <div>
+                        <p className="text-muted-foreground">Depósitos</p>
+                        <p className="font-semibold">{propiedad.depositos || 0}</p>
+                      </div>
+                      <div>
+                        <p className="text-muted-foreground">Parqueaderos</p>
+                        <p className="font-semibold">{propiedad.parqueaderos || 0}</p>
                       </div>
                     </div>
                     <div className="border-t pt-3">

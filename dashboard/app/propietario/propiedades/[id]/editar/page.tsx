@@ -22,10 +22,31 @@ interface Propiedad {
   tipo?: string
   estado?: string
   matricula_inmobiliaria?: string
+  numero_matricula?: string
+  ascensor?: number
+  depositos?: number
+  parqueaderos?: number
   cuenta_bancaria_entidad?: string
   cuenta_bancaria_tipo?: string
   cuenta_bancaria_numero?: string
   cuenta_bancaria_titular?: string
+}
+
+// Función para formatear moneda colombiana
+const formatMoneda = (valor: number): string => {
+  if (!valor) return ""
+  return new Intl.NumberFormat("es-CO", {
+    style: "currency",
+    currency: "COP",
+    maximumFractionDigits: 0,
+  }).format(valor)
+}
+
+// Función para parsear valor de moneda (elimina símbolos y puntos)
+const parseMoneda = (valor: string): number => {
+  const limpio = valor.replace(/[$\s.]/g, "").replace(/,/g, "")
+  const num = parseInt(limpio)
+  return isNaN(num) ? 0 : num
 }
 
 export default function EditarPropiedadPage() {
@@ -37,6 +58,19 @@ export default function EditarPropiedadPage() {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [propiedad, setPropiedad] = useState<Propiedad | null>(null)
+  const [datosPropietario, setDatosPropietario] = useState<{
+    cuenta_bancaria_1_numero?: string | null
+    cuenta_bancaria_1_titular?: string | null
+  } | null>(null)
+
+  // Estados para manejar los valores string de los inputs
+  const [valorArriendoDisplay, setValorArriendoDisplay] = useState("")
+  const [habitacionesDisplay, setHabitacionesDisplay] = useState("")
+  const [banosDisplay, setBanosDisplay] = useState("")
+  const [areaDisplay, setAreaDisplay] = useState("")
+  const [ascensorDisplay, setAscensorDisplay] = useState("")
+  const [depositosDisplay, setDepositosDisplay] = useState("")
+  const [parqueaderosDisplay, setParqueaderosDisplay] = useState("")
 
   // Cargar datos de la propiedad
   useEffect(() => {
@@ -78,7 +112,43 @@ export default function EditarPropiedadPage() {
 
         const propData = await propRes.json()
         console.log("Propiedad cargada:", propData)
-        setPropiedad(propData)
+
+        // Cargar datos bancarios del propietario desde perfiles
+        try {
+          const perfilRes = await fetch("/api/auth/me")
+          if (perfilRes.ok) {
+            const perfilData = await perfilRes.json()
+            // Obtener datos bancarios del propietario
+            const datosBancariosPropietario = {
+              cuenta_bancaria_1_numero: perfilData.cuenta_bancaria_1_numero,
+              cuenta_bancaria_1_titular: perfilData.nombre || null,
+            }
+            setDatosPropietario(datosBancariosPropietario)
+
+            // Si la propiedad no tiene datos bancarios, usar los del propietario
+            const propiedadConDatosBancarios = {
+              ...propData,
+              cuenta_bancaria_numero: propData.cuenta_bancaria_numero || datosBancariosPropietario.cuenta_bancaria_1_numero,
+              cuenta_bancaria_titular: propData.cuenta_bancaria_titular || datosBancariosPropietario.cuenta_bancaria_1_titular,
+            }
+            setPropiedad(propiedadConDatosBancarios)
+          } else {
+            setPropiedad(propData)
+          }
+        } catch (err) {
+          console.log("No se pudo cargar datos del propietario, usando datos de propiedad")
+          setPropiedad(propData)
+        }
+
+        // Inicializar los displays
+        setValorArriendoDisplay(formatMoneda(propData.valor_arriendo || 0))
+        setHabitacionesDisplay(propData.habitaciones?.toString() || "")
+        setBanosDisplay(propData.banos?.toString() || "")
+        setAreaDisplay(propData.area?.toString() || "")
+        setAscensorDisplay(propData.ascensor?.toString() || "")
+        setDepositosDisplay(propData.depositos?.toString() || "")
+        setParqueaderosDisplay(propData.parqueaderos?.toString() || "")
+
         setLoading(false)
       } catch (err) {
         console.error("Error general:", err)
@@ -165,34 +235,44 @@ export default function EditarPropiedadPage() {
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            {/* Título */}
-            <div>
-              <label className="block text-sm font-medium mb-1">Título</label>
-              <Input
-                value={propiedad.titulo}
-                onChange={(e) => handleChange("titulo", e.target.value)}
-                placeholder="Ej: Casa moderna en el norte"
-              />
+            {/* Número de Matrícula - Solo lectura */}
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <label className="block text-sm font-medium text-blue-900">Número de Matrícula</label>
+                  <p className="text-xs text-blue-600">Identificador único de la propiedad</p>
+                </div>
+                <div className="text-2xl font-bold text-blue-700">
+                  {propiedad.numero_matricula || "---"}
+                </div>
+              </div>
             </div>
 
-            {/* Dirección */}
-            <div>
-              <label className="block text-sm font-medium mb-1">Dirección</label>
-              <Input
-                value={propiedad.direccion}
-                onChange={(e) => handleChange("direccion", e.target.value)}
-                placeholder="Ej: Calle 10 No. 45-67"
-              />
-            </div>
-
-            {/* Ciudad y Barrio */}
+            {/* Título y Dirección - misma línea */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium mb-1">Título</label>
+                <Input
+                  value={propiedad.titulo || ""}
+                  onChange={(e) => handleChange("titulo", e.target.value)}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Dirección</label>
+                <Input
+                  value={propiedad.direccion}
+                  onChange={(e) => handleChange("direccion", e.target.value)}
+                />
+              </div>
+            </div>
+
+            {/* Ciudad, Barrio, Tipo y Estado - misma línea (4 columnas) */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <div>
                 <label className="block text-sm font-medium mb-1">Ciudad</label>
                 <Input
                   value={propiedad.ciudad}
                   onChange={(e) => handleChange("ciudad", e.target.value)}
-                  placeholder="Ej: Bogotá"
                 />
               </div>
               <div>
@@ -200,13 +280,8 @@ export default function EditarPropiedadPage() {
                 <Input
                   value={propiedad.barrio || ""}
                   onChange={(e) => handleChange("barrio", e.target.value)}
-                  placeholder="Ej: Chapinero"
                 />
               </div>
-            </div>
-
-            {/* Tipo y Estado */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium mb-1">Tipo</label>
                 <select
@@ -215,6 +290,7 @@ export default function EditarPropiedadPage() {
                   className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                 >
                   <option value="apartamento">Apartamento</option>
+                  <option value="apartaestudio">Apartaestudio</option>
                   <option value="casa">Casa</option>
                   <option value="habitacion">Habitación</option>
                   <option value="local">Local</option>
@@ -239,13 +315,17 @@ export default function EditarPropiedadPage() {
             </div>
 
             {/* Specs Grid */}
-            <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+            <div className="grid grid-cols-2 gap-4 md:grid-cols-4 lg:grid-cols-7">
               <div>
                 <label className="block text-sm font-medium mb-1">Habitaciones</label>
                 <Input
                   type="number"
-                  value={propiedad.habitaciones}
-                  onChange={(e) => handleChange("habitaciones", parseInt(e.target.value) || 0)}
+                  value={habitacionesDisplay}
+                  onChange={(e) => {
+                    const val = e.target.value
+                    setHabitacionesDisplay(val)
+                    handleChange("habitaciones", val === "" ? 0 : parseInt(val) || 0)
+                  }}
                   min="0"
                 />
               </div>
@@ -253,8 +333,12 @@ export default function EditarPropiedadPage() {
                 <label className="block text-sm font-medium mb-1">Baños</label>
                 <Input
                   type="number"
-                  value={propiedad.banos}
-                  onChange={(e) => handleChange("banos", parseInt(e.target.value) || 0)}
+                  value={banosDisplay}
+                  onChange={(e) => {
+                    const val = e.target.value
+                    setBanosDisplay(val)
+                    handleChange("banos", val === "" ? 0 : parseInt(val) || 0)
+                  }}
                   min="0"
                 />
               </div>
@@ -262,18 +346,69 @@ export default function EditarPropiedadPage() {
                 <label className="block text-sm font-medium mb-1">Área (m²)</label>
                 <Input
                   type="number"
-                  value={propiedad.area}
-                  onChange={(e) => handleChange("area", parseInt(e.target.value) || 0)}
+                  value={areaDisplay}
+                  onChange={(e) => {
+                    const val = e.target.value
+                    setAreaDisplay(val)
+                    handleChange("area", val === "" ? 0 : parseInt(val) || 0)
+                  }}
                   min="0"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1">Valor Arriendo ($)</label>
+                <label className="block text-sm font-medium mb-1">Ascensores</label>
                 <Input
                   type="number"
-                  value={propiedad.valor_arriendo}
-                  onChange={(e) => handleChange("valor_arriendo", parseInt(e.target.value) || 0)}
+                  value={ascensorDisplay}
+                  onChange={(e) => {
+                    const val = e.target.value
+                    setAscensorDisplay(val)
+                    handleChange("ascensor", val === "" ? 0 : parseInt(val) || 0)
+                  }}
                   min="0"
+                  placeholder="0"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Depósitos</label>
+                <Input
+                  type="number"
+                  value={depositosDisplay}
+                  onChange={(e) => {
+                    const val = e.target.value
+                    setDepositosDisplay(val)
+                    handleChange("depositos", val === "" ? 0 : parseInt(val) || 0)
+                  }}
+                  min="0"
+                  placeholder="0"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Parqueaderos</label>
+                <Input
+                  type="number"
+                  value={parqueaderosDisplay}
+                  onChange={(e) => {
+                    const val = e.target.value
+                    setParqueaderosDisplay(val)
+                    handleChange("parqueaderos", val === "" ? 0 : parseInt(val) || 0)
+                  }}
+                  min="0"
+                  placeholder="0"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Valor Arriendo</label>
+                <Input
+                  type="text"
+                  inputMode="numeric"
+                  value={valorArriendoDisplay}
+                  onChange={(e) => {
+                    const val = e.target.value.replace(/[^0-9]/g, "")
+                    const numVal = parseInt(val) || 0
+                    setValorArriendoDisplay(formatMoneda(numVal))
+                    handleChange("valor_arriendo", numVal)
+                  }}
                 />
               </div>
             </div>
@@ -284,7 +419,6 @@ export default function EditarPropiedadPage() {
               <textarea
                 value={propiedad.descripcion || ""}
                 onChange={(e) => handleChange("descripcion", e.target.value)}
-                placeholder="Describe tu propiedad..."
                 rows={4}
                 className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
               />
@@ -294,22 +428,20 @@ export default function EditarPropiedadPage() {
             <div className="border-t pt-4">
               <h3 className="text-lg font-semibold mb-4">Información Legal y Bancaria</h3>
 
-              <div className="mb-4">
-                <label className="block text-sm font-medium mb-1">Matrícula Inmobiliaria</label>
-                <Input
-                  value={propiedad.matricula_inmobiliaria || ""}
-                  onChange={(e) => handleChange("matricula_inmobiliaria", e.target.value)}
-                  placeholder="Ej: 050-123456"
-                />
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Matrícula Inmobiliaria, Entidad Bancaria, Tipo de Cuenta - misma línea */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-sm font-medium mb-1">Matrícula Inmobiliaria</label>
+                  <Input
+                    value={propiedad.matricula_inmobiliaria || ""}
+                    onChange={(e) => handleChange("matricula_inmobiliaria", e.target.value)}
+                  />
+                </div>
                 <div>
                   <label className="block text-sm font-medium mb-1">Entidad Bancaria</label>
                   <Input
                     value={propiedad.cuenta_bancaria_entidad || ""}
                     onChange={(e) => handleChange("cuenta_bancaria_entidad", e.target.value)}
-                    placeholder="Ej: Bancolombia"
                   />
                 </div>
                 <div>
@@ -326,22 +458,32 @@ export default function EditarPropiedadPage() {
                 </div>
               </div>
 
-              <div className="mt-4">
-                <label className="block text-sm font-medium mb-1">Número de Cuenta</label>
-                <Input
-                  value={propiedad.cuenta_bancaria_numero || ""}
-                  onChange={(e) => handleChange("cuenta_bancaria_numero", e.target.value)}
-                  placeholder="Ej: 123-456-789"
-                />
-              </div>
-
-              <div className="mt-4">
-                <label className="block text-sm font-medium mb-1">Titular de la Cuenta</label>
-                <Input
-                  value={propiedad.cuenta_bancaria_titular || ""}
-                  onChange={(e) => handleChange("cuenta_bancaria_titular", e.target.value)}
-                  placeholder="Nombre del titular de la cuenta"
-                />
+              {/* Número de Cuenta y Titular - misma línea (con indicador de auto-llenado) */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                <div>
+                  <label className="block text-sm font-medium mb-1">
+                    Número de Cuenta
+                    {datosPropietario?.cuenta_bancaria_1_numero && (
+                      <span className="ml-2 text-xs text-green-600">✓ Del propietario</span>
+                    )}
+                  </label>
+                  <Input
+                    value={propiedad.cuenta_bancaria_numero || ""}
+                    onChange={(e) => handleChange("cuenta_bancaria_numero", e.target.value)}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">
+                    Titular de la Cuenta
+                    {datosPropietario?.cuenta_bancaria_1_titular && (
+                      <span className="ml-2 text-xs text-green-600">✓ Del propietario</span>
+                    )}
+                  </label>
+                  <Input
+                    value={propiedad.cuenta_bancaria_titular || ""}
+                    onChange={(e) => handleChange("cuenta_bancaria_titular", e.target.value)}
+                  />
+                </div>
               </div>
             </div>
 

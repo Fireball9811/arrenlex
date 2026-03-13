@@ -13,6 +13,10 @@ export type Propiedad = {
   estado: "disponible" | "arrendado" | "mantenimiento"
   // Nuevos campos para contratos
   matricula_inmobiliaria?: string | null
+  numero_matricula?: string | null
+  ascensor?: number | null
+  depositos?: number | null
+  parqueaderos?: number | null
   cuenta_bancaria_entidad?: string | null
   cuenta_bancaria_tipo?: string | null
   cuenta_bancaria_numero?: string | null
@@ -112,6 +116,7 @@ export type ContratoConRelaciones = Contrato & {
     ciudad: string
     barrio: string
     matricula_inmobiliaria?: string | null
+    numero_matricula?: string | null
   }
   arrendatario: {
     nombre: string
@@ -279,4 +284,38 @@ export type ContactoLanding = {
   fecha_contacto: string
   estado: "pendiente" | "contactado" | "archivado"
   created_at: string
+}
+
+export type ReciboPago = {
+  id: string
+  propiedad_id: string
+  user_id: string
+  arrendador_nombre: string
+  arrendador_cedula: string | null
+  propietario_nombre: string
+  propietario_cedula: string
+  valor_arriendo: number
+  valor_arriendo_letras: string
+  fecha_inicio_periodo: string
+  fecha_fin_periodo: string
+  tipo_pago: "arriendo" | "servicios" | "otro"
+  fecha_recibo: string
+  numero_recibo: string | null
+  numero_matricula: string | null
+  cuenta_consignacion: string | null
+  referencia_pago: string | null
+  nota: string | null
+  estado: "borrador" | "emitido" | "cancelado"
+  created_at: string
+  updated_at: string
+}
+
+export type ReciboPagoConPropiedad = ReciboPago & {
+  propiedad: {
+    id: string
+    direccion: string
+    ciudad: string
+    barrio: string
+    numero_matricula?: string | null
+  }
 }

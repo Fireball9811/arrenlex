@@ -74,9 +74,11 @@ export default function NuevoArrendatarioPage() {
   const [nombre, setNombre] = useState("")
   const [cedula, setCedula] = useState("")
   const [telefono, setTelefono] = useState("")
+  const [email, setEmail] = useState("")
   const [coarrendatarioNombre, setCoarrendatarioNombre] = useState("")
   const [coarrendatarioCedula, setCoarrendatarioCedula] = useState("")
   const [coarrendatarioTelefono, setCoarrendatarioTelefono] = useState("")
+  const [coarrendatarioEmail, setCoarrendatarioEmail] = useState("")
   const [salarioPrincipal, setSalarioPrincipal] = useState("")
   const [salarioSecundario, setSalarioSecundario] = useState("")
   const [tiempoServicioPrincipalMeses, setTiempoServicioPrincipalMeses] = useState("")
@@ -134,9 +136,11 @@ export default function NuevoArrendatarioPage() {
           nombre,
           cedula: cedula.replace(/\D/g, ""),
           telefono,
+          email: email.trim() || null,
           coarrendatario_nombre: coarrendatarioNombre,
           coarrendatario_cedula: coarrendatarioCedula.replace(/\D/g, ""),
           coarrendatario_telefono: coarrendatarioTelefono,
+          coarrendatario_email: coarrendatarioEmail.trim() || null,
           salario_principal: salarioPrincipal ? Number(salarioPrincipal.replace(/\D/g, "")) : null,
           salario_secundario: salarioSecundario ? Number(salarioSecundario.replace(/\D/g, "")) : null,
           empresa_principal: empresaPrincipal || null,
@@ -178,9 +182,11 @@ export default function NuevoArrendatarioPage() {
       setNombre("")
       setCedula("")
       setTelefono("")
+      setEmail("")
       setCoarrendatarioNombre("")
       setCoarrendatarioCedula("")
       setCoarrendatarioTelefono("")
+      setCoarrendatarioEmail("")
       setSalarioPrincipal("")
       setSalarioSecundario("")
       setTiempoServicioPrincipalMeses("")
@@ -239,7 +245,6 @@ export default function NuevoArrendatarioPage() {
                   <Input
                     id="nombre"
                     type="text"
-                    placeholder="Ej: Juan Pérez García"
                     minLength={10}
                     value={nombre}
                     onChange={(e) => setNombre(e.target.value)}
@@ -256,7 +261,6 @@ export default function NuevoArrendatarioPage() {
                       id="cedula"
                       type="text"
                       inputMode="numeric"
-                      placeholder="Ej: 1.234.567.890"
                       value={formatCedula(cedula)}
                       onChange={(e) => setCedula(e.target.value.replace(/\D/g, ""))}
                       className={cn(cedula.length > 0 && inputFilledClass)}
@@ -271,7 +275,6 @@ export default function NuevoArrendatarioPage() {
                       id="telefono"
                       type="tel"
                       inputMode="numeric"
-                      placeholder="(300) 123-4567"
                       value={formatTelefono(telefono)}
                       onChange={(e) => setTelefono(soloDigitosMax10(e.target.value))}
                       maxLength={14}
@@ -279,6 +282,19 @@ export default function NuevoArrendatarioPage() {
                       required
                     />
                   </div>
+                </div>
+
+                <div>
+                  <label htmlFor="email" className="mb-1 block text-sm font-medium">
+                    Correo electrónico
+                  </label>
+                  <Input
+                    id="email"
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className={cn(email.length > 0 && inputFilledClass)}
+                  />
                 </div>
 
                 <p className="text-xs font-medium text-muted-foreground">
@@ -293,7 +309,6 @@ export default function NuevoArrendatarioPage() {
                       id="adultos-habitantes"
                       type="text"
                       inputMode="numeric"
-                      placeholder="Cantidad"
                       value={adultosHabitantes}
                       onChange={(e) => setAdultosHabitantes(e.target.value.replace(/\D/g, ""))}
                       className={cn(adultosHabitantes.length > 0 && inputFilledClass)}
@@ -308,7 +323,6 @@ export default function NuevoArrendatarioPage() {
                       id="ninos-habitantes"
                       type="text"
                       inputMode="numeric"
-                      placeholder="Cantidad"
                       value={ninosHabitantes}
                       onChange={(e) => setNinosHabitantes(e.target.value.replace(/\D/g, ""))}
                       className={cn(ninosHabitantes.length > 0 && inputFilledClass)}
@@ -322,7 +336,6 @@ export default function NuevoArrendatarioPage() {
                       id="mascotas-cantidad"
                       type="text"
                       inputMode="numeric"
-                      placeholder="Cantidad"
                       value={mascotasCantidad}
                       onChange={(e) => setMascotasCantidad(e.target.value.replace(/\D/g, ""))}
                       className={cn(mascotasCantidad.length > 0 && inputFilledClass)}
@@ -336,7 +349,6 @@ export default function NuevoArrendatarioPage() {
                       id="vehiculos-cantidad"
                       type="text"
                       inputMode="numeric"
-                      placeholder="Cantidad"
                       value={vehiculosCantidad}
                       onChange={(e) => setVehiculosCantidad(e.target.value.replace(/\D/g, ""))}
                       className={cn(vehiculosCantidad.length > 0 && inputFilledClass)}
@@ -353,7 +365,6 @@ export default function NuevoArrendatarioPage() {
                   <Input
                     id="vehiculos-placas"
                     type="text"
-                    placeholder="Ej: ABC-123, XYZ-456 (obligatorio si hay vehículos)"
                     value={vehiculosPlacas}
                     onChange={(e) => setVehiculosPlacas(e.target.value)}
                     className={cn(vehiculosPlacas.length > 0 && inputFilledClass)}
@@ -378,7 +389,6 @@ export default function NuevoArrendatarioPage() {
                   <Input
                     id="coarrendatario-nombre"
                     type="text"
-                    placeholder="Ej: María García López"
                     minLength={10}
                     value={coarrendatarioNombre}
                     onChange={(e) => setCoarrendatarioNombre(e.target.value)}
@@ -395,7 +405,6 @@ export default function NuevoArrendatarioPage() {
                       id="coarrendatario-cedula"
                       type="text"
                       inputMode="numeric"
-                      placeholder="Ej: 1.234.567.890"
                       value={formatCedula(coarrendatarioCedula)}
                       onChange={(e) => setCoarrendatarioCedula(e.target.value.replace(/\D/g, ""))}
                       className={cn(coarrendatarioCedula.length > 0 && inputFilledClass)}
@@ -410,7 +419,6 @@ export default function NuevoArrendatarioPage() {
                       id="coarrendatario-telefono"
                       type="tel"
                       inputMode="numeric"
-                      placeholder="(310) 987-6543"
                       value={formatTelefono(coarrendatarioTelefono)}
                       onChange={(e) => setCoarrendatarioTelefono(soloDigitosMax10(e.target.value))}
                       maxLength={14}
@@ -418,6 +426,19 @@ export default function NuevoArrendatarioPage() {
                       required
                     />
                   </div>
+                </div>
+
+                <div>
+                  <label htmlFor="coarrendatario-email" className="mb-1 block text-sm font-medium">
+                    Correo electrónico del coarrendatario
+                  </label>
+                  <Input
+                    id="coarrendatario-email"
+                    type="email"
+                    value={coarrendatarioEmail}
+                    onChange={(e) => setCoarrendatarioEmail(e.target.value)}
+                    className={cn(coarrendatarioEmail.length > 0 && inputFilledClass)}
+                  />
                 </div>
               </CardContent>
             </Card>
@@ -440,7 +461,6 @@ export default function NuevoArrendatarioPage() {
                       id="salario-principal"
                       type="text"
                       inputMode="numeric"
-                      placeholder="Ej: 2.500.000"
                       value={formatMoneda(salarioPrincipal)}
                       onChange={(e) => setSalarioPrincipal(e.target.value.replace(/\D/g, ""))}
                       className={cn(salarioPrincipal.length > 0 && inputFilledClass)}
@@ -454,7 +474,6 @@ export default function NuevoArrendatarioPage() {
                       id="tiempo-meses-principal"
                       type="text"
                       inputMode="numeric"
-                      placeholder="Ej: 24"
                       value={tiempoServicioPrincipalMeses}
                       onChange={(e) => setTiempoServicioPrincipalMeses(e.target.value.replace(/\D/g, ""))}
                       className={cn(tiempoServicioPrincipalMeses.length > 0 && inputFilledClass)}
@@ -468,7 +487,6 @@ export default function NuevoArrendatarioPage() {
                   <Input
                     id="empresa-principal"
                     type="text"
-                    placeholder="Nombre de la empresa"
                     value={empresaPrincipal}
                     onChange={(e) => setEmpresaPrincipal(e.target.value)}
                     className={cn(empresaPrincipal.length > 0 && inputFilledClass)}
@@ -483,7 +501,6 @@ export default function NuevoArrendatarioPage() {
                       id="salario-secundario"
                       type="text"
                       inputMode="numeric"
-                      placeholder="Ej: 2.000.000"
                       value={formatMoneda(salarioSecundario)}
                       onChange={(e) => setSalarioSecundario(e.target.value.replace(/\D/g, ""))}
                       className={cn(salarioSecundario.length > 0 && inputFilledClass)}
@@ -497,7 +514,6 @@ export default function NuevoArrendatarioPage() {
                       id="tiempo-meses-secundario"
                       type="text"
                       inputMode="numeric"
-                      placeholder="Ej: 12"
                       value={tiempoServicioSecundarioMeses}
                       onChange={(e) => setTiempoServicioSecundarioMeses(e.target.value.replace(/\D/g, ""))}
                       className={cn(tiempoServicioSecundarioMeses.length > 0 && inputFilledClass)}
@@ -511,7 +527,6 @@ export default function NuevoArrendatarioPage() {
                   <Input
                     id="empresa-secundaria"
                     type="text"
-                    placeholder="Nombre de la empresa"
                     value={empresaSecundaria}
                     onChange={(e) => setEmpresaSecundaria(e.target.value)}
                     className={cn(empresaSecundaria.length > 0 && inputFilledClass)}
@@ -540,7 +555,6 @@ export default function NuevoArrendatarioPage() {
                     <Input
                       id="ref-familiar-1-nombre"
                       type="text"
-                      placeholder="Nombre completo"
                       minLength={10}
                       value={refFamiliar1Nombre}
                       onChange={(e) => setRefFamiliar1Nombre(e.target.value)}
@@ -575,7 +589,6 @@ export default function NuevoArrendatarioPage() {
                       id="ref-familiar-1-cedula"
                       type="text"
                       inputMode="numeric"
-                      placeholder="Ej: 1.234.567.890"
                       value={formatCedula(refFamiliar1Cedula)}
                       onChange={(e) => setRefFamiliar1Cedula(e.target.value.replace(/\D/g, ""))}
                       className={cn(refFamiliar1Cedula.length > 0 && inputFilledClass)}
@@ -589,7 +602,6 @@ export default function NuevoArrendatarioPage() {
                       id="ref-familiar-1-telefono"
                       type="tel"
                       inputMode="numeric"
-                      placeholder="(315) 123-4567"
                       value={formatTelefono(refFamiliar1Telefono)}
                       onChange={(e) => setRefFamiliar1Telefono(soloDigitosMax10(e.target.value))}
                       maxLength={14}
@@ -607,7 +619,6 @@ export default function NuevoArrendatarioPage() {
                     <Input
                       id="ref-familiar-2-nombre"
                       type="text"
-                      placeholder="Nombre completo"
                       minLength={10}
                       value={refFamiliar2Nombre}
                       onChange={(e) => setRefFamiliar2Nombre(e.target.value)}
@@ -642,7 +653,6 @@ export default function NuevoArrendatarioPage() {
                       id="ref-familiar-2-cedula"
                       type="text"
                       inputMode="numeric"
-                      placeholder="Ej: 1.234.567.890"
                       value={formatCedula(refFamiliar2Cedula)}
                       onChange={(e) => setRefFamiliar2Cedula(e.target.value.replace(/\D/g, ""))}
                       className={cn(refFamiliar2Cedula.length > 0 && inputFilledClass)}
@@ -656,7 +666,6 @@ export default function NuevoArrendatarioPage() {
                       id="ref-familiar-2-telefono"
                       type="tel"
                       inputMode="numeric"
-                      placeholder="(320) 987-6543"
                       value={formatTelefono(refFamiliar2Telefono)}
                       onChange={(e) => setRefFamiliar2Telefono(soloDigitosMax10(e.target.value))}
                       maxLength={14}
@@ -700,7 +709,6 @@ export default function NuevoArrendatarioPage() {
                       id="ref-personal-1-cedula"
                       type="text"
                       inputMode="numeric"
-                      placeholder="Ej: 1.234.567.890"
                       value={formatCedula(refPersonal1Cedula)}
                       onChange={(e) => setRefPersonal1Cedula(e.target.value.replace(/\D/g, ""))}
                       className={cn(refPersonal1Cedula.length > 0 && inputFilledClass)}
@@ -714,7 +722,6 @@ export default function NuevoArrendatarioPage() {
                       id="ref-personal-1-telefono"
                       type="tel"
                       inputMode="numeric"
-                      placeholder="(315) 123-4567"
                       value={formatTelefono(refPersonal1Telefono)}
                       onChange={(e) => setRefPersonal1Telefono(soloDigitosMax10(e.target.value))}
                       maxLength={14}
@@ -747,7 +754,6 @@ export default function NuevoArrendatarioPage() {
                       id="ref-personal-2-cedula"
                       type="text"
                       inputMode="numeric"
-                      placeholder="Ej: 1.234.567.890"
                       value={formatCedula(refPersonal2Cedula)}
                       onChange={(e) => setRefPersonal2Cedula(e.target.value.replace(/\D/g, ""))}
                       className={cn(refPersonal2Cedula.length > 0 && inputFilledClass)}
@@ -761,7 +767,6 @@ export default function NuevoArrendatarioPage() {
                       id="ref-personal-2-telefono"
                       type="tel"
                       inputMode="numeric"
-                      placeholder="(320) 987-6543"
                       value={formatTelefono(refPersonal2Telefono)}
                       onChange={(e) => setRefPersonal2Telefono(soloDigitosMax10(e.target.value))}
                       maxLength={14}

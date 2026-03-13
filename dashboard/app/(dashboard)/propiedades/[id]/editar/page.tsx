@@ -44,6 +44,9 @@ export default function EditarPropiedadPage() {
     habitaciones: "",
     banos: "",
     area: "",
+    ascensor: "",
+    depositos: "",
+    parqueaderos: "",
     valor_arriendo: "",
     descripcion: "",
     estado: "disponible",
@@ -95,6 +98,9 @@ export default function EditarPropiedadPage() {
           habitaciones: String(propData.habitaciones ?? ""),
           banos: String(propData.banos ?? ""),
           area: String(propData.area ?? ""),
+          ascensor: String(propData.ascensor ?? ""),
+          depositos: String(propData.depositos ?? ""),
+          parqueaderos: String(propData.parqueaderos ?? ""),
           valor_arriendo: String(propData.valor_arriendo ?? ""),
           descripcion: propData.descripcion ?? "",
           estado: propData.estado ?? "disponible",
@@ -125,6 +131,9 @@ export default function EditarPropiedadPage() {
         habitaciones: Number(form.habitaciones) || 0,
         banos: Number(form.banos) || 0,
         area: Number(form.area) || 0,
+        ascensor: Number(form.ascensor) || 0,
+        depositos: Number(form.depositos) || 0,
+        parqueaderos: Number(form.parqueaderos) || 0,
         valorArriendo: Number(form.valor_arriendo) || 0,
         descripcion: form.descripcion ?? "",
         estado: form.estado ?? "disponible",
@@ -285,6 +294,42 @@ export default function EditarPropiedadPage() {
                 </div>
 
                 <div>
+                  <label htmlFor="ascensor" className="mb-1 block text-sm font-medium">Ascensores</label>
+                  <Input
+                    id="ascensor"
+                    type="number"
+                    min={0}
+                    value={form.ascensor}
+                    onChange={(e) => setForm({ ...form, ascensor: e.target.value })}
+                    placeholder="0"
+                  />
+                </div>
+
+                <div>
+                  <label htmlFor="depositos" className="mb-1 block text-sm font-medium">Depósitos</label>
+                  <Input
+                    id="depositos"
+                    type="number"
+                    min={0}
+                    value={form.depositos}
+                    onChange={(e) => setForm({ ...form, depositos: e.target.value })}
+                    placeholder="0"
+                  />
+                </div>
+
+                <div>
+                  <label htmlFor="parqueaderos" className="mb-1 block text-sm font-medium">Parqueaderos</label>
+                  <Input
+                    id="parqueaderos"
+                    type="number"
+                    min={0}
+                    value={form.parqueaderos}
+                    onChange={(e) => setForm({ ...form, parqueaderos: e.target.value })}
+                    placeholder="0"
+                  />
+                </div>
+
+                <div>
                   <label htmlFor="valor_arriendo" className="mb-1 block text-sm font-medium">Valor arriendo (COP)</label>
                   <Input
                     id="valor_arriendo"
@@ -327,7 +372,8 @@ export default function EditarPropiedadPage() {
                 <div className="sm:col-span-2 space-y-4 border-t pt-4">
                   <h3 className="text-sm font-medium mb-2">Información del contrato</h3>
 
-                  <div className="grid gap-4 sm:grid-cols-2">
+                  {/* Primera fila: Matrícula inmobiliaria, Entidad bancaria, Tipo de cuenta */}
+                  <div className="grid gap-4 sm:grid-cols-3">
                     <div>
                       <label htmlFor="matricula_inmobiliaria" className="mb-1 block text-sm font-medium">
                         Matrícula inmobiliaria
@@ -365,7 +411,10 @@ export default function EditarPropiedadPage() {
                         <option value="corriente">Corriente</option>
                       </select>
                     </div>
+                  </div>
 
+                  {/* Segunda fila: Número de cuenta y Titular en la misma línea */}
+                  <div className="grid gap-4 sm:grid-cols-2">
                     <div>
                       <label htmlFor="cuenta_bancaria_numero" className="mb-1 block text-sm font-medium">
                         Número de cuenta
@@ -377,7 +426,7 @@ export default function EditarPropiedadPage() {
                       />
                     </div>
 
-                    <div className="sm:col-span-2">
+                    <div>
                       <label htmlFor="cuenta_bancaria_titular" className="mb-1 block text-sm font-medium">
                         Titular de la cuenta
                       </label>

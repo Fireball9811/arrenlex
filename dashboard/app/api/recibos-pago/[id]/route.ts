@@ -32,7 +32,7 @@ export async function GET(
     .from("recibos_pago")
     .select(`
       *,
-      propiedad:propiedades(id, direccion, ciudad, barrio)
+      propiedad:propiedades(id, direccion, ciudad, barrio, numero_matricula)
     `)
     .eq("id", id)
 
