@@ -4,7 +4,6 @@ import { useEffect, useState } from "react"
 import Image from "next/image"
 import Link from "next/link"
 import { SignOutButton } from "@/components/auth/sign-out-button"
-import { UserEmail } from "@/components/auth/user-email"
 import { AdjuntarDocumentos } from "@/components/layout/adjuntar-documentos"
 import { useLang } from "@/lib/i18n/context"
 
@@ -54,7 +53,7 @@ export function PropietarioSidebar() {
         <Link href="/propietario/reportes" className="block rounded p-2 transition hover:bg-gray-800">
           {t.sidebar.reportes}
         </Link>
-        <Link href="/propietario/nuevo" className="block rounded p-2 transition hover:bg-gray-800">
+        <Link href="/nuevo" className="block rounded p-2 transition hover:bg-gray-800">
           {t.sidebar.nuevoArrendatario}
         </Link>
         <Link href="/mensajes" className="flex items-center justify-between rounded p-2 transition hover:bg-gray-800">
