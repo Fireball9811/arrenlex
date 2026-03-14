@@ -1,9 +1,10 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import Link from "next/link"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { UserPlus, Pencil, CheckCircle, XCircle, Mail } from "lucide-react"
+import { UserPlus, Pencil, XCircle, Mail } from "lucide-react"
 import type { Perfil } from "@/lib/types/database"
 
 type InquilinoActivo = Perfil & {
@@ -11,20 +12,13 @@ type InquilinoActivo = Perfil & {
   tieneContratoActivo: boolean
   arrendatarioId?: string
   contratoId?: string
+  contratoEstado?: string
 }
 
 export function InquilinosActivosTab() {
   const [inquilinos, setInquilinos] = useState<InquilinoActivo[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState("")
-
-  const [editingInquilino, setEditingInquilino] = useState<InquilinoActivo | null>(null)
-  const [editFormData, setEditFormData] = useState({
-    nombre: "",
-    celular: "",
-    cedula: "",
-  })
-  const [editSubmitting, setEditSubmitting] = useState(false)
   const [creandoUsuario, setCreandoUsuario] = useState<string | null>(null)
 
   useEffect(() => {
@@ -36,6 +30,10 @@ export function InquilinosActivosTab() {
     try {
       const res = await fetch("/api/reportes/inquilinos-activos")
       const data = await res.json()
+
+      console.log("Datos recibidos de inquilinos-activos:", data)
+      console.log("Cantidad de inquilinos:", data?.length || 0)
+
       setInquilinos(data || [])
     } catch (error) {
       console.error("Error fetching inquilinos:", error)
@@ -98,44 +96,6 @@ export function InquilinosActivosTab() {
       .catch((err) => alert("Error: " + err))
   }
 
-  function openEditModal(inquilino: InquilinoActivo) {
-    if (!inquilino.id) return // Solo se pueden editar usuarios con cuenta
-
-    setEditingInquilino(inquilino)
-    setEditFormData({
-      nombre: inquilino.nombre || "",
-      celular: inquilino.celular || "",
-      cedula: inquilino.cedula || "",
-    })
-  }
-
-  async function actualizarInquilino(e: React.FormEvent) {
-    e.preventDefault()
-    if (!editingInquilino || !editingInquilino.id) return
-
-    setEditSubmitting(true)
-
-    try {
-      await fetch(`/api/admin/usuarios/${editingInquilino.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          accion: "actualizar_datos_personales",
-          nombre: editFormData.nombre,
-          celular: editFormData.celular,
-          cedula: editFormData.cedula,
-        }),
-      })
-
-      fetchInquilinos()
-      setEditingInquilino(null)
-    } catch (err) {
-      alert("Error: " + err)
-    } finally {
-      setEditSubmitting(false)
-    }
-  }
-
   const filteredInquilinos = inquilinos.filter((i) =>
     i.nombre?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     i.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -171,7 +131,12 @@ export function InquilinosActivosTab() {
           {loading ? (
             <p className="text-muted-foreground">Cargando...</p>
           ) : filteredInquilinos.length === 0 ? (
-            <p className="text-muted-foreground">No hay inquilinos activos</p>
+            <div className="text-center py-8">
+              <p className="text-muted-foreground">No hay inquilinos activos con contratos</p>
+              <p className="text-xs text-muted-foreground mt-2">
+                Los inquilinos activos son aquellos que tienen un contrato con estado "activo" en el sistema.
+              </p>
+            </div>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
@@ -218,15 +183,29 @@ export function InquilinosActivosTab() {
                         )}
                       </td>
                       <td className="p-3 text-center">
-                        <span className="rounded-full bg-green-100 px-2 py-1 text-xs text-green-800">Contrato Activo</span>
+                        <span className={`rounded-full px-2 py-1 text-xs font-medium ${
+                          i.contratoEstado === 'activo'
+                            ? 'bg-green-100 text-green-800'
+                            : i.contratoEstado === 'borrador'
+                            ? 'bg-yellow-100 text-yellow-800'
+                            : 'bg-gray-100 text-gray-800'
+                        }`}>
+                          {i.contratoEstado === 'activo' ? 'Activo' : i.contratoEstado === 'borrador' ? 'Borrador' : i.contratoEstado || '—'}
+                        </span>
                       </td>
                       <td className="p-3 text-center">
                         {i.tieneUsuario ? (
-                          <Button size="sm" variant="outline" onClick={() => openEditModal(i)}>
-                            <Pencil className="h-3 w-3" />
-                          </Button>
+                          <Link href={`/reportes/personas/usuarios/${i.id}`}>
+                            <Button size="sm" variant="outline">
+                              <Pencil className="h-3 w-3" />
+                            </Button>
+                          </Link>
                         ) : (
-                          <span className="text-muted-foreground text-xs">—</span>
+                          <Link href={`/reportes/personas/arrendatarios/${i.arrendatarioId}`}>
+                            <Button size="sm" variant="outline">
+                              <Pencil className="h-3 w-3" />
+                            </Button>
+                          </Link>
                         )}
                       </td>
                       <td className="p-3 text-center">
@@ -246,65 +225,6 @@ export function InquilinosActivosTab() {
           )}
         </CardContent>
       </Card>
-
-      {/* Modal de edición */}
-      {editingInquilino && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <Card className="w-full max-w-md">
-            <CardHeader>
-              <CardTitle>Editar Inquilino</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <form onSubmit={actualizarInquilino} className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium mb-1">Correo electrónico</label>
-                  <input
-                    type="email"
-                    disabled
-                    value={editingInquilino.email}
-                    className="w-full rounded-md border border-input bg-muted px-3 py-2 text-sm"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1">Nombre completo</label>
-                  <input
-                    type="text"
-                    className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                    value={editFormData.nombre}
-                    onChange={(e) => setEditFormData({ ...editFormData, nombre: e.target.value })}
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1">Cédula</label>
-                  <input
-                    type="text"
-                    className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                    value={editFormData.cedula}
-                    onChange={(e) => setEditFormData({ ...editFormData, cedula: e.target.value })}
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1">Celular</label>
-                  <input
-                    type="text"
-                    className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                    value={editFormData.celular}
-                    onChange={(e) => setEditFormData({ ...editFormData, celular: e.target.value })}
-                  />
-                </div>
-                <div className="flex gap-2">
-                  <Button type="submit" disabled={editSubmitting}>
-                    {editSubmitting ? "Guardando..." : "Guardar"}
-                  </Button>
-                  <Button type="button" variant="outline" onClick={() => setEditingInquilino(null)}>
-                    Cancelar
-                  </Button>
-                </div>
-              </form>
-            </CardContent>
-          </Card>
-        </div>
-      )}
     </div>
   )
 }

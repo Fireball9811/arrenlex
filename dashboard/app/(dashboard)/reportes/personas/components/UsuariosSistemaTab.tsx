@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import Link from "next/link"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { UserPlus, Pencil, RefreshCw, Trash2 } from "lucide-react"
@@ -324,9 +325,11 @@ export function UsuariosSistemaTab() {
                         />
                       </td>
                       <td className="p-3 text-center">
-                        <Button size="sm" variant="outline" onClick={() => openEditModal(u)}>
-                          <Pencil className="h-3 w-3" />
-                        </Button>
+                        <Link href={`/reportes/personas/usuarios/${u.id}`}>
+                          <Button size="sm" variant="outline">
+                            <Pencil className="h-3 w-3" />
+                          </Button>
+                        </Link>
                       </td>
                       <td className="p-3 text-center">
                         <Button

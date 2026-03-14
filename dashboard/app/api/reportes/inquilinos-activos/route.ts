@@ -29,15 +29,16 @@ export async function GET() {
 
     console.log("🔍 [DEBUG] Todos los contratos:", JSON.stringify(todosContratos, null, 2))
 
-    // Obtener SOLO arrendatarios con contratos activos
+    // Obtener arrendatarios con contratos activos o borrador (en proceso)
     const { data: contratosActivos, error: errorContratos } = await admin
       .from("contratos")
       .select(`
         id,
         arrendatario_id,
-        arrendatarios!inner(id, nombre, cedula, email, celular)
+        arrendatarios!inner(id, nombre, cedula, email, celular),
+        estado
       `)
-      .eq("estado", "activo")
+      .in("estado", ["activo", "borrador"])
 
     console.log("✓ Contratos activos encontrados:", contratosActivos?.length || 0)
     console.log("✓ Datos de contratos:", JSON.stringify(contratosActivos, null, 2))
@@ -96,6 +97,7 @@ export async function GET() {
         tieneContratoActivo: true,
         arrendatarioId: arrendatario.id,
         contratoId: contrato.id,
+        contratoEstado: contrato.estado,
       })
     }
 
