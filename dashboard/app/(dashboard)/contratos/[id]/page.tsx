@@ -105,11 +105,6 @@ export default function ContratoDetallePage() {
           </Button>
           <div>
             <h1 className="text-3xl font-bold">Contrato</h1>
-            {contrato?.numero && (
-              <p className="flex items-center gap-1 text-sm text-muted-foreground">
-                N° {contrato.numero}
-              </p>
-            )}
           </div>
         </div>
         <div className="flex gap-2">

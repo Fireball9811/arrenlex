@@ -311,7 +311,7 @@ export default function ContratosPage() {
                 <TableBody>
                   {contratosFiltrados.map((c) => (
                     <TableRow key={c.id}>
-                      <TableCell className="font-medium">#{c.numero || "-"}</TableCell>
+                      <TableCell className="font-medium">#{c.id.slice(0, 8)}</TableCell>
                       <TableCell>
                         <div className="flex flex-col">
                           <span className="font-medium">{c.propiedad?.direccion || "-"}</span>

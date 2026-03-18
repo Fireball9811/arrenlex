@@ -11,7 +11,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
-import { ArrowLeft, Save, Hash } from "lucide-react"
+import { ArrowLeft, Save } from "lucide-react"
 import type { ContratoConRelaciones } from "@/lib/types/database"
 import { DocumentosContrato } from "@/components/contratos/documentos-contrato"
 import { RecibosContrato } from "@/components/contratos/recibos-contrato"
@@ -130,12 +130,6 @@ export default function EditarContratoPage() {
           </Button>
           <div>
             <h1 className="text-3xl font-bold">Editar Contrato</h1>
-            {contrato?.numero && (
-              <p className="flex items-center gap-1 text-sm text-muted-foreground">
-                <Hash className="h-3 w-3" />
-                Contrato N° {contrato.numero}
-              </p>
-            )}
           </div>
         </div>
       </div>

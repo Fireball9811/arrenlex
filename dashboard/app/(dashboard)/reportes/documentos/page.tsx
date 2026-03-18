@@ -15,7 +15,6 @@ import { useLang } from "@/lib/i18n/context"
 
 type Contrato = {
   id: string
-  numero: number | null
   propiedad: {
     direccion: string
     ciudad: string
@@ -92,7 +91,7 @@ export default function DocumentosPage() {
                 <SelectContent>
                   {contratos.map((c) => (
                     <SelectItem key={c.id} value={c.id}>
-                      #{c.numero || "N/A"} - {c.propiedad?.direccion || "Sin dirección"} - {c.arrendatario?.nombre || "Sin arrendatario"}
+                      {c.propiedad?.direccion || "Sin dirección"} - {c.arrendatario?.nombre || "Sin arrendatario"}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -100,7 +99,7 @@ export default function DocumentosPage() {
               {contratoActual && (
                 <div className="mt-4 rounded-lg bg-muted p-4">
                   <p className="text-sm font-medium">
-                    Contrato #{contratoActual.numero || "N/A"}
+                    Contrato #{contratoActual.id.slice(0, 8)}
                   </p>
                   <p className="text-sm text-muted-foreground">
                     {contratoActual.propiedad?.direccion}
