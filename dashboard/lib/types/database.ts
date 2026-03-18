@@ -253,24 +253,44 @@ export type IntakeFormulario = {
   email: string | null
   telefono: string | null
   cedula: string | null
-  fecha_expedicion_cedula: string | null
+  // Nombres antiguos (para compatibilidad)
+  fecha_expedicion_cedula?: string | null
+  // Nombres nuevos (después de migración 039)
+  cedula_ciudad_expedicion?: string | null
   ingresos: number | null
-  salario: number | null
-  salario_2: number | null
-  personas: number | null
+  // Nombres antiguos (para compatibilidad)
+  salario?: number | null
+  salario_2?: number | null
+  personas?: number | null
+  ninos?: number | null
+  mascotas?: number | null
+  empresa_arrendatario?: string | null
+  antiguedad_meses?: number | null
+  antiguedad_meses_2?: number | null
+  nombre_coarrendatario?: string | null
+  cedula_coarrendatario?: string | null
+  fecha_expedicion_cedula_coarrendatario?: string | null
+  telefono_coarrendatario?: string | null
+  empresa_coarrendatario?: string | null
+  // Nombres nuevos (después de migración 039)
+  salario_principal?: number | null
+  salario_secundario?: number | null
+  adultos_habitantes?: number | null
+  ninos_habitantes?: number | null
+  mascotas_cantidad?: number | null
+  empresa_principal?: string | null
+  empresa_secundaria?: string | null
+  tiempo_servicio_principal_meses?: number | null
+  tiempo_servicio_secundario_meses?: number | null
+  coarrendatario_nombre?: string | null
+  coarrendatario_cedula?: string | null
+  coarrendatario_telefono?: string | null
+  coarrendatario_cedula_expedicion?: string | null
+  coarrendatario_email?: string | null
+  // Otros campos
   personas_trabajan: number | null
-  ninos: number | null
-  mascotas: number | null
   negocio: string | null
   empresas: string | null
-  empresa_arrendatario: string | null
-  antiguedad_meses: number | null
-  antiguedad_meses_2: number | null
-  nombre_coarrendatario: string | null
-  cedula_coarrendatario: string | null
-  fecha_expedicion_cedula_coarrendatario: string | null
-  telefono_coarrendatario: string | null
-  empresa_coarrendatario: string | null
   autorizacion: string | null
   raw_data: Record<string, unknown> | null
   data: Record<string, unknown> | null
