@@ -124,7 +124,7 @@ export async function GET(
       id,
       user_id,
       arrendatario_id,
-      arrendatario:arrendatarios(id)
+      arrendatario:arrendatarios!inner(id, user_id)
     `)
     .eq("id", contratoId)
     .single()
