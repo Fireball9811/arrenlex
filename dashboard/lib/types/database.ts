@@ -44,7 +44,9 @@ export type Arrendatario = {
   // Otros campos existentes
   coarrendatario_nombre?: string | null
   coarrendatario_cedula?: string | null
+  coarrendatario_cedula_expedicion?: string | null
   coarrendatario_telefono?: string | null
+  coarrendatario_email?: string | null
   salario_principal?: number | null
   salario_secundario?: number | null
   empresa_principal?: string | null
@@ -162,6 +164,9 @@ export type DatosContrato = {
   propietario_nombre: string | null
   propietario_email: string
   propietario_cedula: string | null
+  propietario_cedula_expedicion: string | null
+  propietario_direccion: string | null
+  propietario_celular: string | null
 
   // Propiedad
   propiedad_direccion: string
@@ -174,6 +179,7 @@ export type DatosContrato = {
   propiedad_cuenta_titular: string | null
 
   // Contrato
+  contrato_numero: string
   contrato_fecha_inicio: string
   contrato_duracion_meses: number
   contrato_fecha_fin: string

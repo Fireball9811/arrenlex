@@ -7,6 +7,45 @@ import { sendInvitationEmail } from "@/lib/email/send-invitation"
 const VALID_ROLES = ["admin", "propietario", "inquilino", "maintenance_special", "insurance_special", "lawyer_special"] as const
 const EXPIRY_DAYS = parseInt(process.env.INVITATION_TEMP_PASSWORD_EXPIRY_DAYS ?? "7", 10) || 7
 
+// GET - Obtiene un usuario por ID (solo admin)
+export async function GET(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const supabaseServer = await createClient()
+  const {
+    data: { user },
+  } = await supabaseServer.auth.getUser()
+
+  if (!user) {
+    return NextResponse.json({ error: "No autorizado" }, { status: 401 })
+  }
+
+  if (!isAdmin(user.email)) {
+    return NextResponse.json({ error: "Solo administradores pueden ver usuarios" }, { status: 403 })
+  }
+
+  const { id } = await params
+  const admin = createAdminClient()
+
+  const { data, error } = await admin
+    .from("perfiles")
+    .select("*")
+    .eq("id", id)
+    .single()
+
+  if (error) {
+    console.error("[GET /api/admin/usuarios/[id]] Error:", error)
+    return NextResponse.json({ error: error.message }, { status: 500 })
+  }
+
+  if (!data) {
+    return NextResponse.json({ error: "Usuario no encontrado" }, { status: 404 })
+  }
+
+  return NextResponse.json(data)
+}
+
 // PATCH - Actualizar datos del perfil: nombre, celular, cédula, dirección, rol, activo, bloqueado; o acciones (bloquear/activar/etc.)
 export async function PATCH(
   request: Request,

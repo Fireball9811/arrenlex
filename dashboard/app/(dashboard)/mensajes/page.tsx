@@ -59,13 +59,13 @@ function calcularScore(r: IntakeFormulario): ResultadoScore {
   else if (ratio >= 2) { ptsPago = 38; descPago = `${ratio.toFixed(1)}x canon — Aceptable` }
   else { ptsPago = 25; descPago = `${ratio.toFixed(1)}x canon — Riesgo medio` }
 
-  const meses = r.antiguedad_meses ?? 0
+  const meses = r.tiempo_servicio_principal_meses ?? r.antiguedad_meses ?? 0
   let ptsLaboral = 0; let descLaboral = ""
   if (meses >= 24) { ptsLaboral = 20; descLaboral = `${meses} meses — Muy estable` }
   else if (meses >= 12) { ptsLaboral = 13; descLaboral = `${meses} meses — Estable` }
   else { ptsLaboral = 6; descLaboral = `${meses} meses — Riesgo` }
 
-  const personas = r.personas ?? 1
+  const personas = r.adultos_habitantes ?? r.personas ?? 1
   let ptsHogar = 0; let descHogar = ""
   if (personas <= 3) { ptsHogar = 15; descHogar = `${personas} personas — Ideal` }
   else if (personas === 4) { ptsHogar = 10; descHogar = `${personas} personas — A evaluar` }
@@ -638,33 +638,33 @@ export default function MensajesPage() {
                 <p><span className="font-medium">{t.mensajes.detalle.email}</span> {intakeSeleccionado.email ?? "—"}</p>
                 <p><span className="font-medium">{t.mensajes.detalle.telefono}</span> {intakeSeleccionado.telefono ?? "—"}</p>
                 <p><span className="font-medium">{t.mensajes.detalle.cedula}</span> {intakeSeleccionado.cedula ?? "—"}</p>
-                <p><span className="font-medium">{t.mensajes.detalle.fechaExpCedula}</span> {intakeSeleccionado.fecha_expedicion_cedula ?? "—"}</p>
+                <p><span className="font-medium">{t.mensajes.detalle.fechaExpCedula}</span> {intakeSeleccionado.cedula_ciudad_expedicion ?? intakeSeleccionado.fecha_expedicion_cedula ?? "—"}</p>
               </div>
               <div className="space-y-1">
                 <p className="font-semibold text-muted-foreground uppercase text-xs tracking-wide">{t.mensajes.detalle.infoFinanciera}</p>
                 <p><span className="font-medium">{t.mensajes.detalle.ingresos}</span> {formatCurrency(intakeSeleccionado.ingresos)}</p>
-                <p><span className="font-medium">{t.mensajes.detalle.salarioPrincipal}</span> {formatCurrency(intakeSeleccionado.salario)}</p>
-                <p><span className="font-medium">{t.mensajes.detalle.salarioSecundario}</span> {formatCurrency(intakeSeleccionado.salario_2)}</p>
-                <p><span className="font-medium">{t.mensajes.detalle.empresa}</span> {intakeSeleccionado.empresa_arrendatario ?? intakeSeleccionado.empresas ?? "—"}</p>
-                <p><span className="font-medium">{t.mensajes.detalle.antiguedad}</span> {intakeSeleccionado.antiguedad_meses ?? "—"}</p>
+                <p><span className="font-medium">{t.mensajes.detalle.salarioPrincipal}</span> {formatCurrency(intakeSeleccionado.salario_principal ?? intakeSeleccionado.salario)}</p>
+                <p><span className="font-medium">{t.mensajes.detalle.salarioSecundario}</span> {formatCurrency(intakeSeleccionado.salario_secundario ?? intakeSeleccionado.salario_2)}</p>
+                <p><span className="font-medium">{t.mensajes.detalle.empresa}</span> {intakeSeleccionado.empresa_principal ?? intakeSeleccionado.empresa_arrendatario ?? intakeSeleccionado.empresas ?? "—"}</p>
+                <p><span className="font-medium">{t.mensajes.detalle.antiguedad}</span> {intakeSeleccionado.tiempo_servicio_principal_meses ?? intakeSeleccionado.antiguedad_meses ?? "—"}</p>
               </div>
               <div className="space-y-1">
                 <p className="font-semibold text-muted-foreground uppercase text-xs tracking-wide">{t.mensajes.detalle.grupoFamiliar}</p>
-                <p><span className="font-medium">{t.mensajes.detalle.personasTotales}</span> {intakeSeleccionado.personas ?? "—"}</p>
+                <p><span className="font-medium">{t.mensajes.detalle.personasTotales}</span> {intakeSeleccionado.adultos_habitantes ?? intakeSeleccionado.personas ?? "—"}</p>
                 <p><span className="font-medium">{t.mensajes.detalle.personasTrabajan}</span> {intakeSeleccionado.personas_trabajan ?? "—"}</p>
-                <p><span className="font-medium">{t.mensajes.detalle.ninos}</span> {intakeSeleccionado.ninos ?? "—"}</p>
-                <p><span className="font-medium">{t.mensajes.detalle.mascotasLabel}</span> {intakeSeleccionado.mascotas ?? "—"}</p>
+                <p><span className="font-medium">{t.mensajes.detalle.ninos}</span> {intakeSeleccionado.ninos_habitantes ?? intakeSeleccionado.ninos ?? "—"}</p>
+                <p><span className="font-medium">{t.mensajes.detalle.mascotasLabel}</span> {intakeSeleccionado.mascotas_cantidad ?? intakeSeleccionado.mascotas ?? "—"}</p>
                 <p><span className="font-medium">{t.mensajes.detalle.negocio}</span> {intakeSeleccionado.negocio ?? "—"}</p>
               </div>
-              {(intakeSeleccionado.nombre_coarrendatario || intakeSeleccionado.cedula_coarrendatario) && (
+              {(intakeSeleccionado.coarrendatario_nombre || intakeSeleccionado.nombre_coarrendatario || intakeSeleccionado.coarrendatario_cedula || intakeSeleccionado.cedula_coarrendatario) && (
                 <div className="space-y-1">
                   <p className="font-semibold text-muted-foreground uppercase text-xs tracking-wide">{t.mensajes.detalle.coarrendatario}</p>
-                  <p><span className="font-medium">{t.mensajes.columnas.nombre}:</span> {intakeSeleccionado.nombre_coarrendatario ?? "—"}</p>
-                  <p><span className="font-medium">{t.mensajes.detalle.cedula}</span> {intakeSeleccionado.cedula_coarrendatario ?? "—"}</p>
-                  <p><span className="font-medium">{t.mensajes.detalle.telefono}</span> {intakeSeleccionado.telefono_coarrendatario ?? "—"}</p>
-                  <p><span className="font-medium">Empresa:</span> {intakeSeleccionado.empresa_coarrendatario ?? "—"}</p>
-                  <p><span className="font-medium">Antigüedad (meses):</span> {intakeSeleccionado.antiguedad_meses_2 ?? "—"}</p>
-                  <p><span className="font-medium">Salario:</span> {formatCurrency(intakeSeleccionado.salario_2)}</p>
+                  <p><span className="font-medium">{t.mensajes.columnas.nombre}:</span> {intakeSeleccionado.coarrendatario_nombre ?? intakeSeleccionado.nombre_coarrendatario ?? "—"}</p>
+                  <p><span className="font-medium">{t.mensajes.detalle.cedula}</span> {intakeSeleccionado.coarrendatario_cedula ?? intakeSeleccionado.cedula_coarrendatario ?? "—"}</p>
+                  <p><span className="font-medium">{t.mensajes.detalle.telefono}</span> {intakeSeleccionado.coarrendatario_telefono ?? intakeSeleccionado.telefono_coarrendatario ?? "—"}</p>
+                  <p><span className="font-medium">Empresa:</span> {intakeSeleccionado.empresa_secundaria ?? intakeSeleccionado.empresa_coarrendatario ?? "—"}</p>
+                  <p><span className="font-medium">Antigüedad (meses):</span> {intakeSeleccionado.tiempo_servicio_secundario_meses ?? intakeSeleccionado.antiguedad_meses_2 ?? "—"}</p>
+                  <p><span className="font-medium">Salario:</span> {formatCurrency(intakeSeleccionado.salario_secundario ?? intakeSeleccionado.salario_2)}</p>
                 </div>
               )}
 

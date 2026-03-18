@@ -5,9 +5,9 @@ import { DatosContrato } from "@/lib/types/database"
  * que seran reemplazados por los datos reales.
  */
 
-export const CONTRATO_PLANTILLA = `CONTRATO DE ARRENDAMIENTO DE INMUEBLE DESTINADO A VIVIENDA URBANA
+export const CONTRATO_PLANTILLA = `CONTRATO DE ARRENDAMIENTO DE INMUEBLE DESTINADO A VIVIENDA URBANA No. {{CONTRATO_NUMERO}}
 
-Entre los suscritos a saber {{ARRENDADOR_NOMBRE}}, mayor de edad, identificado(a) con cedula de ciudadania No. {{ARRENDADOR_CEDULA}} de {{ARRENDADOR_CEDULA_EXPEDICION}}, residenciado(a) y domiciliado(a) en {{ARRENDADOR_DIRECCION}}, quien en adelante se denominara EL ARRENDADOR(A), por una parte; y por la otra; {{ARRENDATARIO_NOMBRE}}, mayor de edad, identificado(a) con cedula de ciudadania No. {{ARRENDATARIO_CEDULA}} de {{ARRENDATARIO_CEDULA_EXPEDICION}}, residenciado(a) y domiciliado(a) en {{ARRENDATARIO_DIRECCION}} quien en adelante se denominara EL ARRENDATARIO(A). Hemos convenido en celebrar el presente Contrato de Arrendamiento de Inmueble destinado a Vivienda Urbana, que se regira en los terminos y condiciones que a continuacion se expresan:
+Entre los suscritos a saber {{ARRENDADOR_NOMBRE}}, mayor de edad, identificado(a) con cedula de ciudadania No. {{ARRENDADOR_CEDULA}} de {{ARRENDADOR_CEDULA_EXPEDICION}}, residenciado(a) y domiciliado(a) en {{ARRENDADOR_DIRECCION}}, quien en adelante se denominara EL ARRENDADOR(A), por una parte; y por la otra; {{ARRENDATARIO_NOMBRE}}, mayor de edad, identificado(a) con cedula de ciudadania No. {{ARRENDATARIO_CEDULA}} de {{ARRENDATARIO_CEDULA_EXPEDICION}}, domiciliado(a) en el inmueble objeto del presente contrato, quien en adelante se denominara EL ARRENDATARIO(A). Hemos convenido en celebrar el presente Contrato de Arrendamiento de Inmueble destinado a Vivienda Urbana, que se regira en los terminos y condiciones que a continuacion se expresan:
 
 CLAUSULA I. – OBJETO Y DESTINACION.
 EL ARRENDADOR da en arrendamiento a EL ARRENDATARIO el inmueble destinado a vivienda urbana, ubicado en la direccion: {{PROPIEDAD_DIRECCION}}, con matricula inmobiliaria No {{PROPIEDAD_MATRICULA}}. Especificandose que queda prohibido utilizar el inmueble para fines comerciales, industriales o distintos a los de vivienda familiar.
@@ -119,10 +119,31 @@ EL DEUDOR SOLIDARIO recibira notificaciones en la direccion {{DEUDOR_SOLIDARIO_D
 
 En constancia de lo anterior, se firma el presente contrato en tres (3) ejemplares del mismo tenor, en la ciudad de {{CONTRATO_CIUDAD_FIRMA}}, a los {{CONTRATO_FECHA_INICIO_DIA}} dias del mes de {{CONTRATO_FECHA_INICIO_MES}} del ano {{CONTRATO_FECHA_INICIO_ANIO}}.
 
-EL ARRENDADOR                    EL ARRENDATARIO                    EL DEUDOR SOLIDARIO
-Nombre: {{ARRENDADOR_NOMBRE}}    Nombre: {{ARRENDATARIO_NOMBRE}}    Nombre: {{DEUDOR_SOLIDARIO_NOMBRE}}
-C.C. No: {{ARRENDADOR_CEDULA}}   C.C. No: {{ARRENDATARIO_CEDULA}}   C.C. No: {{DEUDOR_SOLIDARIO_CEDULA}}
-Firma: _____________             Firma: _____________               Firma: _____________
+______________________________________________________________________________________
+                                    EL ARRENDADOR(A)
+
+Nombre completo: {{ARRENDADOR_NOMBRE}}
+Cedula: {{ARRENDADOR_CEDULA}}
+
+Firma: _______________________________________________________________
+
+
+______________________________________________________________________________________
+                                   EL ARRENDATARIO(A)
+
+Nombre completo: {{ARRENDATARIO_NOMBRE}}
+Cedula: {{ARRENDATARIO_CEDULA}}
+
+Firma: _______________________________________________________________
+
+
+______________________________________________________________________________________
+                                EL DEUDOR SOLIDARIO
+
+Nombre completo: {{DEUDOR_SOLIDARIO_NOMBRE}}
+Cedula: {{DEUDOR_SOLIDARIO_CEDULA}}
+
+Firma: _______________________________________________________________
 `
 
 /**
@@ -171,48 +192,57 @@ export function llenarPlantillaContrato(datos: DatosContrato): string {
     }
   }
 
+  // Funcion auxiliar para obtener valor o defecto, tratando string vacio como valor valido
+  const valorODefecto = (valor: string | null | undefined, defecto: string): string => {
+    if (valor !== null && valor !== undefined) {
+      return valor
+    }
+    return defecto
+  }
+
   const fechaInicio = formatearFecha(datos.contrato_fecha_inicio)
 
   // Datos del arrendatario
-  contrato = contrato.replace(/\{\{ARRENDATARIO_NOMBRE\}\}/g, datos.arrendatario_nombre || '________________________')
-  contrato = contrato.replace(/\{\{ARRENDATARIO_CEDULA\}\}/g, datos.arrendatario_cedula || '________________________')
-  contrato = contrato.replace(/\{\{ARRENDATARIO_CEDULA_EXPEDICION\}\}/g, datos.arrendatario_cedula_expedicion || '________________________')
-  contrato = contrato.replace(/\{\{ARRENDATARIO_DIRECCION\}\}/g, datos.arrendatario_direccion || '________________________')
-  contrato = contrato.replace(/\{\{ARRENDATARIO_EMAIL\}\}/g, datos.arrendatario_email || '________________________')
-  contrato = contrato.replace(/\{\{ARRENDATARIO_CELULAR\}\}/g, datos.arrendatario_celular || '________________________')
+  contrato = contrato.replace(/\{\{ARRENDATARIO_NOMBRE\}\}/g, valorODefecto(datos.arrendatario_nombre, '________________________'))
+  contrato = contrato.replace(/\{\{ARRENDATARIO_CEDULA\}\}/g, valorODefecto(datos.arrendatario_cedula, '________________________'))
+  contrato = contrato.replace(/\{\{ARRENDATARIO_CEDULA_EXPEDICION\}\}/g, valorODefecto(datos.arrendatario_cedula_expedicion, '________________________'))
+  contrato = contrato.replace(/\{\{ARRENDATARIO_DIRECCION\}\}/g, valorODefecto(datos.propiedad_direccion, '________________________')) // El arrendatario es domiciliado en el predio
+  contrato = contrato.replace(/\{\{ARRENDATARIO_EMAIL\}\}/g, valorODefecto(datos.arrendatario_email, '________________________'))
+  contrato = contrato.replace(/\{\{ARRENDATARIO_CELULAR\}\}/g, valorODefecto(datos.arrendatario_celular, '________________________'))
 
   // Datos del deudor solidario
-  contrato = contrato.replace(/\{\{DEUDOR_SOLIDARIO_NOMBRE\}\}/g, datos.deudor_solidario_nombre || 'NO APLICA')
-  contrato = contrato.replace(/\{\{DEUDOR_SOLIDARIO_CEDULA\}\}/g, datos.deudor_solidario_cedula || 'NO APLICA')
-  contrato = contrato.replace(/\{\{DEUDOR_SOLIDARIO_CEDULA_EXPEDICION\}\}/g, datos.deudor_solidario_cedula_expedicion || 'NO APLICA')
-  contrato = contrato.replace(/\{\{DEUDOR_SOLIDARIO_DIRECCION\}\}/g, datos.deudor_solidario_direccion || 'NO APLICA')
-  contrato = contrato.replace(/\{\{DEUDOR_SOLIDARIO_EMAIL\}\}/g, datos.deudor_solidario_email || 'NO APLICA')
-  contrato = contrato.replace(/\{\{DEUDOR_SOLIDARIO_CELULAR\}\}/g, datos.deudor_solidario_celular || 'NO APLICA')
+  contrato = contrato.replace(/\{\{DEUDOR_SOLIDARIO_NOMBRE\}\}/g, valorODefecto(datos.deudor_solidario_nombre, 'NO APLICA'))
+  contrato = contrato.replace(/\{\{DEUDOR_SOLIDARIO_CEDULA\}\}/g, valorODefecto(datos.deudor_solidario_cedula, 'NO APLICA'))
+  contrato = contrato.replace(/\{\{DEUDOR_SOLIDARIO_CEDULA_EXPEDICION\}\}/g, valorODefecto(datos.deudor_solidario_cedula_expedicion, 'NO APLICA'))
+  contrato = contrato.replace(/\{\{DEUDOR_SOLIDARIO_DIRECCION\}\}/g, valorODefecto(datos.propiedad_direccion, 'NO APLICA')) // El deudor solidario es domiciliado en el predio
+  contrato = contrato.replace(/\{\{DEUDOR_SOLIDARIO_EMAIL\}\}/g, valorODefecto(datos.deudor_solidario_email, 'NO APLICA'))
+  contrato = contrato.replace(/\{\{DEUDOR_SOLIDARIO_CELULAR\}\}/g, valorODefecto(datos.deudor_solidario_celular, 'NO APLICA'))
 
   // Datos del propietario/arrendador
-  contrato = contrato.replace(/\{\{ARRENDADOR_NOMBRE\}\}/g, datos.propietario_nombre || '________________________')
-  contrato = contrato.replace(/\{\{ARRENDADOR_CEDULA\}\}/g, datos.propietario_cedula || '________________________')
-  contrato = contrato.replace(/\{\{ARRENDADOR_CEDULA_EXPEDICION\}\}/g, datos.propietario_cedula || '________________________')
-  contrato = contrato.replace(/\{\{ARRENDADOR_DIRECCION\}\}/g, datos.propiedad_direccion || '________________________')
-  contrato = contrato.replace(/\{\{ARRENDADOR_EMAIL\}\}/g, datos.propietario_email || '________________________')
-  contrato = contrato.replace(/\{\{ARRENDADOR_CELULAR\}\}/g, '________________________') // No disponible
+  contrato = contrato.replace(/\{\{ARRENDADOR_NOMBRE\}\}/g, valorODefecto(datos.propietario_nombre, '________________________'))
+  contrato = contrato.replace(/\{\{ARRENDADOR_CEDULA\}\}/g, valorODefecto(datos.propietario_cedula, '________________________'))
+  contrato = contrato.replace(/\{\{ARRENDADOR_CEDULA_EXPEDICION\}\}/g, valorODefecto(datos.propietario_cedula_expedicion, '________________________'))
+  contrato = contrato.replace(/\{\{ARRENDADOR_DIRECCION\}\}/g, valorODefecto(datos.propietario_direccion, '________________________'))
+  contrato = contrato.replace(/\{\{ARRENDADOR_EMAIL\}\}/g, valorODefecto(datos.propietario_email, '________________________'))
+  contrato = contrato.replace(/\{\{ARRENDADOR_CELULAR\}\}/g, valorODefecto(datos.propietario_celular, '________________________'))
 
   // Datos de la propiedad
-  contrato = contrato.replace(/\{\{PROPIEDAD_DIRECCION\}\}/g, datos.propiedad_direccion || '________________________')
-  contrato = contrato.replace(/\{\{PROPIEDAD_MATRICULA\}\}/g, datos.propiedad_matricula || '________________________')
-  contrato = contrato.replace(/\{\{PROPIEDAD_CUENTA_ENTIDAD\}\}/g, datos.propiedad_cuenta_entidad || '________________________')
-  contrato = contrato.replace(/\{\{PROPIEDAD_CUENTA_TIPO\}\}/g, datos.propiedad_cuenta_tipo || '________________________')
-  contrato = contrato.replace(/\{\{PROPIEDAD_CUENTA_NUMERO\}\}/g, datos.propiedad_cuenta_numero || '________________________')
-  contrato = contrato.replace(/\{\{PROPIEDAD_CUENTA_TITULAR\}\}/g, datos.propiedad_cuenta_titular || '________________________')
+  contrato = contrato.replace(/\{\{PROPIEDAD_DIRECCION\}\}/g, valorODefecto(datos.propiedad_direccion, '________________________'))
+  contrato = contrato.replace(/\{\{PROPIEDAD_MATRICULA\}\}/g, valorODefecto(datos.propiedad_matricula, '________________________'))
+  contrato = contrato.replace(/\{\{PROPIEDAD_CUENTA_ENTIDAD\}\}/g, valorODefecto(datos.propiedad_cuenta_entidad, '________________________'))
+  contrato = contrato.replace(/\{\{PROPIEDAD_CUENTA_TIPO\}\}/g, valorODefecto(datos.propiedad_cuenta_tipo, '________________________'))
+  contrato = contrato.replace(/\{\{PROPIEDAD_CUENTA_NUMERO\}\}/g, valorODefecto(datos.propiedad_cuenta_numero, '________________________'))
+  contrato = contrato.replace(/\{\{PROPIEDAD_CUENTA_TITULAR\}\}/g, valorODefecto(datos.propiedad_cuenta_titular, '________________________'))
 
   // Datos del contrato
+  contrato = contrato.replace(/\{\{CONTRATO_NUMERO\}\}/g, valorODefecto(datos.contrato_numero as any as string, '________________________'))
   contrato = contrato.replace(/\{\{CONTRATO_CANON_COP\}\}/g, "$" + formatearMoneda(datos.contrato_canon_mensual))
   contrato = contrato.replace(/\{\{CONTRATO_DURACION_MESES\}\}/g, datos.contrato_duracion_meses.toString())
   contrato = contrato.replace(/\{\{CONTRATO_DURACION_MESES_EN_LETRAS\}\}/g, numeroALetras(datos.contrato_duracion_meses))
   contrato = contrato.replace(/\{\{CONTRATO_FECHA_INICIO_DIA\}\}/g, fechaInicio.dia)
   contrato = contrato.replace(/\{\{CONTRATO_FECHA_INICIO_MES\}\}/g, fechaInicio.mes)
   contrato = contrato.replace(/\{\{CONTRATO_FECHA_INICIO_ANIO\}\}/g, fechaInicio.anio)
-  contrato = contrato.replace(/\{\{CONTRATO_CIUDAD_FIRMA\}\}/g, datos.contrato_ciudad_firma || '________________________')
+  contrato = contrato.replace(/\{\{CONTRATO_CIUDAD_FIRMA\}\}/g, valorODefecto(datos.contrato_ciudad_firma, '________________________'))
 
   return contrato
 }

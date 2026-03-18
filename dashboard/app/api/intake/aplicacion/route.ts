@@ -136,22 +136,23 @@ export async function POST(request: Request) {
       nombre: nombreTrim,
       email: emailTrim,
       cedula: cedulaTrim,
-      fecha_expedicion_cedula: toNullableText(fecha_expedicion_cedula),
+      // Nuevos nombres de columnas (unificados con arrendatarios)
+      cedula_ciudad_expedicion: toNullableText(fecha_expedicion_cedula),
       telefono: toNullableText(telefono),
-      empresa_arrendatario: toNullableText(empresa_arrendatario),
-      antiguedad_meses: toNullableInt(antiguedad_meses),
-      salario: toNullableNum(salario),
+      adultos_habitantes: toNullableInt(personas), // renamed from personas
+      ninos_habitantes: toNullableInt(ninos), // renamed from ninos
+      mascotas_cantidad: toNullableInt(mascotas), // renamed from mascotas
+      salario_principal: toNullableNum(salario), // renamed from salario
       ingresos: toNullableNum(ingresos),
-      nombre_coarrendatario: toNullableText(nombre_coarrendatario),
-      cedula_coarrendatario: toNullableText(cedula_coarrendatario),
-      fecha_expedicion_cedula_coarrendatario: toNullableText(fecha_expedicion_cedula_coarrendatario),
-      empresa_coarrendatario: toNullableText(empresa_coarrendatario),
-      antiguedad_meses_2: toNullableInt(antiguedad_meses_2),
-      salario_2: toNullableNum(salario_2),
-      telefono_coarrendatario: toNullableText(telefono_coarrendatario),
-      personas: toNullableInt(personas),
-      ninos: toNullableInt(ninos),
-      mascotas: toNullableInt(mascotas),
+      empresa_principal: toNullableText(empresa_arrendatario), // renamed
+      tiempo_servicio_principal_meses: toNullableInt(antiguedad_meses), // renamed
+      coarrendatario_nombre: toNullableText(nombre_coarrendatario), // renamed
+      coarrendatario_cedula: toNullableText(cedula_coarrendatario), // renamed
+      coarrendatario_cedula_expedicion: toNullableText(fecha_expedicion_cedula_coarrendatario), // renamed
+      empresa_secundaria: toNullableText(empresa_coarrendatario), // renamed
+      tiempo_servicio_secundario_meses: toNullableInt(antiguedad_meses_2), // renamed
+      salario_secundario: toNullableNum(salario_2), // renamed from salario_2
+      coarrendatario_telefono: toNullableText(telefono_coarrendatario), // renamed
       personas_trabajan: toNullableInt(personas_trabajan),
       negocio: toNullableText(negocio),
       autorizacion: "Si",

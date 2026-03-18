@@ -101,6 +101,17 @@ export async function POST(request: Request) {
     // Generar una contraseña temporal y enviarla por correo
     const passwordTemporal = generarContrasenaTemporal()
 
+    // Obtener el ID del usuario creado desde auth.users
+    let nuevoUserId: string | null = null
+    if (inviteData?.user?.id) {
+      nuevoUserId = inviteData.user.id
+    } else {
+      // Si no viene en inviteData, buscar por email
+      const { data: usersList } = await admin.auth.admin.listUsers({ perPage: 1000 })
+      const nuevoUser = usersList?.users.find(u => u.email?.toLowerCase() === email.toLowerCase())
+      nuevoUserId = nuevoUser?.id || null
+    }
+
     // Actualizar el perfil con los datos adicionales
     const { error: updateError } = await admin
       .from("perfiles")
@@ -113,6 +124,20 @@ export async function POST(request: Request) {
 
     if (updateError) {
       console.error("⚠️ Error actualizando perfil:", updateError)
+    }
+
+    // IMPORTANTE: Vincular el user_id con el arrendatario
+    if (nuevoUserId) {
+      const { error: updateArrendatarioError } = await admin
+        .from("arrendatarios")
+        .update({ user_id: nuevoUserId })
+        .eq("id", arrendatarioId)
+
+      if (updateArrendatarioError) {
+        console.error("⚠️ Error vinculando user_id con arrendatario:", updateArrendatarioError)
+      } else {
+        console.log("✓ Arrendatario vinculado con user_id:", nuevoUserId)
+      }
     }
 
     // Enviar correo con las credenciales

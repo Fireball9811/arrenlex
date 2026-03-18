@@ -3,8 +3,8 @@ import { createClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin"
 
 /**
- * GET - Obtiene SOLO arrendatarios con contratos activos
- * Si tienen usuario en perfiles, se muestra su info
+ * GET - Obtiene TODOS los arrendatarios con contratos activos o borrador
+ * Si tienen usuario en perfiles (por email o por user_id), se muestra su info
  * Si no tienen usuario, se marcan para que se les cree uno
  */
 export async function GET() {
@@ -22,70 +22,85 @@ export async function GET() {
   const admin = createAdminClient()
 
   try {
-    // DEBUG: Primero ver TODOS los contratos y sus estados
-    const { data: todosContratos, error: errorTodos } = await admin
-      .from("contratos")
-      .select("id, estado, arrendatario_id")
-
-    console.log("🔍 [DEBUG] Todos los contratos:", JSON.stringify(todosContratos, null, 2))
-
     // Obtener arrendatarios con contratos activos o borrador (en proceso)
     const { data: contratosActivos, error: errorContratos } = await admin
       .from("contratos")
       .select(`
         id,
         arrendatario_id,
-        arrendatarios!inner(id, nombre, cedula, email, celular),
+        arrendatarios!inner(id, nombre, cedula, email, celular, user_id),
         estado
       `)
       .in("estado", ["activo", "borrador"])
 
-    console.log("✓ Contratos activos encontrados:", contratosActivos?.length || 0)
-    console.log("✓ Datos de contratos:", JSON.stringify(contratosActivos, null, 2))
+    console.log("✓ Contratos activos/borrador encontrados:", contratosActivos?.length || 0)
 
     if (errorContratos) {
       console.error("❌ Error obteniendo contratos activos:", errorContratos)
       return NextResponse.json({ error: errorContratos.message }, { status: 500 })
     }
 
-    // Obtener emails de todos los arrendatarios con contrato activo
-    // Manejar tanto si arrendatarios es array como si es objeto
-    const emailsArrendatarios = contratosActivos
-      ?.map(c => {
-        const arrendatarios = c.arrendatarios
-        const arrendatario = Array.isArray(arrendatarios) ? arrendatarios[0] : arrendatarios
-        return arrendatario?.email ?? null
-      })
-      .filter(Boolean) || []
+    // Recopilar todos los emails y user_ids de los arrendatarios
+    const emailsArrendatarios: string[] = []
+    const userIds: string[] = []
 
-    // Buscar cuáles de estos arrendatarios ya tienen usuario
-    let usuariosExistentes: any[] = []
+    for (const c of contratosActivos || []) {
+      const arrendatariosRaw = c.arrendatarios
+      const arrendatario = Array.isArray(arrendatariosRaw) ? arrendatariosRaw[0] : arrendatariosRaw
+      if (!arrendatario) continue
+
+      if (arrendatario.email) {
+        emailsArrendatarios.push(arrendatario.email)
+      }
+      if (arrendatario.user_id) {
+        userIds.push(arrendatario.user_id)
+      }
+    }
+
+    // Buscar usuarios por email
+    let usuariosPorEmail: Map<string, any> = new Map()
     if (emailsArrendatarios.length > 0) {
-      const { data: usuarios } = await admin
+      const { data: usuariosByEmail } = await admin
         .from("perfiles")
         .select("id, email, nombre, cedula, celular, role, activo, bloqueado")
         .in("email", emailsArrendatarios)
-      usuariosExistentes = usuarios || []
+
+      if (usuariosByEmail) {
+        usuariosPorEmail = new Map(usuariosByEmail.map(u => [u.email, u]))
+      }
     }
 
-    // Crear mapa de usuarios por email para búsqueda rápida
-    const usuariosPorEmail = new Map(usuariosExistentes.map(u => [u.email, u]))
+    // Buscar usuarios por user_id (para arrendatarios que ya están vinculados)
+    let usuariosPorUserId: Map<string, any> = new Map()
+    if (userIds.length > 0) {
+      const { data: usuariosById } = await admin
+        .from("perfiles")
+        .select("id, email, nombre, cedula, celular, role, activo, bloqueado")
+        .in("id", userIds)
 
-    // Crear lista de inquilinos activos (solo los que tienen contrato)
+      if (usuariosById) {
+        usuariosPorUserId = new Map(usuariosById.map(u => [u.id, u]))
+      }
+    }
+
+    // Crear lista de inquilinos activos
     const inquilinosActivos: any[] = []
 
     for (const contrato of contratosActivos || []) {
-      // Manejar tanto si arrendatarios es array como si es objeto
       const arrendatariosRaw = contrato.arrendatarios
       const arrendatario = Array.isArray(arrendatariosRaw) ? arrendatariosRaw[0] : arrendatariosRaw
       if (!arrendatario) continue
 
-      const usuarioExistente = usuariosPorEmail.get(arrendatario.email)
+      // Buscar usuario primero por user_id (vinculado), luego por email
+      let usuarioExistente = arrendatario.user_id ? usuariosPorUserId.get(arrendatario.user_id) : null
+      if (!usuarioExistente && arrendatario.email) {
+        usuarioExistente = usuariosPorEmail.get(arrendatario.email)
+      }
 
       inquilinosActivos.push({
         // Si tiene usuario, usar sus datos, si no, usar datos del arrendatario
         id: usuarioExistente?.id || null,
-        email: arrendatario.email,
+        email: arrendatario.email || usuarioExistente?.email || null,
         nombre: arrendatario.nombre,
         cedula: arrendatario.cedula,
         celular: arrendatario.celular,
