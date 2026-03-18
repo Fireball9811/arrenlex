@@ -19,22 +19,11 @@ import {
 } from "@/components/ui/select"
 import type { ContratoConRelaciones } from "@/lib/types/database"
 
-type Propietario = {
-  id: string
-  email: string
-  nombre: string | null
-  cedula: string | null
-}
-
 export default function PropietarioContratosPage() {
   const [contratos, setContratos] = useState<ContratoConRelaciones[]>([])
   const [contratosFiltrados, setContratosFiltrados] = useState<ContratoConRelaciones[]>([])
   const [loading, setLoading] = useState(true)
-  const [userRole, setUserRole] = useState<string | null>(null)
-  const [propietarios, setPropietarios] = useState<Propietario[]>([])
-  const [filtroPropietario, setFiltroPropietario] = useState<string>("")
   const [filtroEstado, setFiltroEstado] = useState<string>("todos")
-  const [mounted, setMounted] = useState(false)
 
   // Cargar contratos
   useEffect(() => {
@@ -52,33 +41,13 @@ export default function PropietarioContratosPage() {
   useEffect(() => {
     let filtrados = [...contratos]
 
-    // Filtro por propietario (solo admin)
-    if (userRole === "admin" && filtroPropietario) {
-      filtrados = filtrados.filter(c => c.propiedad?.user_id === filtroPropietario)
-    }
-
     // Filtro por estado
     if (filtroEstado !== "todos") {
       filtrados = filtrados.filter(c => c.estado === filtroEstado)
     }
 
     setContratosFiltrados(filtrados)
-  }, [filtroPropietario, filtroEstado, contratos, userRole])
-
-  // Cargar rol y propietarios (solo admin)
-  useEffect(() => {
-    setMounted(true)
-    Promise.all([
-      fetch("/api/auth/role").then(r => r.json()),
-      fetch("/api/admin/propietarios").then(r => r.json().catch(() => []))
-    ]).then(([roleData, propData]) => {
-      setUserRole(roleData.role)
-      setPropietarios(propData)
-    }).catch(() => {
-      // Si falla, asumir que no es admin
-      setUserRole("propietario")
-    })
-  }, [])
+  }, [filtroEstado, contratos])
 
   const formatPeso = (n: number) =>
     new Intl.NumberFormat("es-CO", { style: "currency", currency: "COP" }).format(n)
@@ -107,7 +76,6 @@ export default function PropietarioContratosPage() {
   }
 
   const limpiarFiltros = () => {
-    setFiltroPropietario("")
     setFiltroEstado("todos")
   }
 
@@ -127,25 +95,6 @@ export default function PropietarioContratosPage() {
           <div className="flex flex-wrap items-center gap-4">
             <span className="text-sm font-medium">Filtros:</span>
             <div className="flex flex-wrap items-center gap-3">
-              {/* Filtro por propietario (solo admin) */}
-              {mounted && userRole === "admin" && (
-                <div className="flex items-center gap-2">
-                  <label className="text-sm text-muted-foreground">Propietario:</label>
-                  <Select value={filtroPropietario} onValueChange={setFiltroPropietario}>
-                    <SelectTrigger className="w-[200px]">
-                      <SelectValue placeholder="Todos" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="">Todos</SelectItem>
-                      {propietarios.map((p) => (
-                        <SelectItem key={p.id} value={p.id}>
-                          {p.nombre || p.email}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
               {/* Filtro por estado */}
               <div className="flex items-center gap-2">
                 <label className="text-sm text-muted-foreground">Estado:</label>
@@ -162,7 +111,7 @@ export default function PropietarioContratosPage() {
                   </SelectContent>
                 </Select>
               </div>
-              {(filtroPropietario || filtroEstado !== "todos") && (
+              {filtroEstado !== "todos" && (
                 <Button variant="ghost" size="sm" onClick={limpiarFiltros}>
                   Limpiar filtros
                 </Button>
@@ -181,18 +130,18 @@ export default function PropietarioContratosPage() {
         <Card>
           <CardHeader>
             <CardTitle>
-              {filtroPropietario || filtroEstado !== "todos"
+              {filtroEstado !== "todos"
                 ? "No se encontraron contratos con los filtros aplicados"
                 : "No hay contratos"}
             </CardTitle>
             <CardDescription>
-              {filtroPropietario || filtroEstado !== "todos"
+              {filtroEstado !== "todos"
                 ? "Prueba con otros filtros o límpialos para ver todos los contratos"
                 : "No tienes contratos registrados aún. Crea tu primer contrato."}
             </CardDescription>
           </CardHeader>
           <CardContent>
-            {(filtroPropietario || filtroEstado !== "todos") ? (
+            {filtroEstado !== "todos" ? (
               <Button variant="outline" onClick={limpiarFiltros}>
                 Limpiar filtros
               </Button>
@@ -212,7 +161,6 @@ export default function PropietarioContratosPage() {
                 <tr className="border-b bg-muted/50">
                   <th className="text-left p-4 font-semibold">Propiedad</th>
                   <th className="text-left p-4 font-semibold">Arrendatario</th>
-                  <th className="text-left p-4 font-semibold">Propietario</th>
                   <th className="text-left p-4 font-semibold">Fechas</th>
                   <th className="text-left p-4 font-semibold">Canon</th>
                   <th className="text-center p-4 font-semibold">Estado</th>
@@ -236,20 +184,6 @@ export default function PropietarioContratosPage() {
                       <div className="text-muted-foreground text-xs">
                         {c.arrendatario?.cedula || "Sin cédula"}
                       </div>
-                    </td>
-
-                    {/* Propietario (visible para admin) */}
-                    <td className="p-4">
-                      {mounted && userRole === "admin" && c.propietario ? (
-                        <>
-                          <div className="font-medium">{c.propietario.nombre}</div>
-                          <div className="text-muted-foreground text-xs">
-                            {c.propietario.email}
-                          </div>
-                        </>
-                      ) : (
-                        <span className="text-muted-foreground">—</span>
-                      )}
                     </td>
 
                     {/* Fechas */}

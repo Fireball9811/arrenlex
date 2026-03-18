@@ -30,7 +30,7 @@ export async function GET(
   // Primero obtener el contrato para saber la propiedad_id
   const { data: contrato, error: contratoError } = await admin
     .from("contratos")
-    .select("id, propiedad_id, user_id, arrendatario:arrendatarios(user_id)")
+    .select("id, propiedad_id, user_id, arrendatario_id, arrendatario:arrendatarios!inner(id, user_id)")
     .eq("id", contratoId)
     .single()
 
@@ -47,7 +47,8 @@ export async function GET(
   }
 
   if (!tieneAcceso && role === "inquilino") {
-    tieneAcceso = contrato.arrendatario?.user_id === user.id
+    const arrendatario = Array.isArray(contrato.arrendatario) ? contrato.arrendatario[0] : contrato.arrendatario
+    tieneAcceso = arrendatario?.user_id === user.id
   }
 
   if (!tieneAcceso) {
