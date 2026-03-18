@@ -13,19 +13,28 @@ import {
 } from "@/components/ui/card"
 import type { ContratoConRelaciones } from "@/lib/types/database"
 import { FileText, Download, Edit, ArrowLeft, Trash2 } from "lucide-react"
+import { DocumentosContrato } from "@/components/contratos/documentos-contrato"
+import { RecibosContrato } from "@/components/contratos/recibos-contrato"
 
 export default function ContratoDetallePage() {
   const params = useParams()
   const router = useRouter()
   const [contrato, setContrato] = useState<ContratoConRelaciones | null>(null)
   const [loading, setLoading] = useState(true)
+  const [isAdmin, setIsAdmin] = useState(false)
+  const [isPropietario, setIsPropietario] = useState(false)
 
   useEffect(() => {
-    fetch(`/api/contratos/${params.id}`)
-      .then((res) => res.json())
-      .then(setContrato)
-      .catch(() => setContrato(null))
-      .finally(() => setLoading(false))
+    Promise.all([
+      fetch(`/api/contratos/${params.id}`).then(res => res.json()),
+      fetch("/api/auth/me").then(res => res.json())
+    ]).then(([contratoData, userData]) => {
+      setContrato(contratoData)
+      const role = userData?.role
+      setIsAdmin(role === "admin")
+      setIsPropietario(role === "propietario")
+    }).catch(() => setContrato(null))
+    .finally(() => setLoading(false))
   }, [params.id])
 
   async function handleDelete() {
@@ -94,7 +103,14 @@ export default function ContratoDetallePage() {
               <ArrowLeft className="h-5 w-5" />
             </Link>
           </Button>
-          <h1 className="text-3xl font-bold">Contrato</h1>
+          <div>
+            <h1 className="text-3xl font-bold">Contrato</h1>
+            {contrato?.numero && (
+              <p className="flex items-center gap-1 text-sm text-muted-foreground">
+                N° {contrato.numero}
+              </p>
+            )}
+          </div>
         </div>
         <div className="flex gap-2">
           <Button variant="outline" onClick={handleDownloadPDF}>
@@ -222,6 +238,18 @@ export default function ContratoDetallePage() {
           </Card>
         </div>
       </div>
+
+      {/* Sección de documentos del contrato */}
+      <DocumentosContrato
+        contratoId={contrato.id}
+        puedeEditar={isAdmin || isPropietario}
+      />
+
+      {/* Sección de recibos del contrato */}
+      <RecibosContrato
+        contratoId={contrato.id}
+        puedeEditar={isAdmin || isPropietario}
+      />
     </div>
   )
 }

@@ -50,8 +50,83 @@ export async function GET(
 }
 
 /**
+ * PATCH /api/recibos-pago/[id]
+ * Actualiza parcialmente un recibo
+ */
+export async function PATCH(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const { id } = await params
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user) {
+    return NextResponse.json({ error: "No autorizado" }, { status: 401 })
+  }
+
+  const role = await getUserRole(supabase, user)
+  if (role !== "admin" && role !== "propietario") {
+    return NextResponse.json({ error: "No autorizado" }, { status: 403 })
+  }
+
+  const body = await request.json()
+  const admin = createAdminClient()
+
+  // Construir objeto de actualización solo con campos proporcionados
+  const updateData: Record<string, any> = {}
+  const allowedFields = [
+    "propiedad_id",
+    "arrendador_nombre",
+    "arrendador_cedula",
+    "propietario_nombre",
+    "propietario_cedula",
+    "valor_arriendo",
+    "valor_arriendo_letras",
+    "fecha_inicio_periodo",
+    "fecha_fin_periodo",
+    "tipo_pago",
+    "fecha_recibo",
+    "numero_recibo",
+    "cuenta_consignacion",
+    "referencia_pago",
+    "nota",
+    "estado",
+  ]
+
+  for (const field of allowedFields) {
+    if (body[field] !== undefined) {
+      updateData[field] = body[field]
+    }
+  }
+
+  let query = admin
+    .from("recibos_pago")
+    .update(updateData)
+    .eq("id", id)
+
+  if (role === "propietario") {
+    query = query.eq("user_id", user.id)
+  }
+
+  const { data, error } = await query.select().single()
+
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 })
+  }
+
+  if (!data) {
+    return NextResponse.json({ error: "Recibo no encontrado" }, { status: 404 })
+  }
+
+  return NextResponse.json(data)
+}
+
+/**
  * PUT /api/recibos-pago/[id]
- * Actualiza un recibo
+ * Actualiza un recibo (completo)
  */
 export async function PUT(
   request: Request,

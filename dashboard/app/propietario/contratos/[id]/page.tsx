@@ -13,19 +13,28 @@ import {
 } from "@/components/ui/card"
 import type { ContratoConRelaciones } from "@/lib/types/database"
 import { FileText, Download, ArrowLeft } from "lucide-react"
-import { useLang } from "@/lib/i18n/context"
+import { DocumentosContrato } from "@/components/contratos/documentos-contrato"
+import { RecibosContrato } from "@/components/contratos/recibos-contrato"
 
 export default function PropietarioContratoDetallePage() {
   const params = useParams()
-  const { t } = useLang()
   const [contrato, setContrato] = useState<ContratoConRelaciones | null>(null)
   const [loading, setLoading] = useState(true)
+  const [isAdmin, setIsAdmin] = useState(false)
+  const [isPropietario, setIsPropietario] = useState(false)
+  const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
-    fetch(`/api/contratos/${params.id}`)
-      .then((res) => res.json())
-      .then(setContrato)
-      .catch(() => setContrato(null))
+    setMounted(true)
+    Promise.all([
+      fetch(`/api/contratos/${params.id}`).then((res) => res.json()),
+      fetch("/api/auth/me").then((res) => res.json())
+    ]).then(([contratoData, userData]) => {
+      setContrato(contratoData)
+      const role = userData?.role
+      setIsAdmin(role === "admin")
+      setIsPropietario(role === "propietario")
+    }).catch(() => setContrato(null))
       .finally(() => setLoading(false))
   }, [params.id])
 
@@ -52,26 +61,26 @@ export default function PropietarioContratoDetallePage() {
   }
 
   const estadoLabels: Record<string, string> = {
-    borrador: t.contratos.estados.borrador,
-    activo: t.contratos.estados.activo,
-    terminado: t.contratos.estados.terminado,
-    vencido: t.contratos.estados.vencido,
+    borrador: "Borrador",
+    activo: "Activo",
+    terminado: "Terminado",
+    vencido: "Vencido",
   }
 
   if (loading) {
-    return <p className="text-muted-foreground">{t.comun.cargando}</p>
+    return <p className="text-muted-foreground">Cargando...</p>
   }
 
   if (!contrato) {
     return (
       <Card>
         <CardHeader>
-          <CardTitle>{t.contratos.detalle.noEncontrado}</CardTitle>
+          <CardTitle>Contrato no encontrado</CardTitle>
           <CardDescription>El contrato que buscas no existe.</CardDescription>
         </CardHeader>
         <CardContent>
           <Button asChild>
-            <Link href="/propietario/contratos">{t.contratos.detalle.volverContratos}</Link>
+            <Link href="/propietario/contratos">Volver a contratos</Link>
           </Button>
         </CardContent>
       </Card>
@@ -87,12 +96,12 @@ export default function PropietarioContratoDetallePage() {
               <ArrowLeft className="h-5 w-5" />
             </Link>
           </Button>
-          <h1 className="text-3xl font-bold">{t.contratos.detalle.titulo}</h1>
+          <h1 className="text-3xl font-bold">Detalle del Contrato</h1>
         </div>
         <div className="flex gap-2">
           <Button variant="outline" onClick={handleDownloadPDF}>
             <Download className="mr-2 h-4 w-4" />
-            {t.contratos.detalle.descargarPDF}
+            Descargar PDF
           </Button>
         </div>
       </div>
@@ -104,8 +113,8 @@ export default function PropietarioContratoDetallePage() {
             <CardHeader>
               <div className="flex items-start justify-between">
                 <div>
-                  <CardTitle>{t.contratos.detalle.informacion}</CardTitle>
-                  <CardDescription>{t.contratos.detalle.detalles}</CardDescription>
+                  <CardTitle>Información del Contrato</CardTitle>
+                  <CardDescription>Detalles del contrato de arrendamiento</CardDescription>
                 </div>
                 <span
                   className={`rounded px-3 py-1 text-sm font-medium ${estadoColors[contrato.estado]}`}
@@ -117,24 +126,24 @@ export default function PropietarioContratoDetallePage() {
             <CardContent className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <p className="text-sm text-muted-foreground">{t.contratos.detalle.fechaInicio}</p>
+                  <p className="text-sm text-muted-foreground">Fecha de inicio</p>
                   <p className="font-medium">{formatDate(contrato.fecha_inicio)}</p>
                 </div>
                 <div>
-                  <p className="text-sm text-muted-foreground">{t.contratos.detalle.fechaTermino}</p>
+                  <p className="text-sm text-muted-foreground">Fecha de término</p>
                   <p className="font-medium">{formatDate(contrato.fecha_fin)}</p>
                 </div>
                 <div>
-                  <p className="text-sm text-muted-foreground">{t.contratos.detalle.duracion}</p>
+                  <p className="text-sm text-muted-foreground">Duración</p>
                   <p className="font-medium">{contrato.duracion_meses} meses</p>
                 </div>
                 <div>
-                  <p className="text-sm text-muted-foreground">{t.contratos.detalle.canonMensual}</p>
+                  <p className="text-sm text-muted-foreground">Canon mensual</p>
                   <p className="text-xl font-bold">{formatPeso(contrato.canon_mensual)}</p>
                 </div>
               </div>
               <div>
-                <p className="text-sm text-muted-foreground">{t.contratos.detalle.ciudadFirma}</p>
+                <p className="text-sm text-muted-foreground">Ciudad de firma</p>
                 <p className="font-medium">{contrato.ciudad_firma}</p>
               </div>
             </CardContent>
@@ -162,7 +171,7 @@ export default function PropietarioContratoDetallePage() {
               </div>
               {contrato.propiedad?.matricula_inmobiliaria && (
                 <div>
-                  <p className="text-sm text-muted-foreground">{t.contratos.detalle.matricula}</p>
+                  <p className="text-sm text-muted-foreground">Matrícula inmobiliaria</p>
                   <p className="font-medium">{contrato.propiedad.matricula_inmobiliaria}</p>
                 </div>
               )}
@@ -174,7 +183,7 @@ export default function PropietarioContratoDetallePage() {
         <div className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle>{t.contratos.detalle.arrendatario}</CardTitle>
+              <CardTitle>Arrendatario</CardTitle>
             </CardHeader>
             <CardContent className="space-y-2">
               <p className="font-medium">{contrato.arrendatario?.nombre}</p>
@@ -190,7 +199,7 @@ export default function PropietarioContratoDetallePage() {
 
           <Card>
             <CardHeader>
-              <CardTitle>{t.contratos.detalle.propietario}</CardTitle>
+              <CardTitle>Propietario (Arrendador)</CardTitle>
             </CardHeader>
             <CardContent className="space-y-2">
               <p className="font-medium">{contrato.propietario?.nombre || "N/A"}</p>
@@ -202,12 +211,28 @@ export default function PropietarioContratoDetallePage() {
             <CardContent className="pt-6">
               <Button className="w-full" onClick={handleDownloadPDF}>
                 <FileText className="mr-2 h-4 w-4" />
-                {t.contratos.detalle.generarPDF}
+                Generar Contrato PDF
               </Button>
             </CardContent>
           </Card>
         </div>
       </div>
+
+      {/* Sección de documentos del contrato */}
+      {mounted && (
+        <DocumentosContrato
+          contratoId={contrato.id}
+          puedeEditar={isAdmin || isPropietario}
+        />
+      )}
+
+      {/* Sección de recibos del contrato */}
+      {mounted && (
+        <RecibosContrato
+          contratoId={contrato.id}
+          puedeEditar={isAdmin || isPropietario}
+        />
+      )}
     </div>
   )
 }

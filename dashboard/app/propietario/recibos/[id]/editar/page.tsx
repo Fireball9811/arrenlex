@@ -1,12 +1,12 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { useRouter, useSearchParams } from "next/navigation"
+import { useRouter, useParams } from "next/navigation"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
-import { ArrowLeft, Save, X } from "lucide-react"
+import { ArrowLeft, Save, X, Loader2 } from "lucide-react"
 
 interface Propiedad {
   id: string
@@ -14,43 +14,41 @@ interface Propiedad {
   ciudad: string
   barrio?: string
   valor_arriendo?: number
-  user_id: string
 }
 
-interface Arrendatario {
+interface ReciboPago {
   id: string
-  nombre: string
-  cedula: string
+  propiedad_id: string
+  propiedad?: Propiedad
+  arrendador_nombre: string
+  arrendador_cedula: string
+  propietario_nombre: string
+  propietario_cedula: string
+  valor_arriendo: number
+  valor_arriendo_letras: string
+  fecha_inicio_periodo: string
+  fecha_fin_periodo: string
+  tipo_pago: string
+  fecha_recibo: string
+  numero_recibo: string
+  cuenta_consignacion: string
+  referencia_pago: string
+  nota: string
 }
 
-interface Contrato {
-  id: string
-  arrendatario_id: string
-  arrendatario?: Arrendatario
-  estado: string
-}
-
-interface AuthUser {
-  id: string
-  email: string
-  role: string
-  nombre: string
-  cedula: string
-}
-
-export default function NuevoReciboPagoContent() {
+export default function EditarReciboPage() {
   const router = useRouter()
-  const searchParams = useSearchParams()
-  const propiedadIdParam = searchParams.get("propiedad_id") ?? ""
+  const params = useParams()
+  const reciboId = params.id as string
 
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
-
+  const [recibo, setRecibo] = useState<ReciboPago | null>(null)
   const [propiedades, setPropiedades] = useState<Propiedad[]>([])
 
   const [formData, setFormData] = useState({
-    propiedad_id: propiedadIdParam,
+    propiedad_id: "",
     arrendador_nombre: "",
     arrendador_cedula: "",
     propietario_nombre: "",
@@ -61,116 +59,70 @@ export default function NuevoReciboPagoContent() {
     fecha_fin_periodo: "",
     tipo_pago: "arriendo",
     fecha_recibo: new Date().toISOString().split("T")[0],
+    numero_recibo: "",
     cuenta_consignacion: "",
     referencia_pago: "",
     nota: "",
   })
 
   useEffect(() => {
-    const cargarDatosIniciales = async () => {
-      try {
-        const res = await fetch("/api/auth/me")
-        if (!res.ok) {
+    Promise.all([
+      fetch("/api/auth/me").then(res => res.ok ? res.json() : null),
+      fetch(`/api/recibos-pago/${reciboId}`).then(res => res.ok ? res.json() : null),
+      fetch("/api/propiedades").then(res => res.ok ? res.json() : []),
+    ])
+      .then(([userData, reciboData, propiedadesData]) => {
+        if (!userData) {
           setError("Error de autenticación")
           setLoading(false)
           return
         }
-
-        const data: AuthUser = await res.json()
-
-        if (data.role === "inquilino") {
+        if (userData.role === "inquilino") {
           router.replace("/inquilino/dashboard")
           return
         }
 
-        const isAdmin = data.role === "admin"
-
-        // Cargar propiedades
-        const resPropiedades = await fetch("/api/propiedades")
-        if (!resPropiedades.ok) {
-          setError("Error cargando propiedades")
+        if (!reciboData) {
+          setError("Recibo no encontrado")
           setLoading(false)
           return
         }
 
-        const propiedadesData: Propiedad[] = await resPropiedades.json()
+        setRecibo(reciboData)
         setPropiedades(propiedadesData)
+
+        // Cargar datos del recibo en el formulario
+        setFormData({
+          propiedad_id: reciboData.propiedad_id || "",
+          arrendador_nombre: reciboData.arrendador_nombre || "",
+          arrendador_cedula: reciboData.arrendador_cedula || "",
+          propietario_nombre: reciboData.propietario_nombre || "",
+          propietario_cedula: reciboData.propietario_cedula || "",
+          valor_arriendo: String(reciboData.valor_arriendo || ""),
+          valor_arriendo_letras: reciboData.valor_arriendo_letras || "",
+          fecha_inicio_periodo: reciboData.fecha_inicio_periodo?.split("T")[0] || "",
+          fecha_fin_periodo: reciboData.fecha_fin_periodo?.split("T")[0] || "",
+          tipo_pago: reciboData.tipo_pago || "arriendo",
+          fecha_recibo: reciboData.fecha_recibo?.split("T")[0] || new Date().toISOString().split("T")[0],
+          numero_recibo: reciboData.numero_recibo || "",
+          cuenta_consignacion: reciboData.cuenta_consignacion || "",
+          referencia_pago: reciboData.referencia_pago || "",
+          nota: reciboData.nota || "",
+        })
+
         setLoading(false)
-
-        // Si hay propiedad_id en URL, cargar datos iniciales UNA SOLA VEZ
-        if (propiedadIdParam) {
-          const prop = propiedadesData.find((p: Propiedad) => p.id === propiedadIdParam)
-          if (prop) {
-            const valorArriendo = prop.valor_arriendo || 0
-
-            // Pre-llenar SOLO si los campos están completamente vacíos
-            setFormData((prev) => ({
-              ...prev,
-              propiedad_id: propiedadIdParam,
-              propietario_nombre: prev.propietario_nombre || (isAdmin ? "" : data.nombre || ""),
-              propietario_cedula: prev.propietario_cedula || (isAdmin ? "" : data.cedula || ""),
-              valor_arriendo: prev.valor_arriendo || String(valorArriendo),
-              valor_arriendo_letras: prev.valor_arriendo_letras || (valorArriendo > 0 ? numerosEnLetras(valorArriendo) : ""),
-            }))
-
-            // Cargar datos del propietario si es admin y no tiene datos
-            if (isAdmin && prop.user_id) {
-              try {
-                const userRes = await fetch(`/api/auth/role?user_id=${prop.user_id}`)
-                if (userRes.ok) {
-                  const userData = await userRes.json()
-                  setFormData((prev) => ({
-                    ...prev,
-                    propietario_nombre: prev.propietario_nombre || userData.nombre || "",
-                    propietario_cedula: prev.propietario_cedula || userData.cedula || "",
-                  }))
-                }
-              } catch (e) {
-                // Silencioso
-              }
-            }
-
-            // Cargar arrendatario
-            try {
-              const resContratos = await fetch(`/api/contratos?propiedad_id=${propiedadIdParam}&estado=activo`)
-              if (resContratos.ok) {
-                const contratos = await resContratos.json()
-                if (contratos.length > 0 && contratos[0].arrendatario) {
-                  const arrendatario = contratos[0].arrendatario
-                  setFormData((prev) => ({
-                    ...prev,
-                    arrendador_nombre: prev.arrendador_nombre || arrendatario.nombre || "",
-                    arrendador_cedula: prev.arrendador_cedula || arrendatario.cedula || "",
-                  }))
-                }
-              }
-            } catch (e) {
-              // Silencioso
-            }
-          }
-        } else if (!isAdmin) {
-          // Si no hay propiedad seleccionada y es propietario, cargar sus datos
-          setFormData((prev) => ({
-            ...prev,
-            propietario_nombre: data.nombre || "",
-            propietario_cedula: data.cedula || "",
-          }))
-        }
-      } catch (err) {
-        console.error("Error:", err)
-        setError("Error de conexión")
+      })
+      .catch(() => {
+        setError("Error al cargar datos")
         setLoading(false)
-      }
-    }
-
-    cargarDatosIniciales()
-  }, [router, propiedadIdParam])
+      })
+  }, [router, reciboId])
 
   const handleChange = (field: string, value: string | number) => {
-    setFormData((prev) => ({
-      ...prev,
+    setFormData({
+      ...formData,
       [field]: value,
-    }))
+    })
   }
 
   const handleSave = async () => {
@@ -181,8 +133,8 @@ export default function NuevoReciboPagoContent() {
 
     setSaving(true)
     try {
-      const res = await fetch("/api/recibos-pago", {
-        method: "POST",
+      const res = await fetch(`/api/recibos-pago/${reciboId}`, {
+        method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(formData),
       })
@@ -192,9 +144,8 @@ export default function NuevoReciboPagoContent() {
         throw new Error(errorData.error || `HTTP ${res.status}`)
       }
 
-      const data = await res.json()
-      alert("Recibo creado correctamente")
-      router.push(`/propietario/recibos/vista-previa?recibo_id=${data.id}`)
+      alert("Recibo actualizado correctamente")
+      router.push(`/propietario/recibos/vista-previa?recibo_id=${reciboId}`)
     } catch (err: any) {
       setError(`Error al guardar: ${err.message}`)
     } finally {
@@ -207,50 +158,14 @@ export default function NuevoReciboPagoContent() {
     if (numero < 0) return "Menos " + numerosEnLetras(-numero)
 
     const unidades = [
-      "",
-      "Uno",
-      "Dos",
-      "Tres",
-      "Cuatro",
-      "Cinco",
-      "Seis",
-      "Siete",
-      "Ocho",
-      "Nueve",
-      "Diez",
-      "Once",
-      "Doce",
-      "Trece",
-      "Catorce",
-      "Quince",
-      "Dieciséis",
-      "Diecisiete",
-      "Dieciocho",
-      "Diecinueve",
+      "", "Uno", "Dos", "Tres", "Cuatro", "Cinco", "Seis", "Siete", "Ocho", "Nueve",
+      "Diez", "Once", "Doce", "Trece", "Catorce", "Quince", "Dieciséis", "Diecisiete", "Dieciocho", "Diecinueve",
     ]
     const decenas = [
-      "",
-      "",
-      "Veinte",
-      "Treinta",
-      "Cuarenta",
-      "Cincuenta",
-      "Sesenta",
-      "Setenta",
-      "Ochenta",
-      "Noventa",
+      "", "", "Veinte", "Treinta", "Cuarenta", "Cincuenta", "Sesenta", "Setenta", "Ochenta", "Noventa",
     ]
     const centenas = [
-      "",
-      "Ciento",
-      "Doscientos",
-      "Trescientos",
-      "Cuatrocientos",
-      "Quinientos",
-      "Seiscientos",
-      "Setecientos",
-      "Ochocientos",
-      "Novecientos",
+      "", "Ciento", "Doscientos", "Trescientos", "Cuatrocientos", "Quinientos", "Seiscientos", "Setecientos", "Ochocientos", "Novecientos",
     ]
 
     const convertirGrupo = (n: number): string => {
@@ -303,19 +218,26 @@ export default function NuevoReciboPagoContent() {
   }
 
   if (loading) {
-    return <p className="text-muted-foreground">Cargando...</p>
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    )
   }
 
   return (
     <div suppressHydrationWarning>
       <div className="mb-6 flex items-center gap-4">
-        <Link href="/propietario/recibos">
+        <Link href={`/propietario/recibos/${reciboId}`}>
           <Button variant="outline" size="sm">
             <ArrowLeft className="mr-2 h-4 w-4" />
             Volver
           </Button>
         </Link>
-        <h1 className="text-3xl font-bold">Crear Recibo de Pago</h1>
+        <h1 className="text-3xl font-bold">Editar Recibo de Pago</h1>
+        {recibo?.numero_recibo && (
+          <p className="text-sm text-muted-foreground">N° {recibo.numero_recibo}</p>
+        )}
       </div>
 
       {error && (
@@ -328,8 +250,8 @@ export default function NuevoReciboPagoContent() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Información del Recibo</CardTitle>
-          <CardDescription>Completa todos los campos para generar el recibo de pago</CardDescription>
+          <CardTitle>Editar Información del Recibo</CardTitle>
+          <CardDescription>Actualiza los campos del recibo de pago</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="space-y-6">
@@ -353,19 +275,19 @@ export default function NuevoReciboPagoContent() {
             {/* Información de Partes */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium mb-1">Nombre Arrendador *</label>
+                <label className="block text-sm font-medium mb-1">Nombre Arrendatario *</label>
                 <Input
                   value={formData.arrendador_nombre}
                   onChange={(e) => handleChange("arrendador_nombre", e.target.value)}
-                  placeholder="Nombre del arrendatario"
+                  placeholder=""
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1">Cédula Arrendador</label>
+                <label className="block text-sm font-medium mb-1">Cédula Arrendatario</label>
                 <Input
                   value={formData.arrendador_cedula}
                   onChange={(e) => handleChange("arrendador_cedula", e.target.value)}
-                  placeholder="Cédula del arrendatario"
+                  placeholder=""
                 />
               </div>
               <div>
@@ -373,7 +295,7 @@ export default function NuevoReciboPagoContent() {
                 <Input
                   value={formData.propietario_nombre}
                   onChange={(e) => handleChange("propietario_nombre", e.target.value)}
-                  placeholder="Nombre del propietario"
+                  placeholder=""
                 />
               </div>
               <div>
@@ -381,7 +303,7 @@ export default function NuevoReciboPagoContent() {
                 <Input
                   value={formData.propietario_cedula}
                   onChange={(e) => handleChange("propietario_cedula", e.target.value)}
-                  placeholder="Cédula del propietario"
+                  placeholder=""
                 />
               </div>
             </div>
@@ -395,11 +317,11 @@ export default function NuevoReciboPagoContent() {
                   value={formData.valor_arriendo}
                   onChange={(e) => {
                     handleChange("valor_arriendo", e.target.value)
-                    if (e.target.value && !isNaN(Number(e.target.value))) {
+                    if (e.target.value) {
                       handleChange("valor_arriendo_letras", numerosEnLetras(parseInt(e.target.value)))
                     }
                   }}
-                  placeholder="0"
+                  placeholder=""
                   min="0"
                 />
               </div>
@@ -408,7 +330,7 @@ export default function NuevoReciboPagoContent() {
                 <Input
                   value={formData.valor_arriendo_letras}
                   onChange={(e) => handleChange("valor_arriendo_letras", e.target.value)}
-                  placeholder="Se llena automáticamente"
+                  placeholder=""
                 />
               </div>
             </div>
@@ -433,7 +355,7 @@ export default function NuevoReciboPagoContent() {
               </div>
             </div>
 
-            {/* Tipo de Pago y Fecha del Recibo */}
+            {/* Tipo de Pago y Fecha Recibo */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium mb-1">Tipo de Pago *</label>
@@ -443,7 +365,6 @@ export default function NuevoReciboPagoContent() {
                   className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                 >
                   <option value="arriendo">Arriendo</option>
-                  <option value="deposito">Depósito</option>
                   <option value="servicios">Servicios</option>
                   <option value="otro">Otro</option>
                 </select>
@@ -465,7 +386,7 @@ export default function NuevoReciboPagoContent() {
                 <Input
                   value={formData.cuenta_consignacion}
                   onChange={(e) => handleChange("cuenta_consignacion", e.target.value)}
-                  placeholder="Número de cuenta"
+                  placeholder=""
                 />
               </div>
               <div>
@@ -473,7 +394,7 @@ export default function NuevoReciboPagoContent() {
                 <Input
                   value={formData.referencia_pago}
                   onChange={(e) => handleChange("referencia_pago", e.target.value)}
-                  placeholder="Referencia"
+                  placeholder=""
                 />
               </div>
             </div>
@@ -484,9 +405,9 @@ export default function NuevoReciboPagoContent() {
               <textarea
                 value={formData.nota}
                 onChange={(e) => handleChange("nota", e.target.value)}
-                placeholder="Notas adicionales..."
+                placeholder=""
                 rows={3}
-                className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
               />
             </div>
 
@@ -494,9 +415,9 @@ export default function NuevoReciboPagoContent() {
             <div className="flex gap-2 pt-4">
               <Button onClick={handleSave} disabled={saving} className="flex-1">
                 <Save className="mr-2 h-4 w-4" />
-                {saving ? "Guardando..." : "Crear Recibo"}
+                {saving ? "Guardando..." : "Guardar Cambios"}
               </Button>
-              <Link href="/propietario/recibos" className="flex-1">
+              <Link href={`/propietario/recibos/${reciboId}`} className="flex-1">
                 <Button variant="outline" className="w-full">
                   <X className="mr-2 h-4 w-4" />
                   Cancelar

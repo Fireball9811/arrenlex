@@ -22,6 +22,7 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url)
   const estado = searchParams.get("estado")
   const propiedadId = searchParams.get("propiedad_id")
+  const userIdFiltro = searchParams.get("user_id") // Filtro por propietario (admin)
 
   // Obtener el rol del usuario
   let role: string | null = null
@@ -52,7 +53,13 @@ export async function GET(request: Request) {
     query = query.eq("user_id", user.id)
     console.log("✓ Filtrando por user_id del propietario:", user.id)
   } else {
-    console.log("✓ Admin: mostrando todos los contratos")
+    // Si es admin y especificó un user_id, filtrar por ese propietario
+    if (userIdFiltro) {
+      query = query.eq("user_id", userIdFiltro)
+      console.log("✓ Admin: filtrando por user_id del propietario:", userIdFiltro)
+    } else {
+      console.log("✓ Admin: mostrando todos los contratos")
+    }
   }
 
   query = query.order("created_at", { ascending: false })

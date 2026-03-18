@@ -24,6 +24,9 @@ export function InquilinoSidebar() {
         <Link href="/inquilino/mis-contratos" className="block rounded p-2 transition hover:bg-gray-800">
           {t.sidebar.misContratos}
         </Link>
+        <Link href="/inquilino/documentos" className="block rounded p-2 transition hover:bg-gray-800">
+          Mis Documentos
+        </Link>
         <Link href="/catalogo" className="block rounded p-2 transition hover:bg-gray-800">
           {t.sidebar.verPropiedades}
         </Link>

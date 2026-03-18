@@ -1,21 +1,25 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useRef } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { ArrowLeft, Send, X, Printer, Loader2 } from "lucide-react"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
+import { ArrowLeft, Send, X, Printer, Loader2, Download } from "lucide-react"
 import Link from "next/link"
 
 export default function VistaPreviaReciboContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const reciboId = searchParams.get("recibo_id")
+  const reciboRef = useRef<HTMLDivElement>(null)
 
   const [loading, setLoading] = useState(true)
   const [sending, setSending] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [recibo, setRecibo] = useState<any>(null)
+  const [mostrarModalEmail, setMostrarModalEmail] = useState(false)
+  const [emailDestino, setEmailDestino] = useState("")
 
   // Cargar datos del recibo
   useEffect(() => {
@@ -42,12 +46,26 @@ export default function VistaPreviaReciboContent() {
   }, [reciboId])
 
   const handleEnviar = async () => {
+    if (!reciboId || !recibo) return
+
+    // Abrir modal para confirmar y permitir cambiar email
+    // Buscar email del arrendatario desde el contrato si existe
+    let emailSugerido = recibo.arrendatario_email || recibo.arrendador_email || ""
+
+    setEmailDestino(emailSugerido)
+    setMostrarModalEmail(true)
+  }
+
+  const confirmarEnvio = async () => {
     if (!reciboId) return
 
+    setMostrarModalEmail(false)
     setSending(true)
     try {
       const res = await fetch(`/api/recibos-pago/${reciboId}/enviar`, {
         method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: emailDestino }),
       })
 
       if (!res.ok) {
@@ -64,8 +82,214 @@ export default function VistaPreviaReciboContent() {
     }
   }
 
+  const cancelarEnvio = () => {
+    setMostrarModalEmail(false)
+    setEmailDestino("")
+  }
+
   const handleImprimir = () => {
-    window.print()
+    // Crear una ventana nueva solo con el contenido del recibo
+    if (!reciboRef.current) return
+
+    const printContent = reciboRef.current.innerHTML
+    const printWindow = window.open("", "_blank")
+
+    if (printWindow) {
+      printWindow.document.write(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <title>Recibo ${recibo?.numero_recibo || reciboId}</title>
+          <style>
+            * {
+              margin: 0;
+              padding: 0;
+              box-sizing: border-box;
+            }
+            body {
+              font-family: Arial, sans-serif;
+              padding: 40px;
+              background: white;
+            }
+            .recibo-container {
+              max-width: 800px;
+              margin: 0 auto;
+            }
+            img {
+              max-height: 60px;
+              width: auto;
+            }
+            table {
+              width: 100%;
+              border-collapse: collapse;
+            }
+            .border-b {
+              border-bottom: 1px solid #ddd;
+            }
+            .border-t {
+              border-top: 1px solid #ddd;
+            }
+            .border {
+              border: 1px solid #ccc;
+            }
+            .border-gray-300 {
+              border-color: #ccc;
+            }
+            .rounded-lg {
+              border-radius: 8px;
+            }
+            .p-4, .p-6, .p-8 {
+              padding: 16px;
+            }
+            .p-12 {
+              padding: 48px;
+            }
+            .mb-1, .mb-2, .mb-3, .mb-6, .mb-8, .mb-16 {
+              margin-bottom: 4px;
+            }
+            .mb-8 { margin-bottom: 32px; }
+            .mb-6 { margin-bottom: 24px; }
+            .mb-16 { margin-bottom: 64px; }
+            .pb-2, .pb-6 {
+              padding-bottom: 8px;
+            }
+            .pb-6 { padding-bottom: 24px; }
+            .pt-2, .pt-4 {
+              padding-top: 8px;
+            }
+            .gap-4, .gap-16 {
+              gap: 16px;
+            }
+            .gap-16 { gap: 64px; }
+            .grid {
+              display: grid;
+            }
+            .grid-cols-1 {
+              grid-template-columns: repeat(1, minmax(0, 1fr));
+            }
+            .text-center {
+              text-align: center;
+            }
+            .text-right {
+              text-align: right;
+            }
+            .font-bold {
+              font-weight: bold;
+            }
+            .text-sm {
+              font-size: 14px;
+            }
+            .text-xs {
+              font-size: 12px;
+            }
+            .text-2xl {
+              font-size: 24px;
+            }
+            .text-4xl {
+              font-size: 36px;
+            }
+            .text-gray-500 {
+              color: #6b7280;
+            }
+            .text-gray-600 {
+              color: #4b5563;
+            }
+            .text-gray-700 {
+              color: #374151;
+            }
+            .text-gray-800 {
+              color: #1f2937;
+            }
+            .text-blue-800 {
+              color: #1e40af;
+            }
+            .inline-block {
+              display: inline-block;
+            }
+            .w-24 {
+              width: 96px;
+            }
+            .w-2\/5 {
+              width: 40%;
+            }
+            .flex {
+              display: flex;
+            }
+            .items-center {
+              align-items: center;
+            }
+            .justify-between {
+              justify-content: space-between;
+            }
+            .items-start {
+              align-items: flex-start;
+            }
+            .mr-2, .mr-4 {
+              margin-right: 8px;
+            }
+            .mr-4 { margin-right: 16px; }
+            .mt-1, .mt-8 {
+              margin-top: 4px;
+            }
+            .mt-8 { margin-top: 32px; }
+            .bg-white {
+              background-color: white;
+            }
+            .bg-gray-100 {
+              background-color: #f3f4f6;
+            }
+            .py-3 {
+              padding-top: 12px;
+              padding-bottom: 12px;
+            }
+            .border-b-2 {
+              border-bottom-width: 2px;
+            }
+            .border-gray-800 {
+              border-color: #1f2937;
+            }
+            .shadow-lg {
+              box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+            }
+            .italic {
+              font-style: italic;
+            }
+            @media (min-width: 768px) {
+              .md\\:grid-cols-2 {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+              }
+              .md\\:p-12 {
+                padding: 48px;
+              }
+              .md\\:gap-4 {
+                gap: 16px;
+              }
+            }
+            @media print {
+              body { padding: 0; }
+            }
+          </style>
+        </head>
+        <body>
+          ${printContent}
+        </body>
+        </html>
+      `)
+      printWindow.document.close()
+
+      // Esperar a que cargue y luego imprimir
+      setTimeout(() => {
+        printWindow.focus()
+        printWindow.print()
+        printWindow.close()
+      }, 250)
+    }
+  }
+
+  const handleGenerarPDF = () => {
+    if (!reciboId) return
+    // Abrir la página de impresión dedicada en nueva ventana (sin layout)
+    window.open(`/imprimir-recibo/${reciboId}`, "_blank")
   }
 
   if (loading) {
@@ -108,6 +332,10 @@ export default function VistaPreviaReciboContent() {
           <h1 className="text-2xl font-bold">Vista Previa del Recibo</h1>
         </div>
         <div className="flex gap-2">
+          <Button onClick={handleGenerarPDF} variant="outline">
+            <Download className="mr-2 h-4 w-4" />
+            Descargar PDF
+          </Button>
           <Button onClick={handleImprimir} variant="outline">
             <Printer className="mr-2 h-4 w-4" />
             Imprimir
@@ -137,7 +365,7 @@ export default function VistaPreviaReciboContent() {
       )}
 
       {/* RECIBO - Estilo profesional */}
-      <div className="bg-white shadow-lg rounded-lg p-8 md:p-12">
+      <div ref={reciboRef} className="recibo-container bg-white shadow-lg rounded-lg p-8 md:p-12">
         {/* Encabezado con logo */}
         <div className="flex justify-between items-start mb-8 pb-6 border-b-2 border-gray-800">
           <div className="flex items-center">
@@ -157,17 +385,17 @@ export default function VistaPreviaReciboContent() {
           </div>
         </div>
 
-        {/* Información de partes */}
+        {/* Información de partes - CORREGIDO */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
           <div className="border border-gray-300 rounded-lg p-4">
-            <h3 className="font-bold text-sm mb-3 pb-2 border-b text-gray-700">PROPIETARIO (PAGADOR)</h3>
-            <p className="text-sm mb-1"><span className="font-semibold inline-block w-24">Nombre:</span> {recibo.propietario_nombre || "N/A"}</p>
-            <p className="text-sm"><span className="font-semibold inline-block w-24">Cédula:</span> {recibo.propietario_cedula || "N/A"}</p>
-          </div>
-          <div className="border border-gray-300 rounded-lg p-4">
-            <h3 className="font-bold text-sm mb-3 pb-2 border-b text-gray-700">ARRENDATARIO (RECEPTOR)</h3>
+            <h3 className="font-bold text-sm mb-3 pb-2 border-b text-gray-700">ARRENDATARIO (PAGADOR)</h3>
             <p className="text-sm mb-1"><span className="font-semibold inline-block w-24">Nombre:</span> {recibo.arrendador_nombre || "N/A"}</p>
             <p className="text-sm"><span className="font-semibold inline-block w-24">Cédula:</span> {recibo.arrendador_cedula || "N/A"}</p>
+          </div>
+          <div className="border border-gray-300 rounded-lg p-4">
+            <h3 className="font-bold text-sm mb-3 pb-2 border-b text-gray-700">PROPIETARIO (RECEPTOR)</h3>
+            <p className="text-sm mb-1"><span className="font-semibold inline-block w-24">Nombre:</span> {recibo.propietario_nombre || "N/A"}</p>
+            <p className="text-sm"><span className="font-semibold inline-block w-24">Cédula:</span> {recibo.propietario_cedula || "N/A"}</p>
           </div>
         </div>
 
@@ -235,15 +463,15 @@ export default function VistaPreviaReciboContent() {
           <p className="mt-1">Fecha de expedición: {new Date().toLocaleDateString("es-CO")}</p>
         </div>
 
-        {/* Firmas */}
+        {/* Firmas - CORREGIDO */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-16 mt-16">
           <div className="text-center">
-            <div className="border-t border-gray-800 pt-2 mb-1">{recibo.propietario_nombre || ""}</div>
-            <p className="text-sm text-gray-600">PROPIETARIO</p>
+            <div className="border-t border-gray-800 pt-2 mb-1">{recibo.arrendador_nombre || ""}</div>
+            <p className="text-sm text-gray-600">ARRENDATARIO (PAGADOR)</p>
           </div>
           <div className="text-center">
-            <div className="border-t border-gray-800 pt-2 mb-1">{recibo.arrendador_nombre || ""}</div>
-            <p className="text-sm text-gray-600">ARRENDATARIO</p>
+            <div className="border-t border-gray-800 pt-2 mb-1">{recibo.propietario_nombre || ""}</div>
+            <p className="text-sm text-gray-600">PROPIETARIO (RECEPTOR)</p>
           </div>
         </div>
       </div>
@@ -256,6 +484,10 @@ export default function VistaPreviaReciboContent() {
             Cancelar y Editar
           </Button>
         </Link>
+        <Button onClick={handleGenerarPDF} variant="outline" className="flex-1 max-w-xs">
+          <Download className="mr-2 h-4 w-4" />
+          Descargar PDF
+        </Button>
         <Button onClick={handleImprimir} variant="outline" className="flex-1 max-w-xs">
           <Printer className="mr-2 h-4 w-4" />
           Imprimir
@@ -275,17 +507,78 @@ export default function VistaPreviaReciboContent() {
         </Button>
       </div>
 
-      {/* Estilos para impresión */}
+      {/* Modal de confirmación de envío de email */}
+      {mostrarModalEmail && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <Card className="max-w-md w-full">
+            <CardHeader>
+              <CardTitle>Enviar Recibo por Email</CardTitle>
+              <CardDescription>
+                Confirma el destino del recibo antes de enviarlo
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium mb-1">
+                  Email del destinatario (arrendatario)
+                </label>
+                <Input
+                  type="email"
+                  value={emailDestino}
+                  onChange={(e) => setEmailDestino(e.target.value)}
+                  placeholder="ejemplo@correo.com"
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  El recibo será enviado a esta dirección de correo
+                </p>
+              </div>
+
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm">
+                <p className="font-medium text-blue-900 mb-1">Detalles del recibo:</p>
+                <ul className="text-blue-800 space-y-1 text-xs">
+                  <li>• N° Recibo: <strong>{recibo?.numero_recibo || "N/A"}</strong></li>
+                  <li>• Valor: <strong>${Number(recibo?.valor_arriendo || 0).toLocaleString("es-CO")}</strong></li>
+                  <li>• Arrendatario: <strong>{recibo?.arrendador_nombre || "N/A"}</strong></li>
+                </ul>
+              </div>
+
+              <div className="flex gap-2">
+                <Button
+                  onClick={confirmarEnvio}
+                  disabled={!emailDestino || sending}
+                  className="flex-1 bg-green-600 hover:bg-green-700"
+                >
+                  {sending ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Enviando...
+                    </>
+                  ) : (
+                    <>
+                      <Send className="mr-2 h-4 w-4" />
+                      Confirmar y Enviar
+                    </>
+                  )}
+                </Button>
+                <Button
+                  onClick={cancelarEnvio}
+                  variant="outline"
+                  disabled={sending}
+                  className="flex-1"
+                >
+                  Cancelar
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* Estilos para impresión (ya no necesarios pero se mantienen por compatibilidad) */}
       <style jsx global>{`
         @media print {
           .print\\:hidden {
             display: none !important;
-          }
-          body {
-            background: white !important;
-          }
-          @page {
-            margin: 1cm;
           }
         }
       `}</style>

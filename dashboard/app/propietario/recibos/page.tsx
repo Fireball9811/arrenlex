@@ -32,10 +32,6 @@ export default function RecibosPage() {
     fetch("/api/auth/me")
       .then((res) => (res.ok ? res.json() : null))
       .then((data: { role?: string } | null) => {
-        if (data?.role === "admin") {
-          router.replace("/admin/dashboard")
-          return
-        }
         if (data?.role === "inquilino") {
           router.replace("/inquilino/dashboard")
           return
@@ -173,7 +169,11 @@ export default function RecibosPage() {
                         <Edit2 className="mr-2 h-4 w-4" />
                       </Button>
                     </Link>
-                    <Button variant="outline" size="sm">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => window.open(`/imprimir-recibo/${recibo.id}`, "_blank")}
+                    >
                       <Download className="mr-2 h-4 w-4" />
                       PDF
                     </Button>

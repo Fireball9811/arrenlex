@@ -19,6 +19,15 @@ export async function POST(
     return NextResponse.json({ error: "No autorizado" }, { status: 401 })
   }
 
+  // Obtener email personalizado del body
+  let customEmail = null
+  try {
+    const body = await request.json()
+    customEmail = body.email
+  } catch {
+    // Si no hay body, continuar sin email personalizado
+  }
+
   const admin = createAdminClient()
 
   // Obtener el recibo con información completa
@@ -100,14 +109,24 @@ export async function POST(
   `
 
   try {
-    // Obtener email del arrendatario desde la tabla arrendatarios
-    const { data: arrendatario } = await admin
-      .from("arrendatarios")
-      .select("email")
-      .eq("nombre", recibo.arrendador_nombre)
-      .single()
+    // Usar email personalizado si se proporcionó, si no buscar el del arrendatario
+    let toEmail = customEmail
 
-    const toEmail = arrendatario?.email || 'arrendatario@example.com'
+    if (!toEmail) {
+      // Obtener email del arrendatario desde la tabla arrendatarios
+      const { data: arrendatario } = await admin
+        .from("arrendatarios")
+        .select("email")
+        .eq("nombre", recibo.arrendador_nombre)
+        .single()
+
+      toEmail = arrendatario?.email
+    }
+
+    // Si aún no hay email, usar uno por defecto
+    if (!toEmail) {
+      return NextResponse.json({ error: "No se pudo determinar el email del destinatario. Por favor ingrésalo manualmente." }, { status: 400 })
+    }
 
     // Enviar email usando Resend
     const { data, error: emailError } = await resend.emails.send({

@@ -32,74 +32,236 @@ export async function GET(
     return NextResponse.json({ error: "Recibo no encontrado" }, { status: 404 })
   }
 
-  // Generar HTML del recibo
-  const html = `
+  // Generar HTML del recibo completamente aislado
+  const htmlContent = `
 <!DOCTYPE html>
 <html>
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Recibo ${recibo.numero_recibo || recibo.id}</title>
   <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { font-family: Arial, sans-serif; font-size: 14px; line-height: 1.4; color: #333; }
-    .container { max-width: 800px; margin: 0 auto; padding: 40px 20px; }
-    .header { text-align: center; margin-bottom: 30px; border-bottom: 2px solid #333; padding-bottom: 20px; }
-    .header h1 { font-size: 24px; margin-bottom: 10px; }
-    .header p { font-size: 12px; color: #666; }
-    .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 30px; }
-    .info-box { border: 1px solid #ddd; padding: 15px; border-radius: 4px; }
-    .info-box h3 { font-size: 14px; margin-bottom: 10px; color: #555; border-bottom: 1px solid #eee; padding-bottom: 5px; }
-    .info-box p { margin-bottom: 5px; }
-    .info-box strong { display: inline-block; width: 100px; }
-    .amount-box { background: #f5f5f5; padding: 20px; text-align: center; border-radius: 4px; margin: 30px 0; }
-    .amount-box .amount { font-size: 32px; font-weight: bold; color: #2c5282; }
-    .amount-box .amount-words { font-size: 14px; color: #666; margin-top: 10px; font-style: italic; }
-    .details { margin: 30px 0; }
-    .details table { width: 100%; border-collapse: collapse; }
-    .details td { padding: 10px; border-bottom: 1px solid #eee; }
-    .details td:first-child { font-weight: bold; width: 40%; }
-    .footer { margin-top: 40px; padding-top: 20px; border-top: 1px solid #ddd; font-size: 12px; color: #666; }
-    .signature-box { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; margin-top: 60px; }
-    .signature { text-align: center; }
-    .signature-line { border-top: 1px solid #333; margin-top: 60px; padding-top: 10px; }
+    /* Reset completo para aislar de estilos externos */
+    html, body {
+      margin: 0 !important;
+      padding: 0 !important;
+      width: 100% !important;
+      height: 100% !important;
+      background: white !important;
+      font-family: 'Arial', 'Helvetica', sans-serif !important;
+      font-size: 14px !important;
+      line-height: 1.4 !important;
+      color: #333 !important;
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+    }
+
+    /* Eliminar cualquier elemento externo */
+    body > *:not(.recibo-container) {
+      display: none !important;
+    }
+
+    .recibo-container {
+      all: initial;
+      max-width: 800px;
+      margin: 40px auto;
+      padding: 20px;
+      font-family: 'Arial', 'Helvetica', sans-serif;
+      font-size: 14px;
+      line-height: 1.4;
+      color: #333;
+      background: white;
+    }
+
+    .recibo-header {
+      text-align: center;
+      margin-bottom: 30px;
+      border-bottom: 2px solid #333;
+      padding-bottom: 20px;
+    }
+
+    .recibo-header h1 {
+      font-size: 24px;
+      margin: 0 0 10px 0;
+      color: #333;
+    }
+
+    .recibo-header p {
+      font-size: 12px;
+      color: #666;
+      margin: 0;
+    }
+
+    .recibo-info-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+      margin-bottom: 30px;
+    }
+
+    .recibo-info-box {
+      border: 1px solid #ddd;
+      padding: 15px;
+      border-radius: 4px;
+      background: white;
+    }
+
+    .recibo-info-box h3 {
+      font-size: 14px;
+      margin: 0 0 10px 0;
+      color: #555;
+      border-bottom: 1px solid #eee;
+      padding-bottom: 5px;
+    }
+
+    .recibo-info-box p {
+      margin: 0 0 5px 0;
+      font-size: 13px;
+    }
+
+    .recibo-info-box strong {
+      display: inline-block;
+      width: 100px;
+      font-weight: 600;
+    }
+
+    .recibo-amount-box {
+      background: #f8f9fa;
+      padding: 25px;
+      text-align: center;
+      border-radius: 4px;
+      margin: 30px 0;
+      border: 1px solid #dee2e6;
+    }
+
+    .recibo-amount {
+      font-size: 36px;
+      font-weight: bold;
+      color: #1a365d;
+      margin: 0;
+    }
+
+    .recibo-amount-words {
+      font-size: 14px;
+      color: #666;
+      margin-top: 10px;
+      font-style: italic;
+    }
+
+    .recibo-details {
+      margin: 30px 0;
+    }
+
+    .recibo-details table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    .recibo-details td {
+      padding: 12px 10px;
+      border-bottom: 1px solid #e5e7eb;
+    }
+
+    .recibo-details td:first-child {
+      font-weight: 600;
+      width: 40%;
+      color: #374151;
+    }
+
+    .recibo-footer {
+      margin-top: 40px;
+      padding-top: 20px;
+      border-top: 1px solid #ddd;
+      font-size: 11px;
+      color: #666;
+      text-align: center;
+    }
+
+    .recibo-footer p {
+      margin: 5px 0;
+    }
+
+    .recibo-signature-box {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 60px;
+      margin-top: 80px;
+    }
+
+    .recibo-signature {
+      text-align: center;
+    }
+
+    .recibo-signature-line {
+      border-top: 1px solid #333;
+      margin-top: 70px;
+      padding-top: 10px;
+      font-weight: 600;
+      color: #333;
+    }
+
+    .recibo-signature p {
+      margin: 5px 0 0 0;
+      font-size: 12px;
+      color: #666;
+    }
+
+    /* Estilos para impresión */
+    @media print {
+      body {
+        margin: 0 !important;
+        padding: 0 !important;
+      }
+
+      .recibo-container {
+        margin: 20px !important;
+        padding: 0 !important;
+        max-width: 100% !important;
+      }
+
+      .recibo-signature-box {
+        page-break-inside: avoid;
+      }
+    }
   </style>
 </head>
 <body>
-  <div class="container">
-    <div class="header">
+  <div class="recibo-container">
+    <div class="recibo-header">
       <h1>RECIBO DE PAGO</h1>
       <p>No. ${recibo.numero_recibo || 'N/A'} | Fecha: ${new Date(recibo.fecha_recibo).toLocaleDateString('es-CO')}</p>
     </div>
 
-    <div class="info-grid">
-      <div class="info-box">
-        <h3>PROPIETARIO (PAGADOR)</h3>
-        <p><strong>Nombre:</strong> ${recibo.propietario_nombre || 'N/A'}</p>
-        <p><strong>Cédula:</strong> ${recibo.propietario_cedula || 'N/A'}</p>
-      </div>
-      <div class="info-box">
-        <h3>ARRENDATARIO (RECEPTOR)</h3>
+    <div class="recibo-info-grid">
+      <div class="recibo-info-box">
+        <h3>ARRENDATARIO (PAGADOR)</h3>
         <p><strong>Nombre:</strong> ${recibo.arrendador_nombre || 'N/A'}</p>
         <p><strong>Cédula:</strong> ${recibo.arrendador_cedula || 'N/A'}</p>
       </div>
+      <div class="recibo-info-box">
+        <h3>PROPIETARIO (RECEPTOR)</h3>
+        <p><strong>Nombre:</strong> ${recibo.propietario_nombre || 'N/A'}</p>
+        <p><strong>Cédula:</strong> ${recibo.propietario_cedula || 'N/A'}</p>
+      </div>
     </div>
 
-    <div class="info-box">
+    <div class="recibo-info-box">
       <h3>INMUEBLE</h3>
       <p><strong>Dirección:</strong> ${recibo.propiedad?.direccion || 'N/A'}</p>
       <p><strong>Barrio:</strong> ${recibo.propiedad?.barrio || 'N/A'}</p>
       <p><strong>Ciudad:</strong> ${recibo.propiedad?.ciudad || 'N/A'}</p>
     </div>
 
-    <div class="amount-box">
-      <div class="amount">$ ${Number(recibo.valor_arriendo || 0).toLocaleString('es-CO')}</div>
-      <div class="amount-words">${recibo.valor_arriendo_letras || ''}</div>
+    <div class="recibo-amount-box">
+      <p class="recibo-amount">$ ${Number(recibo.valor_arriendo || 0).toLocaleString('es-CO')}</p>
+      <p class="recibo-amount-words">${recibo.valor_arriendo_letras || ''}</p>
     </div>
 
-    <div class="details">
+    <div class="recibo-details">
       <table>
         <tr>
           <td>Concepto de Pago:</td>
-          <td>${recibo.tipo_pago === 'arriendo' ? 'Canon de Arrendamiento' : recibo.tipo_pago === 'servicios' ? 'Servicios Públicos' : recibo.tipo_pago || 'N/A'}</td>
+          <td>${recibo.tipo_pago === 'arriendo' ? 'Canon de Arrendamiento' : recibo.tipo_pago === 'deposito' ? 'Depósito' : recibo.tipo_pago === 'servicios' ? 'Servicios Públicos' : recibo.tipo_pago || 'N/A'}</td>
         </tr>
         <tr>
           <td>Período Cancelado:</td>
@@ -121,25 +283,25 @@ export async function GET(
     </div>
 
     ${recibo.nota ? `
-    <div class="info-box">
+    <div class="recibo-info-box">
       <h3>NOTAS ADICIONALES</h3>
       <p>${recibo.nota}</p>
     </div>
     ` : ''}
 
-    <div class="footer">
-      <p>Este recibo constituye prueba válida de pago del canon de arrendamiento correspondiente al período especificado.</p>
+    <div class="recibo-footer">
+      <p>Este recibo constituye prueba válida de pago correspondiente al período especificado.</p>
       <p>Fecha de expedición: ${new Date().toLocaleDateString('es-CO')}</p>
     </div>
 
-    <div class="signature-box">
-      <div class="signature">
-        <div class="signature-line">${recibo.propietario_nombre || ''}</div>
-        <p>PROPIETARIO</p>
+    <div class="recibo-signature-box">
+      <div class="recibo-signature">
+        <div class="recibo-signature-line">${recibo.arrendador_nombre || ''}</div>
+        <p>ARRENDATARIO (PAGADOR)</p>
       </div>
-      <div class="signature">
-        <div class="signature-line">${recibo.arrendador_nombre || ''}</div>
-        <p>ARRENDATARIO</p>
+      <div class="recibo-signature">
+        <div class="recibo-signature-line">${recibo.propietario_nombre || ''}</div>
+        <p>PROPIETARIO (RECEPTOR)</p>
       </div>
     </div>
   </div>
@@ -147,10 +309,11 @@ export async function GET(
 </html>
   `
 
-  // Retornar HTML para que el navegador lo renderice y pueda imprimirse como PDF
-  return new NextResponse(html, {
+  // Retornar el HTML que se puede imprimir/guardar como PDF
+  return new NextResponse(htmlContent, {
     headers: {
       'Content-Type': 'text/html; charset=utf-8',
+      'Content-Disposition': `inline; filename="Recibo_${recibo.numero_recibo || id}.pdf"`,
     },
   })
 }
