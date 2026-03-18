@@ -28,13 +28,6 @@ import {
 import type { ContratoConRelaciones } from "@/lib/types/database"
 import { useLang } from "@/lib/i18n/context"
 
-type Propietario = {
-  id: string
-  email: string
-  nombre: string | null
-  cedula: string | null
-}
-
 export default function ContratosPage() {
   const { t } = useLang()
   const [contratos, setContratos] = useState<ContratoConRelaciones[]>([])
@@ -43,29 +36,19 @@ export default function ContratosPage() {
   const [activando, setActivando] = useState(false)
   const [corrigiendo, setCorrigiendo] = useState(false)
   const [isAdmin, setIsAdmin] = useState(false)
-  const [propietarios, setPropietarios] = useState<Propietario[]>([])
 
   // Filtros (solo admin)
-  const [filtroPropietario, setFiltroPropietario] = useState<string>("todos")
   const [filtroEstado, setFiltroEstado] = useState<string>("todos")
 
   useEffect(() => {
-    // Cargar contratos, verificar si es admin y cargar propietarios (si es admin)
+    // Cargar contratos y verificar si es admin
     Promise.all([
       fetch("/api/contratos").then(r => r.json()),
-      fetch("/api/auth/me").then(r => r.json()),
-      fetch("/api/auth/me").then(async (r) => {
-        const userData = await r.json()
-        if (userData?.role === "admin") {
-          return fetch("/api/admin/propietarios").then(r => r.json()).catch(() => [])
-        }
-        return []
-      })
-    ]).then(([contratosData, userData, propietariosData]) => {
+      fetch("/api/auth/me").then(r => r.json())
+    ]).then(([contratosData, userData]) => {
       setContratos(contratosData)
       setContratosFiltrados(contratosData)
       setIsAdmin(userData?.role === "admin")
-      setPropietarios(propietariosData)
     }).finally(() => setLoading(false))
   }, [])
 
@@ -74,11 +57,6 @@ export default function ContratosPage() {
     let filtrados = [...contratos]
 
     if (isAdmin) {
-      // Filtro por propietario
-      if (filtroPropietario !== "todos") {
-        filtrados = filtrados.filter(c => c.propiedad?.user_id === filtroPropietario)
-      }
-
       // Filtro por estado
       if (filtroEstado !== "todos") {
         filtrados = filtrados.filter(c => c.estado === filtroEstado)
@@ -86,10 +64,9 @@ export default function ContratosPage() {
     }
 
     setContratosFiltrados(filtrados)
-  }, [filtroPropietario, filtroEstado, contratos, isAdmin])
+  }, [filtroEstado, contratos, isAdmin])
 
   const limpiarFiltros = () => {
-    setFiltroPropietario("todos")
     setFiltroEstado("todos")
   }
 
@@ -218,22 +195,6 @@ export default function ContratosPage() {
               </div>
               <div className="flex flex-wrap items-center gap-3">
                 <div className="flex items-center gap-2">
-                  <label className="text-sm text-muted-foreground">Propietario:</label>
-                  <Select value={filtroPropietario} onValueChange={setFiltroPropietario}>
-                    <SelectTrigger className="w-[200px]">
-                      <SelectValue placeholder="Todos" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="todos">Todos</SelectItem>
-                      {propietarios.map(p => (
-                        <SelectItem key={p.id} value={p.id}>
-                          {p.nombre || p.email}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="flex items-center gap-2">
                   <label className="text-sm text-muted-foreground">Estado:</label>
                   <Select value={filtroEstado} onValueChange={setFiltroEstado}>
                     <SelectTrigger className="w-[150px]">
@@ -248,7 +209,7 @@ export default function ContratosPage() {
                     </SelectContent>
                   </Select>
                 </div>
-                {(filtroPropietario !== "todos" || filtroEstado !== "todos") && (
+                {filtroEstado !== "todos" && (
                   <Button variant="ghost" size="sm" onClick={limpiarFiltros}>
                     Limpiar filtros
                   </Button>
@@ -269,18 +230,18 @@ export default function ContratosPage() {
         <Card>
           <CardHeader>
             <CardTitle>
-              {filtroPropietario !== "todos" || filtroEstado !== "todos"
+              {filtroEstado !== "todos"
                 ? "No se encontraron contratos con los filtros aplicados"
                 : t.contratos.sinContratos}
             </CardTitle>
             <CardDescription>
-              {filtroPropietario !== "todos" || filtroEstado !== "todos"
+              {filtroEstado !== "todos"
                 ? "Prueba con otros filtros o límpialos para ver todos los contratos"
                 : t.contratos.sinContratosDesc}
             </CardDescription>
           </CardHeader>
           <CardContent>
-            {(filtroPropietario !== "todos" || filtroEstado !== "todos") ? (
+            {filtroEstado !== "todos" ? (
               <Button variant="outline" onClick={limpiarFiltros}>
                 Limpiar filtros
               </Button>
