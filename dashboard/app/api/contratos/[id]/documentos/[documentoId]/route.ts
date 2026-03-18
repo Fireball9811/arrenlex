@@ -123,7 +123,8 @@ export async function GET(
     .select(`
       id,
       user_id,
-      arrendatario:arrendatarios(user_id)
+      arrendatario_id,
+      arrendatario:arrendatarios(id)
     `)
     .eq("id", contratoId)
     .single()
@@ -141,7 +142,9 @@ export async function GET(
   }
 
   if (!tieneAcceso && role === "inquilino") {
-    tieneAcceso = contrato.arrendatario?.user_id === user.id
+    // arrendatario es un array, tomamos el primer elemento
+    const arrendatario = Array.isArray(contrato.arrendatario) ? contrato.arrendatario[0] : contrato.arrendatario
+    tieneAcceso = arrendatario?.user_id === user.id
   }
 
   if (!tieneAcceso) {
