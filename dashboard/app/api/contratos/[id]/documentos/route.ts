@@ -44,7 +44,8 @@ export async function GET(
     .select(`
       id,
       user_id,
-      arrendatario:arrendatarios(user_id)
+      arrendatario_id,
+      arrendatario:arrendatarios!inner(id, user_id)
     `)
     .eq("id", contratoId)
     .single()
@@ -65,11 +66,9 @@ export async function GET(
   }
 
   if (!tieneAcceso && role === "inquilino") {
-    // El inquilino está vinculado a través del arrendatario
-    // Necesitamos verificar si el user.id del arrendatario coincide
-    // Para esto, necesitamos obtener el email del usuario y compararlo con la cédula del arrendatario
-    // o verificar el user_id directamente si está vinculado
-    tieneAcceso = contrato.arrendatario?.user_id === user.id
+    // arrendatario es un array, tomamos el primer elemento
+    const arrendatario = Array.isArray(contrato.arrendatario) ? contrato.arrendatario[0] : contrato.arrendatario
+    tieneAcceso = arrendatario?.user_id === user.id
   }
 
   if (!tieneAcceso) {
