@@ -45,8 +45,8 @@ export default function NuevoContratoPage() {
 
   useEffect(() => {
     Promise.all([
-      fetch("/api/propiedades").then((res) => res.json()),
-      fetch("/api/arrendatarios").then((res) => res.json()),
+      fetch("/api/propiedades/disponibles").then((res) => res.json()),
+      fetch("/api/arrendatarios/disponibles").then((res) => res.json()),
     ])
       .then(([props, arrend]) => {
         setPropiedades(props)
@@ -100,9 +100,9 @@ export default function NuevoContratoPage() {
     return (
       <Card>
         <CardHeader>
-          <CardTitle>Sin propiedades</CardTitle>
+          <CardTitle>Sin propiedades disponibles</CardTitle>
           <CardDescription>
-            Necesitas tener al menos una propiedad registrada para crear un contrato.
+            No hay propiedades disponibles para crear un contrato. Todas las propiedades tienen un contrato activo.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -118,9 +118,9 @@ export default function NuevoContratoPage() {
     return (
       <Card>
         <CardHeader>
-          <CardTitle>Sin arrendatarios</CardTitle>
+          <CardTitle>Sin arrendatarios disponibles</CardTitle>
           <CardDescription>
-            Necesitas tener al menos un arrendatario registrado para crear un contrato.
+            No hay arrendatarios disponibles. Todos los arrendatarios tienen un contrato activo.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -175,6 +175,9 @@ export default function NuevoContratoPage() {
                     </option>
                   ))}
                 </select>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Mostrando {propiedades.length} propiedades disponibles
+                </p>
               </div>
 
               <div>
@@ -193,6 +196,9 @@ export default function NuevoContratoPage() {
                     </option>
                   ))}
                 </select>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Mostrando {arrendatarios.length} arrendatarios disponibles
+                </p>
               </div>
             </div>
 

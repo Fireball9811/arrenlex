@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react"
 import Link from "next/link"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Card, CardContent } from "@/components/ui/card"
 import { InquilinosActivosTab } from "./components/InquilinosActivosTab"
 import { PropietariosTab } from "./components/PropietariosTab"
@@ -20,9 +19,12 @@ type Counts = {
   contactos: number
 }
 
+type TabValue = "inquilinos-activos" | "propietarios" | "usuarios-sistema" | "historial-inquilinos" | "roles-permisos" | "contactos"
+
 export default function PersonasPage() {
   const [counts, setCounts] = useState<Counts | null>(null)
   const [loading, setLoading] = useState(true)
+  const [activeTab, setActiveTab] = useState<TabValue>("propietarios")
 
   useEffect(() => {
     fetch("/api/reportes/personas/counts")
@@ -39,6 +41,15 @@ export default function PersonasPage() {
     return count ?? 0
   }
 
+  const tabs: { value: TabValue; label: string; count: number }[] = [
+    { value: "inquilinos-activos", label: "Inquilinos Activos", count: counts?.inquilinosActivos || 0 },
+    { value: "propietarios", label: "Propietarios", count: counts?.propietarios || 0 },
+    { value: "usuarios-sistema", label: "Usuarios Sistema", count: counts?.usuariosSistema || 0 },
+    { value: "historial-inquilinos", label: "Inquilinos Inactivos", count: counts?.historialInquilinos || 0 },
+    { value: "roles-permisos", label: "Roles", count: counts?.roles || 0 },
+    { value: "contactos", label: "Contactos", count: counts?.contactos || 0 },
+  ]
+
   return (
     <div>
       <div className="mb-6">
@@ -51,93 +62,33 @@ export default function PersonasPage() {
         </p>
       </div>
 
-      {/* Resumen de contadores */}
+      {/* Resumen de contadores clickeables */}
       <div className="mb-6 grid gap-4 md:grid-cols-3 lg:grid-cols-6">
-        <Card>
-          <CardContent className="p-4">
-            <p className="text-sm text-muted-foreground">Inquilinos Activos</p>
-            <p className="text-2xl font-bold">{formatCount(counts?.inquilinosActivos)}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <p className="text-sm text-muted-foreground">Propietarios</p>
-            <p className="text-2xl font-bold">{formatCount(counts?.propietarios)}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <p className="text-sm text-muted-foreground">Usuarios Sistema</p>
-            <p className="text-2xl font-bold">{formatCount(counts?.usuariosSistema)}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <p className="text-sm text-muted-foreground">Historial</p>
-            <p className="text-2xl font-bold">{formatCount(counts?.historialInquilinos)}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <p className="text-sm text-muted-foreground">Roles</p>
-            <p className="text-2xl font-bold">{formatCount(counts?.roles)}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <p className="text-sm text-muted-foreground">Contactos</p>
-            <p className="text-2xl font-bold">{formatCount(counts?.contactos)}</p>
-          </CardContent>
-        </Card>
+        {tabs.map((tab) => (
+          <Card
+            key={tab.value}
+            className={`cursor-pointer transition-all hover:shadow-md ${
+              activeTab === tab.value ? "ring-2 ring-primary" : ""
+            }`}
+            onClick={() => setActiveTab(tab.value)}
+          >
+            <CardContent className="p-4">
+              <p className="text-sm text-muted-foreground">{tab.label}</p>
+              <p className="text-2xl font-bold">{formatCount(tab.count)}</p>
+            </CardContent>
+          </Card>
+        ))}
       </div>
 
-      {/* Pestañas de gestión */}
-      <Tabs defaultValue="propietarios" className="space-y-4">
-        <TabsList className="grid w-full grid-cols-3 lg:grid-cols-6">
-          <TabsTrigger value="inquilinos-activos" className="text-sm">
-            Inquilinos Activos
-          </TabsTrigger>
-          <TabsTrigger value="propietarios" className="text-sm">
-            Propietarios
-          </TabsTrigger>
-          <TabsTrigger value="usuarios-sistema" className="text-sm">
-            Usuarios Sistema
-          </TabsTrigger>
-          <TabsTrigger value="historial-inquilinos" className="text-sm">
-            Historial
-          </TabsTrigger>
-          <TabsTrigger value="roles-permisos" className="text-sm">
-            Roles
-          </TabsTrigger>
-          <TabsTrigger value="contactos" className="text-sm">
-            Contactos
-          </TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="inquilinos-activos" className="space-y-4">
-          <InquilinosActivosTab />
-        </TabsContent>
-
-        <TabsContent value="propietarios" className="space-y-4">
-          <PropietariosTab />
-        </TabsContent>
-
-        <TabsContent value="usuarios-sistema" className="space-y-4">
-          <UsuariosSistemaTab />
-        </TabsContent>
-
-        <TabsContent value="historial-inquilinos" className="space-y-4">
-          <HistorialInquilinosTab />
-        </TabsContent>
-
-        <TabsContent value="roles-permisos" className="space-y-4">
-          <RolesPermisosTab />
-        </TabsContent>
-
-        <TabsContent value="contactos" className="space-y-4">
-          <ContactosTab />
-        </TabsContent>
-      </Tabs>
+      {/* Contenido según la tab activa */}
+      <div className="space-y-4">
+        {activeTab === "inquilinos-activos" && <InquilinosActivosTab />}
+        {activeTab === "propietarios" && <PropietariosTab />}
+        {activeTab === "usuarios-sistema" && <UsuariosSistemaTab />}
+        {activeTab === "historial-inquilinos" && <HistorialInquilinosTab />}
+        {activeTab === "roles-permisos" && <RolesPermisosTab />}
+        {activeTab === "contactos" && <ContactosTab />}
+      </div>
     </div>
   )
 }

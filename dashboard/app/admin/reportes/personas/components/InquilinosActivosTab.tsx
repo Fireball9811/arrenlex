@@ -1,23 +1,35 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import Link from "next/link"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { UserPlus, Pencil, CheckCircle, XCircle } from "lucide-react"
+import { UserPlus, Pencil, XCircle, Mail, Building2, MapPin } from "lucide-react"
 import type { Perfil } from "@/lib/types/database"
 
+type InquilinoActivo = Perfil & {
+  tieneUsuario: boolean
+  tieneContratoActivo: boolean
+  arrendatarioId: string
+  contratoId?: string
+  contratoEstado?: string
+  propietario?: {
+    id: string
+    nombre: string | null
+    email: string
+    celular: string | null
+  } | null
+  propiedad?: {
+    direccion: string
+    ciudad: string
+  } | null
+}
+
 export function InquilinosActivosTab() {
-  const [inquilinos, setInquilinos] = useState<Perfil[]>([])
+  const [inquilinos, setInquilinos] = useState<InquilinoActivo[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState("")
-
-  const [editingInquilino, setEditingInquilino] = useState<Perfil | null>(null)
-  const [editFormData, setEditFormData] = useState({
-    nombre: "",
-    celular: "",
-    cedula: "",
-  })
-  const [editSubmitting, setEditSubmitting] = useState(false)
+  const [creandoUsuario, setCreandoUsuario] = useState<string | null>(null)
 
   useEffect(() => {
     fetchInquilinos()
@@ -26,10 +38,13 @@ export function InquilinosActivosTab() {
   async function fetchInquilinos() {
     setLoading(true)
     try {
-      const res = await fetch("/api/admin/usuarios")
+      const res = await fetch("/api/reportes/inquilinos-activos")
       const data = await res.json()
-      const soloInquilinos = (data || []).filter((u: Perfil) => u.role === "inquilino" && u.activo && !u.bloqueado)
-      setInquilinos(soloInquilinos)
+
+      console.log("Datos recibidos de inquilinos-activos:", data)
+      console.log("Cantidad de inquilinos:", data?.length || 0)
+
+      setInquilinos(data || [])
     } catch (error) {
       console.error("Error fetching inquilinos:", error)
     } finally {
@@ -37,7 +52,43 @@ export function InquilinosActivosTab() {
     }
   }
 
-  function toggleBloqueo(inquilino: Perfil) {
+  async function crearUsuarioParaArrendatario(inquilino: InquilinoActivo) {
+    if (!inquilino.email) return
+    if (!confirm(`¿Crear cuenta de usuario para ${inquilino.email}?`)) return
+
+    setCreandoUsuario(inquilino.email)
+
+    try {
+      const res = await fetch("/api/reportes/crear-usuario-arrendatario", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          arrendatarioId: inquilino.arrendatarioId,
+          email: inquilino.email,
+          nombre: inquilino.nombre,
+          cedula: inquilino.cedula,
+          celular: inquilino.celular,
+        }),
+      })
+
+      const data = await res.json()
+
+      if (res.ok) {
+        alert(data.message || "Usuario creado exitosamente. Las credenciales han sido enviadas por correo.")
+        fetchInquilinos()
+      } else {
+        alert(data.error || "Error al crear usuario")
+      }
+    } catch (error) {
+      alert("Error: " + error)
+    } finally {
+      setCreandoUsuario(null)
+    }
+  }
+
+  function toggleBloqueo(inquilino: InquilinoActivo) {
+    if (!inquilino.id) return // Si no tiene ID de usuario, no se puede bloquear
+
     const accion = inquilino.bloqueado ? "desbloquear" : "bloquear"
     if (!confirm(inquilino.bloqueado ? `Desbloquear a ${inquilino.email}?` : `Bloquear a ${inquilino.email}?`)) return
     fetch(`/api/admin/usuarios/${inquilino.id}`, {
@@ -56,45 +107,9 @@ export function InquilinosActivosTab() {
       .catch((err) => alert("Error: " + err))
   }
 
-  function openEditModal(inquilino: Perfil) {
-    setEditingInquilino(inquilino)
-    setEditFormData({
-      nombre: inquilino.nombre || "",
-      celular: inquilino.celular || "",
-      cedula: inquilino.cedula || "",
-    })
-  }
-
-  async function actualizarInquilino(e: React.FormEvent) {
-    e.preventDefault()
-    if (!editingInquilino) return
-
-    setEditSubmitting(true)
-
-    try {
-      await fetch(`/api/admin/usuarios/${editingInquilino.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          accion: "actualizar_datos_personales",
-          nombre: editFormData.nombre,
-          celular: editFormData.celular,
-          cedula: editFormData.cedula,
-        }),
-      })
-
-      fetchInquilinos()
-      setEditingInquilino(null)
-    } catch (err) {
-      alert("Error: " + err)
-    } finally {
-      setEditSubmitting(false)
-    }
-  }
-
   const filteredInquilinos = inquilinos.filter((i) =>
     i.nombre?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    i.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    i.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     i.cedula?.includes(searchTerm)
   )
 
@@ -103,7 +118,7 @@ export function InquilinosActivosTab() {
       <div className="mb-6 flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold">Inquilinos Activos</h2>
-          <p className="text-muted-foreground">Inquilinos con cuenta activa en el sistema</p>
+          <p className="text-muted-foreground">Inquilinos con contratos activos</p>
         </div>
         <Button onClick={() => window.location.href = "/admin/usuarios?create=true&role=inquilino"}>
           <UserPlus className="mr-2 h-4 w-4" />
@@ -127,7 +142,12 @@ export function InquilinosActivosTab() {
           {loading ? (
             <p className="text-muted-foreground">Cargando...</p>
           ) : filteredInquilinos.length === 0 ? (
-            <p className="text-muted-foreground">No hay inquilinos activos</p>
+            <div className="text-center py-8">
+              <p className="text-muted-foreground">No hay inquilinos activos con contratos</p>
+              <p className="text-xs text-muted-foreground mt-2">
+                Los inquilinos activos son aquellos que tienen un contrato con estado "activo" en el sistema.
+              </p>
+            </div>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
@@ -136,32 +156,92 @@ export function InquilinosActivosTab() {
                     <th className="p-3 text-left">Inquilino</th>
                     <th className="p-3 text-left">Cédula</th>
                     <th className="p-3 text-left">Celular</th>
-                    <th className="p-3 text-center">Estado</th>
+                    <th className="p-3 text-left">Propietario</th>
+                    <th className="p-3 text-left">Propiedad</th>
+                    <th className="p-3 text-center">Usuario</th>
+                    <th className="p-3 text-center">Estado Contrato</th>
                     <th className="p-3 text-center">Editar</th>
                     <th className="p-3 text-center">Bloquear</th>
                   </tr>
                 </thead>
                 <tbody>
                   {filteredInquilinos.map((i) => (
-                    <tr key={i.id} className="border-b">
+                    <tr key={i.arrendatarioId} className="border-b">
                       <td className="p-3">
                         <p className="font-medium">{i.nombre || "Sin nombre"}</p>
-                        <p className="text-xs text-muted-foreground">{i.email}</p>
+                        <p className="text-xs text-muted-foreground">{i.email || "—"}</p>
                       </td>
                       <td className="p-3">{i.cedula || "—"}</td>
                       <td className="p-3">{i.celular || "—"}</td>
-                      <td className="p-3 text-center">
-                        <span className="rounded-full bg-green-100 px-2 py-1 text-xs text-green-800">Activo</span>
+                      <td className="p-3">
+                        {i.propietario ? (
+                          <div className="flex items-center gap-1">
+                            <Building2 className="h-3 w-3 text-muted-foreground" />
+                            <span className="font-medium">{i.propietario.nombre || "Sin nombre"}</span>
+                          </div>
+                        ) : (
+                          <span className="text-muted-foreground">—</span>
+                        )}
+                      </td>
+                      <td className="p-3">
+                        {i.propiedad ? (
+                          <div className="flex items-start gap-1 max-w-xs">
+                            <MapPin className="h-3 w-3 text-muted-foreground mt-0.5 flex-shrink-0" />
+                            <span className="line-clamp-2">{i.propiedad.direccion}</span>
+                          </div>
+                        ) : (
+                          <span className="text-muted-foreground">—</span>
+                        )}
                       </td>
                       <td className="p-3 text-center">
-                        <Button size="sm" variant="outline" onClick={() => openEditModal(i)}>
-                          <Pencil className="h-3 w-3" />
-                        </Button>
+                        {i.tieneUsuario ? (
+                          <span className="rounded-full bg-green-100 px-2 py-1 text-xs text-green-800">
+                            Sí
+                          </span>
+                        ) : (
+                          <div className="flex flex-col items-center gap-1">
+                            <span className="rounded-full bg-red-100 px-2 py-1 text-xs text-red-800 font-semibold">
+                              Sin usuario
+                            </span>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="h-7 px-2 text-xs"
+                              onClick={() => crearUsuarioParaArrendatario(i)}
+                              disabled={creandoUsuario === i.email}
+                            >
+                              <Mail className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        )}
                       </td>
                       <td className="p-3 text-center">
-                        <Button size="sm" variant="destructive" onClick={() => toggleBloqueo(i)}>
-                          <XCircle className="h-3 w-3" />
-                        </Button>
+                        <span className={`rounded-full px-2 py-1 text-xs font-medium ${
+                          i.contratoEstado === 'activo'
+                            ? 'bg-green-100 text-green-800'
+                            : i.contratoEstado === 'borrador'
+                            ? 'bg-yellow-100 text-yellow-800'
+                            : 'bg-gray-100 text-gray-800'
+                        }`}>
+                          {i.contratoEstado === 'activo' ? 'Activo' : i.contratoEstado === 'borrador' ? 'Borrador' : i.contratoEstado || '—'}
+                        </span>
+                      </td>
+                      <td className="p-3 text-center">
+                        {/* Siempre usar arrendatarioId para editar los datos del arrendatario */}
+                        <Link href={`/reportes/personas/arrendatarios/${i.arrendatarioId}`}>
+                          <Button size="sm" variant="outline" title="Editar arrendatario">
+                            <Pencil className="h-3 w-3" />
+                          </Button>
+                        </Link>
+                      </td>
+                      <td className="p-3 text-center">
+                        {i.tieneUsuario ? (
+                          <Button size="sm" variant="destructive" onClick={() => toggleBloqueo(i)}>
+                            <XCircle className="h-3 w-3" />
+                          </Button>
+                        ) : (
+                          <span className="text-muted-foreground text-xs">—</span>
+                        )}
                       </td>
                     </tr>
                   ))}
@@ -171,65 +251,6 @@ export function InquilinosActivosTab() {
           )}
         </CardContent>
       </Card>
-
-      {/* Modal de edición */}
-      {editingInquilino && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <Card className="w-full max-w-md">
-            <CardHeader>
-              <CardTitle>Editar Inquilino</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <form onSubmit={actualizarInquilino} className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium mb-1">Correo electrónico</label>
-                  <input
-                    type="email"
-                    disabled
-                    value={editingInquilino.email}
-                    className="w-full rounded-md border border-input bg-muted px-3 py-2 text-sm"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1">Nombre completo</label>
-                  <input
-                    type="text"
-                    className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                    value={editFormData.nombre}
-                    onChange={(e) => setEditFormData({ ...editFormData, nombre: e.target.value })}
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1">Cédula</label>
-                  <input
-                    type="text"
-                    className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                    value={editFormData.cedula}
-                    onChange={(e) => setEditFormData({ ...editFormData, cedula: e.target.value })}
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1">Celular</label>
-                  <input
-                    type="text"
-                    className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                    value={editFormData.celular}
-                    onChange={(e) => setEditFormData({ ...editFormData, celular: e.target.value })}
-                  />
-                </div>
-                <div className="flex gap-2">
-                  <Button type="submit" disabled={editSubmitting}>
-                    {editSubmitting ? "Guardando..." : "Guardar"}
-                  </Button>
-                  <Button type="button" variant="outline" onClick={() => setEditingInquilino(null)}>
-                    Cancelar
-                  </Button>
-                </div>
-              </form>
-            </CardContent>
-          </Card>
-        </div>
-      )}
     </div>
   )
 }

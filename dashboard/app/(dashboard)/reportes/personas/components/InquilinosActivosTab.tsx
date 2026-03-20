@@ -4,15 +4,25 @@ import { useEffect, useState } from "react"
 import Link from "next/link"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { UserPlus, Pencil, XCircle, Mail } from "lucide-react"
+import { UserPlus, Pencil, XCircle, Mail, Building2, MapPin, Power, Trash2, CheckCircle } from "lucide-react"
 import type { Perfil } from "@/lib/types/database"
 
 type InquilinoActivo = Perfil & {
   tieneUsuario: boolean
   tieneContratoActivo: boolean
-  arrendatarioId?: string
+  arrendatarioId: string
   contratoId?: string
   contratoEstado?: string
+  propietario?: {
+    id: string
+    nombre: string | null
+    email: string
+    celular: string | null
+  } | null
+  propiedad?: {
+    direccion: string
+    ciudad: string
+  } | null
 }
 
 export function InquilinosActivosTab() {
@@ -30,10 +40,6 @@ export function InquilinosActivosTab() {
     try {
       const res = await fetch("/api/reportes/inquilinos-activos")
       const data = await res.json()
-
-      console.log("Datos recibidos de inquilinos-activos:", data)
-      console.log("Cantidad de inquilinos:", data?.length || 0)
-
       setInquilinos(data || [])
     } catch (error) {
       console.error("Error fetching inquilinos:", error)
@@ -43,6 +49,7 @@ export function InquilinosActivosTab() {
   }
 
   async function crearUsuarioParaArrendatario(inquilino: InquilinoActivo) {
+    if (!inquilino.email) return
     if (!confirm(`¿Crear cuenta de usuario para ${inquilino.email}?`)) return
 
     setCreandoUsuario(inquilino.email)
@@ -75,11 +82,14 @@ export function InquilinosActivosTab() {
     }
   }
 
-  function toggleBloqueo(inquilino: InquilinoActivo) {
-    if (!inquilino.id) return // Si no tiene ID (viene de arrendatario), no se puede bloquear
+  function toggleActivo(inquilino: InquilinoActivo) {
+    if (!inquilino.id) return
 
-    const accion = inquilino.bloqueado ? "desbloquear" : "bloquear"
-    if (!confirm(inquilino.bloqueado ? `Desbloquear a ${inquilino.email}?` : `Bloquear a ${inquilino.email}?`)) return
+    const accion = inquilino.activo ? "desactivar" : "activar"
+    if (!confirm(inquilino.activo
+      ? `¿Desactivar a ${inquilino.nombre || inquilino.email}?`
+      : `¿Activar a ${inquilino.nombre || inquilino.email}?`)) return
+
     fetch(`/api/admin/usuarios/${inquilino.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
@@ -88,8 +98,44 @@ export function InquilinosActivosTab() {
       .then((res) => res.json())
       .then((data) => {
         if (data.error) alert(data.error)
+        else fetchInquilinos()
+      })
+      .catch((err) => alert("Error: " + err))
+  }
+
+  function toggleBloqueo(inquilino: InquilinoActivo) {
+    if (!inquilino.id) return
+
+    const accion = inquilino.bloqueado ? "desbloquear" : "bloquear"
+    if (!confirm(inquilino.bloqueado
+      ? `¿Desbloquear a ${inquilino.nombre || inquilino.email}?`
+      : `¿Bloquear a ${inquilino.nombre || inquilino.email}?`)) return
+
+    fetch(`/api/admin/usuarios/${inquilino.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ accion }),
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.error) alert(data.error)
+        else fetchInquilinos()
+      })
+      .catch((err) => alert("Error: " + err))
+  }
+
+  function eliminarUsuario(inquilino: InquilinoActivo) {
+    if (!inquilino.id) return
+    if (!confirm(`¿Eliminar a ${inquilino.nombre || inquilino.email}? Esta acción no se puede deshacer.`)) return
+
+    fetch(`/api/admin/usuarios/${inquilino.id}`, {
+      method: "DELETE",
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.error) alert(data.error)
         else {
-          alert(data.mensaje || "Listo")
+          alert("Usuario eliminado exitosamente")
           fetchInquilinos()
         }
       })
@@ -98,7 +144,7 @@ export function InquilinosActivosTab() {
 
   const filteredInquilinos = inquilinos.filter((i) =>
     i.nombre?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    i.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    i.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     i.cedula?.includes(searchTerm)
   )
 
@@ -133,9 +179,6 @@ export function InquilinosActivosTab() {
           ) : filteredInquilinos.length === 0 ? (
             <div className="text-center py-8">
               <p className="text-muted-foreground">No hay inquilinos activos con contratos</p>
-              <p className="text-xs text-muted-foreground mt-2">
-                Los inquilinos activos son aquellos que tienen un contrato con estado "activo" en el sistema.
-              </p>
             </div>
           ) : (
             <div className="overflow-x-auto">
@@ -145,21 +188,42 @@ export function InquilinosActivosTab() {
                     <th className="p-3 text-left">Inquilino</th>
                     <th className="p-3 text-left">Cédula</th>
                     <th className="p-3 text-left">Celular</th>
+                    <th className="p-3 text-left">Propietario</th>
+                    <th className="p-3 text-left">Propiedad</th>
                     <th className="p-3 text-center">Usuario</th>
                     <th className="p-3 text-center">Estado</th>
-                    <th className="p-3 text-center">Editar</th>
-                    <th className="p-3 text-center">Bloquear</th>
+                    <th className="p-3 text-center">Acciones</th>
                   </tr>
                 </thead>
                 <tbody>
                   {filteredInquilinos.map((i) => (
-                    <tr key={i.id || i.email} className="border-b">
+                    <tr key={i.arrendatarioId} className="border-b">
                       <td className="p-3">
                         <p className="font-medium">{i.nombre || "Sin nombre"}</p>
-                        <p className="text-xs text-muted-foreground">{i.email}</p>
+                        <p className="text-xs text-muted-foreground">{i.email || "—"}</p>
                       </td>
                       <td className="p-3">{i.cedula || "—"}</td>
                       <td className="p-3">{i.celular || "—"}</td>
+                      <td className="p-3">
+                        {i.propietario ? (
+                          <div className="flex items-center gap-1">
+                            <Building2 className="h-3 w-3 text-muted-foreground" />
+                            <span className="font-medium">{i.propietario.nombre || "Sin nombre"}</span>
+                          </div>
+                        ) : (
+                          <span className="text-muted-foreground">—</span>
+                        )}
+                      </td>
+                      <td className="p-3">
+                        {i.propiedad ? (
+                          <div className="flex items-start gap-1 max-w-xs">
+                            <MapPin className="h-3 w-3 text-muted-foreground mt-0.5 flex-shrink-0" />
+                            <span className="line-clamp-2">{i.propiedad.direccion}</span>
+                          </div>
+                        ) : (
+                          <span className="text-muted-foreground">—</span>
+                        )}
+                      </td>
                       <td className="p-3 text-center">
                         {i.tieneUsuario ? (
                           <span className="rounded-full bg-green-100 px-2 py-1 text-xs text-green-800">
@@ -183,39 +247,56 @@ export function InquilinosActivosTab() {
                         )}
                       </td>
                       <td className="p-3 text-center">
-                        <span className={`rounded-full px-2 py-1 text-xs font-medium ${
-                          i.contratoEstado === 'activo'
-                            ? 'bg-green-100 text-green-800'
-                            : i.contratoEstado === 'borrador'
-                            ? 'bg-yellow-100 text-yellow-800'
-                            : 'bg-gray-100 text-gray-800'
-                        }`}>
-                          {i.contratoEstado === 'activo' ? 'Activo' : i.contratoEstado === 'borrador' ? 'Borrador' : i.contratoEstado || '—'}
-                        </span>
+                        {i.bloqueado ? (
+                          <span className="rounded-full bg-red-100 px-2 py-1 text-xs text-red-800">Bloqueado</span>
+                        ) : i.activo ? (
+                          <span className="rounded-full bg-green-100 px-2 py-1 text-xs text-green-800">Activo</span>
+                        ) : (
+                          <span className="rounded-full bg-amber-100 px-2 py-1 text-xs text-amber-800">Inactivo</span>
+                        )}
                       </td>
                       <td className="p-3 text-center">
-                        {i.tieneUsuario ? (
-                          <Link href={`/reportes/personas/usuarios/${i.id}`}>
-                            <Button size="sm" variant="outline">
-                              <Pencil className="h-3 w-3" />
-                            </Button>
-                          </Link>
-                        ) : (
+                        <div className="flex items-center justify-center gap-1">
+                          {/* Editar arrendatario */}
                           <Link href={`/reportes/personas/arrendatarios/${i.arrendatarioId}`}>
-                            <Button size="sm" variant="outline">
+                            <Button size="sm" variant="outline" title="Editar arrendatario">
                               <Pencil className="h-3 w-3" />
                             </Button>
                           </Link>
-                        )}
-                      </td>
-                      <td className="p-3 text-center">
-                        {i.tieneUsuario ? (
-                          <Button size="sm" variant="destructive" onClick={() => toggleBloqueo(i)}>
-                            <XCircle className="h-3 w-3" />
-                          </Button>
-                        ) : (
-                          <span className="text-muted-foreground text-xs">—</span>
-                        )}
+                          {/* Activo/Inactivar */}
+                          {i.tieneUsuario && (
+                            <Button
+                              size="sm"
+                              variant={i.activo ? "outline" : "default"}
+                              onClick={() => toggleActivo(i)}
+                              title={i.activo ? "Desactivar" : "Activar"}
+                            >
+                              <Power className="h-3 w-3" />
+                            </Button>
+                          )}
+                          {/* Bloquear/Desbloquear */}
+                          {i.tieneUsuario && (
+                            <Button
+                              size="sm"
+                              variant={i.bloqueado ? "outline" : "destructive"}
+                              onClick={() => toggleBloqueo(i)}
+                              title={i.bloqueado ? "Desbloquear" : "Bloquear"}
+                            >
+                              {i.bloqueado ? <CheckCircle className="h-3 w-3" /> : <XCircle className="h-3 w-3" />}
+                            </Button>
+                          )}
+                          {/* Eliminar usuario */}
+                          {i.tieneUsuario && (
+                            <Button
+                              size="sm"
+                              variant="destructive"
+                              onClick={() => eliminarUsuario(i)}
+                              title="Eliminar"
+                            >
+                              <Trash2 className="h-3 w-3" />
+                            </Button>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   ))}

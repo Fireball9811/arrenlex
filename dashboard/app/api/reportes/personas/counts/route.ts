@@ -35,15 +35,25 @@ export async function GET() {
       .select("*", { count: "exact", head: true })
       .in("role", ["maintenance_special", "insurance_special", "lawyer_special"])
 
-    // Historial de inquilinos (inquilinos inactivos)
-    const { count: historialInquilinos, error: errHistorial } = await supabase
-      .from("perfiles")
-      .select("*", { count: "exact", head: true })
-      .eq("role", "inquilino")
-      .eq("activo", false)
+    // Inquilinos inactivos = arrendatarios sin contrato O con contrato inactivo
+    const { data: arrendatariosConContratos } = await admin
+      .from("arrendatarios")
+      .select("id, contratos(estado)")
+
+    const estadosActivos = new Set(["activo", "borrador"])
+
+    let historialInquilinos = 0
+    if (arrendatariosConContratos) {
+      historialInquilinos = arrendatariosConContratos.filter(arrendatario => {
+        const contratos = arrendatario.contratos || []
+        if (contratos.length === 0) return true // Sin contrato
+        const tieneContratoActivo = contratos.some((c: any) => estadosActivos.has(c.estado))
+        return !tieneContratoActivo // Solo contratos inactivos
+      }).length
+    }
 
     // Usuarios inquilinos (todos, activos e inactivos)
-    const { count: inquilinosUsuariosTotal, error: errInquilinosTotal } = await supabase
+    const { count: inquilinosUsuariosTotal } = await supabase
       .from("perfiles")
       .select("*", { count: "exact", head: true })
       .eq("role", "inquilino")
@@ -64,13 +74,20 @@ export async function GET() {
       "lawyer_special"
     ].length
 
+    // Contar contactos = usuarios activos y no bloqueados
+    const { count: contactos } = await supabase
+      .from("perfiles")
+      .select("*", { count: "exact", head: true })
+      .eq("activo", true)
+      .eq("bloqueado", false)
+
     return NextResponse.json({
       inquilinosActivos: inquilinosActivos || 0,
       propietarios: propietarios || 0,
       usuariosSistema,
       historialInquilinos: historialInquilinos || 0,
       roles: rolesDisponibles,
-      contactos: 0 // Se implementará después cuando se tenga la tabla de contactos
+      contactos: contactos || 0
     })
 
   } catch (error) {

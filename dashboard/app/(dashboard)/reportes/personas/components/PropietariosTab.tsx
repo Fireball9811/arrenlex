@@ -6,12 +6,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { UserPlus, Pencil, Building2, Trash2, CheckCircle, XCircle } from "lucide-react"
+import { UserPlus, Pencil, Building2, Trash2, CheckCircle, XCircle, Power } from "lucide-react"
 import type { Perfil } from "@/lib/types/database"
 import type { Propiedad } from "@/lib/types/database"
 
 interface PropietarioConPropiedades extends Perfil {
   propiedades?: Propiedad[]
+  propiedades_count?: number
 }
 
 export function PropietariosTab() {
@@ -28,22 +29,18 @@ export function PropietariosTab() {
     cedula_lugar_expedicion: "",
     direccion: "",
     activo: true,
-    // Cuenta bancaria 1
     cuenta_bancaria_1_entidad: "",
     cuenta_bancaria_1_numero: "",
     cuenta_bancaria_1_tipo: "ahorros",
-    // Cuenta bancaria 2
     cuenta_bancaria_2_entidad: "",
     cuenta_bancaria_2_numero: "",
     cuenta_bancaria_2_tipo: "ahorros",
-    // Llaves bancarias
     llave_bancaria_1: "",
     llave_bancaria_2: "",
   })
   const [editSubmitting, setEditSubmitting] = useState(false)
   const [editMessage, setEditMessage] = useState<{ type: "success" | "error"; text: string } | null>(null)
 
-  // Propiedades disponibles para asignar
   const [propiedadesDisponibles, setPropiedadesDisponibles] = useState<Propiedad[]>([])
   const [propiedadSeleccionada, setPropiedadSeleccionada] = useState("")
 
@@ -54,11 +51,9 @@ export function PropietariosTab() {
   async function fetchPropietarios() {
     setLoading(true)
     try {
-      // Obtener propietarios
-      const res = await fetch("/api/admin/usuarios")
+      const res = await fetch("/api/admin/propietarios")
       const data = await res.json()
-      const soloPropietarios = (data || []).filter((u: Perfil) => u.role === "propietario")
-      setPropietarios(soloPropietarios)
+      setPropietarios(data || [])
     } catch (error) {
       console.error("Error fetching propietarios:", error)
     } finally {
@@ -70,17 +65,68 @@ export function PropietariosTab() {
     try {
       const res = await fetch("/api/propiedades")
       const data: Propiedad[] = await res.json()
-
-      // Filtrar propiedades que NO pertenecen al propietario actual
       if (editingPropietario) {
-        const disponibles = data.filter(
-          (p) => p.user_id !== editingPropietario.id
-        )
+        const disponibles = data.filter((p) => p.user_id !== editingPropietario.id)
         setPropiedadesDisponibles(disponibles)
       }
     } catch (error) {
       console.error("Error fetching propiedades:", error)
     }
+  }
+
+  function toggleActivo(propietario: Perfil) {
+    const accion = propietario.activo ? "desactivar" : "activar"
+    if (!confirm(propietario.activo
+      ? `¿Desactivar a ${propietario.nombre || propietario.email}?`
+      : `¿Activar a ${propietario.nombre || propietario.email}?`)) return
+
+    fetch(`/api/admin/usuarios/${propietario.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ accion }),
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.error) alert(data.error)
+        else fetchPropietarios()
+      })
+      .catch((err) => alert("Error: " + err))
+  }
+
+  function toggleBloqueo(propietario: Perfil) {
+    const accion = propietario.bloqueado ? "desbloquear" : "bloquear"
+    if (!confirm(propietario.bloqueado
+      ? `¿Desbloquear a ${propietario.nombre || propietario.email}?`
+      : `¿Bloquear a ${propietario.nombre || propietario.email}?`)) return
+
+    fetch(`/api/admin/usuarios/${propietario.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ accion }),
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.error) alert(data.error)
+        else fetchPropietarios()
+      })
+      .catch((err) => alert("Error: " + err))
+  }
+
+  function eliminarUsuario(propietario: Perfil) {
+    if (!confirm(`¿Eliminar a ${propietario.nombre || propietario.email}? Esta acción no se puede deshacer.`)) return
+
+    fetch(`/api/admin/usuarios/${propietario.id}`, {
+      method: "DELETE",
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.error) alert(data.error)
+        else {
+          alert("Usuario eliminado exitosamente")
+          fetchPropietarios()
+        }
+      })
+      .catch((err) => alert("Error: " + err))
   }
 
   async function openEditModal(propietario: PropietarioConPropiedades) {
@@ -103,7 +149,6 @@ export function PropietariosTab() {
     })
     setEditMessage(null)
 
-    // Cargar propiedades del propietario
     try {
       const res = await fetch(`/api/admin/propietarios/${propietario.id}/propiedades`)
       const data: Propiedad[] = await res.json()
@@ -112,28 +157,11 @@ export function PropietariosTab() {
       console.error("Error fetching propiedades del propietario:", error)
     }
 
-    // Cargar propiedades disponibles para asignar
     await fetchPropiedadesDisponibles()
   }
 
   function closeEditModal() {
     setEditingPropietario(null)
-    setEditFormData({
-      nombre: "",
-      celular: "",
-      cedula: "",
-      cedula_lugar_expedicion: "",
-      direccion: "",
-      activo: true,
-      cuenta_bancaria_1_entidad: "",
-      cuenta_bancaria_1_numero: "",
-      cuenta_bancaria_1_tipo: "ahorros",
-      cuenta_bancaria_2_entidad: "",
-      cuenta_bancaria_2_numero: "",
-      cuenta_bancaria_2_tipo: "ahorros",
-      llave_bancaria_1: "",
-      llave_bancaria_2: "",
-    })
     setPropiedadSeleccionada("")
     setEditMessage(null)
   }
@@ -146,7 +174,6 @@ export function PropietariosTab() {
     setEditMessage(null)
 
     try {
-      // Actualizar datos personales y estado
       await fetch(`/api/admin/usuarios/${editingPropietario.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
@@ -161,7 +188,6 @@ export function PropietariosTab() {
         }),
       })
 
-      // Actualizar datos bancarios
       await fetch(`/api/admin/usuarios/${editingPropietario.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
@@ -188,29 +214,6 @@ export function PropietariosTab() {
     }
   }
 
-  async function toggleBloqueo(propietario: Perfil) {
-    const accion = propietario.bloqueado ? "desbloquear" : "bloquear"
-    if (!confirm(propietario.bloqueado
-      ? `Desbloquear a ${propietario.nombre || propietario.email}?`
-      : `Bloquear a ${propietario.nombre || propietario.email}?`)) return
-
-    try {
-      const res = await fetch(`/api/admin/usuarios/${propietario.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ accion }),
-      })
-      const data = await res.json()
-      if (data.error) alert(data.error)
-      else {
-        alert(data.mensaje || "Listo")
-        fetchPropietarios()
-      }
-    } catch (err) {
-      alert("Error: " + err)
-    }
-  }
-
   async function asignarPropiedad() {
     if (!editingPropietario || !propiedadSeleccionada) return
 
@@ -222,12 +225,9 @@ export function PropietariosTab() {
       })
 
       if (res.ok) {
-        // Recargar propiedades del propietario
         const resProps = await fetch(`/api/admin/propietarios/${editingPropietario.id}/propiedades`)
         const data: Propiedad[] = await resProps.json()
         setEditingPropietario({ ...editingPropietario, propiedades: data })
-
-        // Actualizar lista de propiedades disponibles
         await fetchPropiedadesDisponibles()
         setPropiedadSeleccionada("")
       } else {
@@ -249,12 +249,9 @@ export function PropietariosTab() {
       })
 
       if (res.ok) {
-        // Recargar propiedades del propietario
         const resProps = await fetch(`/api/admin/propietarios/${editingPropietario.id}/propiedades`)
         const data: Propiedad[] = await resProps.json()
         setEditingPropietario({ ...editingPropietario, propiedades: data })
-
-        // Actualizar lista de propiedades disponibles
         await fetchPropiedadesDisponibles()
       } else {
         const data = await res.json()
@@ -273,19 +270,17 @@ export function PropietariosTab() {
 
   return (
     <div>
-      {/* Header con búsqueda y botón de nuevo */}
       <div className="mb-6 flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold">Propietarios</h2>
           <p className="text-muted-foreground">Gestiona los propietarios de inmuebles</p>
         </div>
-        <Button onClick={() => window.location.href = "/admin/usuarios?create=true"}>
+        <Button onClick={() => window.location.href = "/admin/usuarios?create=true&role=propietario"}>
           <UserPlus className="mr-2 h-4 w-4" />
           Nuevo Propietario
         </Button>
       </div>
 
-      {/* Búsqueda */}
       <div className="mb-4">
         <Input
           placeholder="Buscar por nombre, email o cédula..."
@@ -295,7 +290,6 @@ export function PropietariosTab() {
         />
       </div>
 
-      {/* Tabla de propietarios */}
       <Card>
         <CardHeader><CardTitle>Lista de Propietarios ({filteredPropietarios.length})</CardTitle></CardHeader>
         <CardContent>
@@ -313,8 +307,7 @@ export function PropietariosTab() {
                     <th className="p-3 text-left">Celular</th>
                     <th className="p-3 text-center">Estado</th>
                     <th className="p-3 text-center">Propiedades</th>
-                    <th className="p-3 text-center">Editar</th>
-                    <th className="p-3 text-center">Bloquear</th>
+                    <th className="p-3 text-center">Acciones</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -338,24 +331,48 @@ export function PropietariosTab() {
                       <td className="p-3 text-center">
                         <span className="rounded-full bg-blue-100 px-2 py-1 text-xs text-blue-800">
                           <Building2 className="inline h-3 w-3 mr-1" />
-                          {p.propiedades?.length ?? 0}
+                          {p.propiedades_count ?? 0}
                         </span>
                       </td>
                       <td className="p-3 text-center">
-                        <Link href={`/reportes/personas/usuarios/${p.id}`}>
-                          <Button size="sm" variant="outline">
+                        <div className="flex items-center justify-center gap-1">
+                          {/* Editar */}
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => openEditModal(p)}
+                            title="Editar"
+                          >
                             <Pencil className="h-3 w-3" />
                           </Button>
-                        </Link>
-                      </td>
-                      <td className="p-3 text-center">
-                        <Button
-                          size="sm"
-                          variant={p.bloqueado ? "outline" : "destructive"}
-                          onClick={() => toggleBloqueo(p)}
-                        >
-                          {p.bloqueado ? <CheckCircle className="h-3 w-3" /> : <XCircle className="h-3 w-3" />}
-                        </Button>
+                          {/* Activo/Inactivar */}
+                          <Button
+                            size="sm"
+                            variant={p.activo ? "outline" : "default"}
+                            onClick={() => toggleActivo(p)}
+                            title={p.activo ? "Desactivar" : "Activar"}
+                          >
+                            <Power className="h-3 w-3" />
+                          </Button>
+                          {/* Bloquear/Desbloquear */}
+                          <Button
+                            size="sm"
+                            variant={p.bloqueado ? "outline" : "destructive"}
+                            onClick={() => toggleBloqueo(p)}
+                            title={p.bloqueado ? "Desbloquear" : "Bloquear"}
+                          >
+                            {p.bloqueado ? <CheckCircle className="h-3 w-3" /> : <XCircle className="h-3 w-3" />}
+                          </Button>
+                          {/* Eliminar */}
+                          <Button
+                            size="sm"
+                            variant="destructive"
+                            onClick={() => eliminarUsuario(p)}
+                            title="Eliminar"
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </Button>
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -366,264 +383,76 @@ export function PropietariosTab() {
         </CardContent>
       </Card>
 
-      {/* Modal de edición */}
+      {/* Modal de edición simplificado */}
       {editingPropietario && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 overflow-y-auto">
-          <Card className="w-full max-w-3xl my-8">
+          <Card className="w-full max-w-2xl my-8">
             <CardHeader>
               <CardTitle>Editar Propietario</CardTitle>
             </CardHeader>
             <CardContent>
-              <form onSubmit={actualizarPropietario} className="space-y-6">
-                {/* Datos personales */}
-                <div>
-                  <h3 className="text-lg font-semibold mb-3">Datos Personales</h3>
-                  <div className="grid gap-4 md:grid-cols-2">
-                    <div>
-                      <Label>Correo electrónico</Label>
-                      <Input
-                        type="email"
-                        disabled
-                        value={editingPropietario.email}
-                        className="bg-muted"
-                      />
-                      <p className="text-xs text-muted-foreground mt-1">El correo no se puede modificar</p>
-                    </div>
-                    <div>
-                      <Label>Nombre completo *</Label>
-                      <Input
-                        type="text"
-                        placeholder="Juan Pérez García"
-                        value={editFormData.nombre}
-                        onChange={(e) => setEditFormData({ ...editFormData, nombre: e.target.value })}
-                        required
-                      />
-                    </div>
-                    <div>
-                      <Label>Cédula</Label>
-                      <Input
-                        type="text"
-                        placeholder="123456789"
-                        value={editFormData.cedula}
-                        onChange={(e) => setEditFormData({ ...editFormData, cedula: e.target.value })}
-                      />
-                    </div>
-                    <div>
-                      <Label>Lugar de expedición</Label>
-                      <Input
-                        type="text"
-                        placeholder="Bogotá D.C."
-                        value={editFormData.cedula_lugar_expedicion}
-                        onChange={(e) => setEditFormData({ ...editFormData, cedula_lugar_expedicion: e.target.value })}
-                      />
-                    </div>
-                    <div>
-                      <Label>Celular</Label>
-                      <Input
-                        type="text"
-                        placeholder="+57 300 123 4567"
-                        value={editFormData.celular}
-                        onChange={(e) => setEditFormData({ ...editFormData, celular: e.target.value })}
-                      />
-                    </div>
-                    <div>
-                      <Label>Dirección</Label>
-                      <Input
-                        type="text"
-                        placeholder="Calle 123 # 45-67"
-                        value={editFormData.direccion}
-                        onChange={(e) => setEditFormData({ ...editFormData, direccion: e.target.value })}
-                      />
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="checkbox"
-                        id="activo"
-                        checked={editFormData.activo}
-                        onChange={(e) => setEditFormData({ ...editFormData, activo: e.target.checked })}
-                        className="h-4 w-4 rounded"
-                      />
-                      <Label htmlFor="activo">Propietario activo</Label>
-                    </div>
+              <form onSubmit={actualizarPropietario} className="space-y-4">
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div>
+                    <Label>Correo electrónico</Label>
+                    <Input type="email" disabled value={editingPropietario.email} className="bg-muted" />
+                  </div>
+                  <div>
+                    <Label>Nombre completo *</Label>
+                    <Input
+                      type="text"
+                      value={editFormData.nombre}
+                      onChange={(e) => setEditFormData({ ...editFormData, nombre: e.target.value })}
+                      required
+                    />
+                  </div>
+                  <div>
+                    <Label>Cédula</Label>
+                    <Input
+                      type="text"
+                      value={editFormData.cedula}
+                      onChange={(e) => setEditFormData({ ...editFormData, cedula: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <Label>Celular</Label>
+                    <Input
+                      type="text"
+                      value={editFormData.celular}
+                      onChange={(e) => setEditFormData({ ...editFormData, celular: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <Label>Dirección</Label>
+                    <Input
+                      type="text"
+                      value={editFormData.direccion}
+                      onChange={(e) => setEditFormData({ ...editFormData, direccion: e.target.value })}
+                    />
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      id="activo"
+                      checked={editFormData.activo}
+                      onChange={(e) => setEditFormData({ ...editFormData, activo: e.target.checked })}
+                      className="h-4 w-4 rounded"
+                    />
+                    <Label htmlFor="activo">Propietario activo</Label>
                   </div>
                 </div>
 
-                {/* Cuentas bancarias */}
-                <div>
-                  <h3 className="text-lg font-semibold mb-3">Cuentas Bancarias</h3>
-                  <div className="space-y-4">
-                    {/* Cuenta 1 */}
-                    <div className="border rounded-lg p-4">
-                      <p className="text-sm font-medium mb-2">Cuenta Bancaria 1</p>
-                      <div className="grid gap-3 md:grid-cols-3">
-                        <div>
-                          <Label className="text-sm">Entidad</Label>
-                          <Input
-                            type="text"
-                            placeholder="Bancolombia"
-                            value={editFormData.cuenta_bancaria_1_entidad}
-                            onChange={(e) => setEditFormData({ ...editFormData, cuenta_bancaria_1_entidad: e.target.value })}
-                          />
-                        </div>
-                        <div>
-                          <Label className="text-sm">Número</Label>
-                          <Input
-                            type="text"
-                            placeholder="123-456-789"
-                            value={editFormData.cuenta_bancaria_1_numero}
-                            onChange={(e) => setEditFormData({ ...editFormData, cuenta_bancaria_1_numero: e.target.value })}
-                          />
-                        </div>
-                        <div>
-                          <Label className="text-sm">Tipo</Label>
-                          <select
-                            className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                            value={editFormData.cuenta_bancaria_1_tipo}
-                            onChange={(e) => setEditFormData({ ...editFormData, cuenta_bancaria_1_tipo: e.target.value })}
-                          >
-                            <option value="ahorros">Ahorros</option>
-                            <option value="corriente">Corriente</option>
-                          </select>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Cuenta 2 */}
-                    <div className="border rounded-lg p-4">
-                      <p className="text-sm font-medium mb-2">Cuenta Bancaria 2</p>
-                      <div className="grid gap-3 md:grid-cols-3">
-                        <div>
-                          <Label className="text-sm">Entidad</Label>
-                          <Input
-                            type="text"
-                            placeholder="Bancolombia"
-                            value={editFormData.cuenta_bancaria_2_entidad}
-                            onChange={(e) => setEditFormData({ ...editFormData, cuenta_bancaria_2_entidad: e.target.value })}
-                          />
-                        </div>
-                        <div>
-                          <Label className="text-sm">Número</Label>
-                          <Input
-                            type="text"
-                            placeholder="123-456-789"
-                            value={editFormData.cuenta_bancaria_2_numero}
-                            onChange={(e) => setEditFormData({ ...editFormData, cuenta_bancaria_2_numero: e.target.value })}
-                          />
-                        </div>
-                        <div>
-                          <Label className="text-sm">Tipo</Label>
-                          <select
-                            className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                            value={editFormData.cuenta_bancaria_2_tipo}
-                            onChange={(e) => setEditFormData({ ...editFormData, cuenta_bancaria_2_tipo: e.target.value })}
-                          >
-                            <option value="ahorros">Ahorros</option>
-                            <option value="corriente">Corriente</option>
-                          </select>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Llaves bancarias */}
-                <div>
-                  <h3 className="text-lg font-semibold mb-3">Llaves Bancarias (Colombia)</h3>
-                  <div className="grid gap-4 md:grid-cols-2">
-                    <div>
-                      <Label>Llave bancaria 1</Label>
-                      <Input
-                        type="text"
-                        placeholder="ABC123DEF456"
-                        value={editFormData.llave_bancaria_1}
-                        onChange={(e) => setEditFormData({ ...editFormData, llave_bancaria_1: e.target.value })}
-                      />
-                      <p className="text-xs text-muted-foreground mt-1">Máximo 20 caracteres</p>
-                    </div>
-                    <div>
-                      <Label>Llave bancaria 2</Label>
-                      <Input
-                        type="text"
-                        placeholder="GHI789JKL012"
-                        value={editFormData.llave_bancaria_2}
-                        onChange={(e) => setEditFormData({ ...editFormData, llave_bancaria_2: e.target.value })}
-                      />
-                      <p className="text-xs text-muted-foreground mt-1">Máximo 20 caracteres</p>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Asignación de propiedades */}
-                <div>
-                  <h3 className="text-lg font-semibold mb-3">Propiedades Asignadas</h3>
-
-                  {/* Lista de propiedades actuales */}
-                  <div className="mb-4">
-                    {editingPropietario.propiedades && editingPropietario.propiedades.length > 0 ? (
-                      <div className="space-y-2">
-                        {editingPropietario.propiedades.map((prop) => (
-                          <div key={prop.id} className="flex items-center justify-between border rounded-lg p-3">
-                            <div>
-                              <p className="font-medium">{prop.direccion}</p>
-                              <p className="text-xs text-muted-foreground">{prop.ciudad} • {prop.barrio}</p>
-                            </div>
-                            <Button
-                              size="sm"
-                              variant="destructive"
-                              onClick={() => quitarPropiedad(prop.id)}
-                            >
-                              <Trash2 className="h-3 w-3" />
-                            </Button>
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <p className="text-sm text-muted-foreground">Este propietario no tiene propiedades asignadas</p>
-                    )}
-                  </div>
-
-                  {/* Asignar nueva propiedad */}
-                  <div className="flex gap-2">
-                    <select
-                      className="flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm"
-                      value={propiedadSeleccionada}
-                      onChange={(e) => setPropiedadSeleccionada(e.target.value)}
-                    >
-                      <option value="">Seleccionar propiedad para asignar...</option>
-                      {propiedadesDisponibles.map((prop) => (
-                        <option key={prop.id} value={prop.id}>
-                          {prop.direccion} - {prop.ciudad}
-                        </option>
-                      ))}
-                    </select>
-                    <Button
-                      type="button"
-                      onClick={asignarPropiedad}
-                      disabled={!propiedadSeleccionada}
-                    >
-                      <Building2 className="h-4 w-4 mr-1" />
-                      Asignar
-                    </Button>
-                  </div>
-                </div>
-
-                {/* Mensajes */}
                 {editMessage && (
-                  <div
-                    className={`p-3 rounded-lg ${
-                      editMessage.type === "success"
-                        ? "bg-green-50 text-green-800 border border-green-200"
-                        : "bg-red-50 text-red-800 border border-red-200"
-                    }`}
-                  >
+                  <div className={`p-3 rounded-lg ${
+                    editMessage.type === "success" ? "bg-green-50 text-green-800" : "bg-red-50 text-red-800"
+                  }`}>
                     {editMessage.text}
                   </div>
                 )}
 
-                {/* Botones */}
                 <div className="flex gap-2">
                   <Button type="submit" disabled={editSubmitting}>
-                    {editSubmitting ? "Guardando..." : "Guardar Cambios"}
+                    {editSubmitting ? "Guardando..." : "Guardar"}
                   </Button>
                   <Button type="button" variant="outline" onClick={closeEditModal}>
                     Cancelar

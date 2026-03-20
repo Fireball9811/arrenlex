@@ -1,6 +1,6 @@
 "use client"
 
-import { createContext, useContext, useState, useEffect, type ReactNode } from "react"
+import { createContext, useContext, useState, type ReactNode } from "react"
 import { translations, type Lang } from "./translations"
 
 type Translations = typeof translations.es
@@ -20,21 +20,25 @@ const LangContext = createContext<LangContextValue>({
 export function LangProvider({ children }: { children: ReactNode }) {
   const [lang, setLangState] = useState<Lang>("es")
 
-  useEffect(() => {
-    const saved = localStorage.getItem("arrenlex-lang") as Lang | null
-    if (saved === "es" || saved === "en") {
-      setLangState(saved)
-    }
-  }, [])
-
   function setLang(l: Lang) {
     setLangState(l)
-    localStorage.setItem("arrenlex-lang", l)
+    if (typeof window !== "undefined") {
+      try {
+        localStorage.setItem("arrenlex-lang", l)
+      } catch {
+        // Ignore
+      }
+    }
   }
+
+  // NO leer localStorage automáticamente para evitar problemas de hidratación
+  // El idioma solo cambia cuando el usuario lo selecciona manualmente
 
   return (
     <LangContext.Provider value={{ lang, setLang, t: translations[lang] as Translations }}>
-      {children}
+      <div suppressHydrationWarning style={{ display: "contents" }}>
+        {children}
+      </div>
     </LangContext.Provider>
   )
 }

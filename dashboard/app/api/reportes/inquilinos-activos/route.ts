@@ -4,8 +4,7 @@ import { createAdminClient } from "@/lib/supabase/admin"
 
 /**
  * GET - Obtiene TODOS los arrendatarios con contratos activos o borrador
- * Si tienen usuario en perfiles (por email o por user_id), se muestra su info
- * Si no tienen usuario, se marcan para que se les cree uno
+ * Incluye información del propietario de la propiedad
  */
 export async function GET() {
   console.log("🔵 [inquilinos-activos] GET iniciado")
@@ -29,6 +28,8 @@ export async function GET() {
         id,
         arrendatario_id,
         arrendatarios!inner(id, nombre, cedula, email, celular, user_id),
+        propiedad_id,
+        propiedades(direccion, ciudad, user_id),
         estado
       `)
       .in("estado", ["activo", "borrador"])
@@ -40,9 +41,10 @@ export async function GET() {
       return NextResponse.json({ error: errorContratos.message }, { status: 500 })
     }
 
-    // Recopilar todos los emails y user_ids de los arrendatarios
+    // Recopilar todos los emails y user_ids de los arrendatarios y propietarios
     const emailsArrendatarios: string[] = []
     const userIds: string[] = []
+    const propietarioIds: string[] = []
 
     for (const c of contratosActivos || []) {
       const arrendatariosRaw = c.arrendatarios
@@ -54,6 +56,11 @@ export async function GET() {
       }
       if (arrendatario.user_id) {
         userIds.push(arrendatario.user_id)
+      }
+
+      // Recopilar IDs de propietarios
+      if (c.propiedades?.user_id) {
+        propietarioIds.push(c.propiedades.user_id)
       }
     }
 
@@ -83,6 +90,19 @@ export async function GET() {
       }
     }
 
+    // Buscar propietarios
+    let propietariosMap: Map<string, any> = new Map()
+    if (propietarioIds.length > 0) {
+      const { data: propietarios } = await admin
+        .from("perfiles")
+        .select("id, email, nombre, cedula, celular")
+        .in("id", propietarioIds)
+
+      if (propietarios) {
+        propietariosMap = new Map(propietarios.map(p => [p.id, p]))
+      }
+    }
+
     // Crear lista de inquilinos activos
     const inquilinosActivos: any[] = []
 
@@ -96,6 +116,10 @@ export async function GET() {
       if (!usuarioExistente && arrendatario.email) {
         usuarioExistente = usuariosPorEmail.get(arrendatario.email)
       }
+
+      // Obtener información del propietario
+      const propiedad = contrato.propiedades
+      const propietario = propiedad?.user_id ? propietariosMap.get(propiedad.user_id) : null
 
       inquilinosActivos.push({
         // Si tiene usuario, usar sus datos, si no, usar datos del arrendatario
@@ -113,6 +137,17 @@ export async function GET() {
         arrendatarioId: arrendatario.id,
         contratoId: contrato.id,
         contratoEstado: contrato.estado,
+        // Información del propietario y propiedad
+        propietario: propietario ? {
+          id: propietario.id,
+          nombre: propietario.nombre,
+          email: propietario.email,
+          celular: propietario.cedula,
+        } : null,
+        propiedad: propiedad ? {
+          direccion: propiedad.direccion,
+          ciudad: propiedad.ciudad,
+        } : null,
       })
     }
 
