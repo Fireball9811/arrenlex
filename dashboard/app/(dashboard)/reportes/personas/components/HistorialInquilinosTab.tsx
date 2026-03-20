@@ -142,7 +142,7 @@ export function HistorialInquilinosTab() {
                 </thead>
                 <tbody>
                   {inquilinos.map((i) => {
-                    const estadoInfo = getEstadoLabel(i.estadoContrato, i.tieneContrato)
+                    const estadoInfo = getEstadoLabel(i.estadoContrato ?? null, i.tieneContrato)
                     return (
                       <tr key={i.id} className="border-b hover:bg-gray-50">
                         <td className="p-3">
