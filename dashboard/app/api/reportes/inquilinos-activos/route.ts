@@ -59,8 +59,8 @@ export async function GET() {
       }
 
       // Recopilar IDs de propietarios
-      if (c.propiedades?.user_id) {
-        propietarioIds.push(c.propiedades.user_id)
+      if (c.propiedades?.[0]?.user_id) {
+        propietarioIds.push(c.propiedades[0].user_id)
       }
     }
 
@@ -118,7 +118,7 @@ export async function GET() {
       }
 
       // Obtener información del propietario
-      const propiedad = contrato.propiedades
+      const propiedad = contrato.propiedades?.[0]
       const propietario = propiedad?.user_id ? propietariosMap.get(propiedad.user_id) : null
 
       inquilinosActivos.push({
