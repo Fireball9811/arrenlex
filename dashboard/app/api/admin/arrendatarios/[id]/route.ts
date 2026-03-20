@@ -142,3 +142,77 @@ export async function PUT(
     return NextResponse.json({ error: "Datos inválidos" }, { status: 400 })
   }
 }
+
+/**
+ * DELETE - Eliminar un arrendatario por ID
+ * NOTA: Esto solo elimina el arrendatario, NO elimina el usuario asociado
+ * Permite eliminar arrendatarios vinculados a la propia cuenta del admin
+ */
+export async function DELETE(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user) {
+    return NextResponse.json({ error: "No autorizado" }, { status: 401 })
+  }
+
+  const admin = createAdminClient()
+  const { id } = await params
+
+  // Verificar que el usuario es admin
+  const { data: perfil } = await admin
+    .from("perfiles")
+    .select("role")
+    .eq("id", user.id)
+    .single()
+
+  if (!perfil || perfil.role !== "admin") {
+    return NextResponse.json({ error: "Solo administradores pueden eliminar arrendatarios" }, { status: 403 })
+  }
+
+  try {
+    // Verificar que el arrendatario existe
+    const { data: arrendatario, error: fetchError } = await admin
+      .from("arrendatarios")
+      .select("id, nombre, user_id")
+      .eq("id", id)
+      .single()
+
+    if (fetchError || !arrendatario) {
+      return NextResponse.json({ error: "Arrendatario no encontrado" }, { status: 404 })
+    }
+
+    console.log("[DELETE /api/admin/arrendatarios/[id]] Eliminando arrendatario:", arrendatario)
+
+    // Eliminar el arrendatario (NO el usuario)
+    const { error: deleteError } = await admin
+      .from("arrendatarios")
+      .delete()
+      .eq("id", id)
+
+    if (deleteError) {
+      console.error("[DELETE /api/admin/arrendatarios/[id]] Error:", deleteError)
+      return NextResponse.json({ error: deleteError.message }, { status: 500 })
+    }
+
+    return NextResponse.json({
+      message: "Arrendatario eliminado exitosamente",
+      arrendatario: {
+        id: arrendatario.id,
+        nombre: arrendatario.nombre
+      }
+    })
+
+  } catch (err) {
+    console.error("[DELETE /api/admin/arrendatarios/[id]] Error:", err)
+    return NextResponse.json(
+      { error: err instanceof Error ? err.message : "Error al eliminar arrendatario" },
+      { status: 500 }
+    )
+  }
+}

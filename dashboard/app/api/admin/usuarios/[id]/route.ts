@@ -360,15 +360,56 @@ export async function DELETE(
   }
 
   const { id } = await params
-
-  if (id === user?.id) {
-    return NextResponse.json({ error: "No puedes eliminar tu propio usuario" }, { status: 400 })
-  }
-
+  const currentUserId = user?.id
   const admin = createAdminClient()
 
+  console.log("[DELETE /api/admin/usuarios/[id]] Iniciando eliminación:", { id, currentUserId, email: user?.email })
+
   try {
-    // Verificar si el usuario tiene propiedades asignadas
+    // Verificar si hay arrendatarios asociados a este user_id
+    const { data: arrendatarios, error: arrendatariosError } = await admin
+      .from("arrendatarios")
+      .select("id, nombre")
+      .eq("user_id", id)
+
+    if (arrendatariosError) {
+      console.error("[DELETE /api/admin/usuarios/[id]] Error verificando arrendatarios:", arrendatariosError)
+    }
+
+    const arrendatariosCount = arrendatarios?.length ?? 0
+    console.log("[DELETE /api/admin/usuarios/[id]] Arrendatarios encontrados:", arrendatariosCount)
+
+    // CASO 1: Es tu propio usuario y tiene arrendatarios
+    // Solo eliminar arrendatarios, mantener el usuario admin
+    if (id === currentUserId && arrendatariosCount > 0) {
+      console.log("[DELETE /api/admin/usuarios/[id]] CASO: Propio usuario con arrendatarios - Solo eliminar arrendatarios")
+
+      const { error: deleteArrendatariosError } = await admin
+        .from("arrendatarios")
+        .delete()
+        .eq("user_id", id)
+
+      if (deleteArrendatariosError) {
+        console.error("[DELETE /api/admin/usuarios/[id]] Error eliminando arrendatarios:", deleteArrendatariosError)
+        return NextResponse.json({ error: deleteArrendatariosError.message }, { status: 500 })
+      }
+
+      return NextResponse.json({
+        message: "Arrendatario eliminado. Tu cuenta de administrador se mantiene activa.",
+        arrendatariosEliminados: arrendatariosCount,
+      })
+    }
+
+    // CASO 2: Es tu propio usuario SIN arrendatarios
+    // No permitir eliminarlo por seguridad
+    if (id === currentUserId) {
+      console.log("[DELETE /api/admin/usuarios/[id]] CASO: Propio usuario sin arrendatarios - Bloqueado")
+      return NextResponse.json({
+        error: "No puedes eliminar tu propio usuario de administrador. Usa otra cuenta de admin o contacta al soporte técnico."
+      }, { status: 400 })
+    }
+
+    // CASO 3: Es otro usuario - verificar propiedades primero
     const { count: propiedadesCount } = await admin
       .from("propiedades")
       .select("id", { count: "exact", head: true })
@@ -381,7 +422,16 @@ export async function DELETE(
       )
     }
 
-    // Eliminar el perfil del usuario
+    // Eliminar el usuario completo
+    console.log("[DELETE /api/admin/usuarios/[id]] CASO: Otro usuario - Eliminando todo")
+
+    // Eliminar arrendatarios asociados si existen
+    await admin
+      .from("arrendatarios")
+      .delete()
+      .eq("user_id", id)
+
+    // Eliminar el perfil de la tabla perfiles
     const { error: deleteProfileError } = await admin
       .from("perfiles")
       .delete()

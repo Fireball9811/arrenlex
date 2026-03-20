@@ -85,17 +85,17 @@ export function HistorialInquilinosTab() {
   }
 
   function eliminarUsuario(inquilino: InquilinoInactivo) {
-    if (!inquilino.user_id) return
-    if (!confirm(`¿Eliminar a ${inquilino.nombre || inquilino.email}? Esta acción no se puede deshacer.`)) return
+    if (!confirm(`¿Eliminar arrendatario ${inquilino.nombre}? Esta acción desvinculará el arrendatario de la cuenta de usuario.`)) return
 
-    fetch(`/api/admin/usuarios/${inquilino.user_id}`, {
+    // Eliminar el arrendatario por su ID, no por user_id
+    fetch(`/api/admin/arrendatarios/${inquilino.id}`, {
       method: "DELETE",
     })
-      .then((res) => res.json())
-      .then((data) => {
+      .then(async (res) => {
+        const data = await res.json()
         if (data.error) alert(data.error)
         else {
-          alert("Usuario eliminado exitosamente")
+          alert("Arrendatario eliminado exitosamente")
           fetchInquilinosInactivos()
         }
       })
@@ -226,7 +226,7 @@ export function HistorialInquilinosTab() {
                                   size="sm"
                                   variant="destructive"
                                   onClick={() => eliminarUsuario(i)}
-                                  title="Eliminar"
+                                  title="Eliminar arrendatario"
                                 >
                                   <Trash2 className="h-3 w-3" />
                                 </Button>
