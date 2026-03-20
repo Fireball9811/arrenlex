@@ -175,9 +175,17 @@ export function InquilinosActivosTab() {
                       <td className="p-3">{i.celular || "—"}</td>
                       <td className="p-3">
                         {i.propietario ? (
-                          <div className="flex items-center gap-1">
-                            <Building2 className="h-3 w-3 text-muted-foreground" />
-                            <span className="font-medium">{i.propietario.nombre || "Sin nombre"}</span>
+                          <div className="flex flex-col gap-0.5">
+                            <div className="flex items-center gap-1">
+                              <Building2 className="h-3 w-3 text-muted-foreground" />
+                              <span className="font-medium">{i.propietario.nombre || "Sin nombre"}</span>
+                            </div>
+                            {(i.propietario.email || i.propietario.celular) && (
+                              <div className="text-xs text-muted-foreground ml-4">
+                                {i.propietario.email && <div>{i.propietario.email}</div>}
+                                {i.propietario.celular && <div>{i.propietario.celular}</div>}
+                              </div>
+                            )}
                           </div>
                         ) : (
                           <span className="text-muted-foreground">—</span>
@@ -185,9 +193,14 @@ export function InquilinosActivosTab() {
                       </td>
                       <td className="p-3">
                         {i.propiedad ? (
-                          <div className="flex items-start gap-1 max-w-xs">
-                            <MapPin className="h-3 w-3 text-muted-foreground mt-0.5 flex-shrink-0" />
-                            <span className="line-clamp-2">{i.propiedad.direccion}</span>
+                          <div className="flex flex-col gap-0.5 max-w-xs">
+                            <div className="flex items-start gap-1">
+                              <MapPin className="h-3 w-3 text-muted-foreground mt-0.5 flex-shrink-0" />
+                              <span className="line-clamp-2">{i.propiedad.direccion}</span>
+                            </div>
+                            {i.propiedad.ciudad && (
+                              <div className="text-xs text-muted-foreground ml-4">{i.propiedad.ciudad}</div>
+                            )}
                           </div>
                         ) : (
                           <span className="text-muted-foreground">—</span>

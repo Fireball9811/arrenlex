@@ -29,12 +29,28 @@ export async function GET() {
         arrendatario_id,
         arrendatarios!inner(id, nombre, cedula, email, celular, user_id),
         propiedad_id,
-        propiedades(direccion, ciudad, user_id),
+        propiedades!left(direccion, ciudad, user_id),
         estado
       `)
       .in("estado", ["activo", "borrador"])
 
     console.log("✓ Contratos activos/borrador encontrados:", contratosActivos?.length || 0)
+
+    // Debug: mostrar estado de propiedades en contratos
+    if (contratosActivos && contratosActivos.length > 0) {
+      const conPropiedad = contratosActivos.filter(c => {
+        const prop = c.propiedades
+        const propData = Array.isArray(prop) ? prop[0] : prop
+        return propData
+      }).length
+      const sinPropiedad = contratosActivos.length - conPropiedad
+      const conUserId = contratosActivos.filter(c => {
+        const prop = c.propiedades
+        const propData = Array.isArray(prop) ? prop[0] : prop
+        return propData?.user_id
+      }).length
+      console.log(`📊 Estado de contratos: ${conPropiedad} con propiedad, ${sinPropiedad} sin propiedad, ${conUserId} con user_id en propiedad`)
+    }
 
     if (errorContratos) {
       console.error("❌ Error obteniendo contratos activos:", errorContratos)
@@ -59,8 +75,11 @@ export async function GET() {
       }
 
       // Recopilar IDs de propietarios
-      if (c.propiedades?.[0]?.user_id) {
-        propietarioIds.push(c.propiedades[0].user_id)
+      // Manejar ambos casos: propiedades viene como array o como objeto único
+      const propiedadRaw = c.propiedades
+      const propiedadData = Array.isArray(propiedadRaw) ? propiedadRaw[0] : propiedadRaw
+      if (propiedadData?.user_id) {
+        propietarioIds.push(propiedadData.user_id)
       }
     }
 
@@ -101,6 +120,12 @@ export async function GET() {
       if (propietarios) {
         propietariosMap = new Map(propietarios.map(p => [p.id, p]))
       }
+      console.log(`✓ Propietarios encontrados: ${propietarios?.length || 0} de ${propietarioIds.length} buscados`)
+      if (propietarioIds.length > 0 && (!propietarios || propietarios.length === 0)) {
+        console.log("⚠️ IDs de propietarios buscados:", propietarioIds)
+      }
+    } else {
+      console.log("⚠️ No se encontraron propiedades con user_id para buscar propietarios")
     }
 
     // Crear lista de inquilinos activos
@@ -117,9 +142,20 @@ export async function GET() {
         usuarioExistente = usuariosPorEmail.get(arrendatario.email)
       }
 
-      // Obtener información del propietario
-      const propiedad = contrato.propiedades?.[0]
+      // Obtener información del propietario y propiedad
+      // Manejar ambos casos: propiedades viene como array o como objeto único
+      const propiedadRaw = contrato.propiedades
+      const propiedad = Array.isArray(propiedadRaw) ? propiedadRaw[0] : propiedadRaw
       const propietario = propiedad?.user_id ? propietariosMap.get(propiedad.user_id) : null
+
+      // Debug: verificar si faltan datos
+      if (!propiedad || !propietario) {
+        console.log(`⚠️ Contrato ${contrato.id}: Sin propiedad (${!!propiedad}) o sin propietario (${!!propietario})`, {
+          propiedadId: contrato.propiedad_id,
+          propiedadUserId: propiedad?.user_id,
+          propietarioEnMap: !!propietario
+        })
+      }
 
       inquilinosActivos.push({
         // Si tiene usuario, usar sus datos, si no, usar datos del arrendatario
@@ -142,7 +178,7 @@ export async function GET() {
           id: propietario.id,
           nombre: propietario.nombre,
           email: propietario.email,
-          celular: propietario.cedula,
+          celular: propietario.celular,
         } : null,
         propiedad: propiedad ? {
           direccion: propiedad.direccion,
