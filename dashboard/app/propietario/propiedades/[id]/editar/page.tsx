@@ -7,6 +7,8 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { ArrowLeft, Save, X } from "lucide-react"
+import { GaleríaImagenes } from "@/components/propiedades/galeria-imagenes"
+import type { PropiedadImagen } from "@/lib/types/database"
 
 interface Propiedad {
   id: string
@@ -58,6 +60,7 @@ export default function EditarPropiedadPage() {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [propiedad, setPropiedad] = useState<Propiedad | null>(null)
+  const [imagenes, setImagenes] = useState<PropiedadImagen[]>([])
   const [datosPropietario, setDatosPropietario] = useState<{
     cuenta_bancaria_1_numero?: string | null
     cuenta_bancaria_1_titular?: string | null
@@ -100,8 +103,16 @@ export default function EditarPropiedadPage() {
           return
         }
 
-        // Cargar la propiedad
-        const propRes = await fetch(`/api/propiedades/${propiedadId}`)
+        // Cargar la propiedad e imágenes en paralelo
+        const [propRes, imgData] = await Promise.all([
+          fetch(`/api/propiedades/${propiedadId}`),
+          fetch(`/api/propiedades/${propiedadId}/imagenes`)
+            .then((r) => r.json())
+            .catch(() => []),
+        ])
+
+        setImagenes(imgData)
+
         if (!propRes.ok) {
           const errorData = await propRes.json().catch(() => ({ error: "Error desconocido" }))
           console.error("Error cargando propiedad:", propRes.status, errorData)
@@ -228,6 +239,8 @@ export default function EditarPropiedadPage() {
         <h1 className="text-3xl font-bold">Editar Propiedad</h1>
       </div>
 
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+      <div className="xl:col-span-2">
       <Card>
         <CardHeader>
           <CardTitle>Información de la Propiedad</CardTitle>
@@ -503,6 +516,19 @@ export default function EditarPropiedadPage() {
           </div>
         </CardContent>
       </Card>
+      </div>
+
+      {/* Galería de fotos por categoría */}
+      <div className="xl:col-span-1">
+        <h2 className="text-xl font-semibold mb-4">Fotos de la Propiedad</h2>
+        <GaleríaImagenes
+          propiedadId={propiedadId}
+          imagenes={imagenes}
+          onImagenesChange={setImagenes}
+          readonly={loading}
+        />
+      </div>
+      </div>
     </div>
   )
 }

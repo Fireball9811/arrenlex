@@ -190,15 +190,25 @@ export type DatosContrato = {
 export type PropiedadImagen = {
   id: string
   propiedad_id: string
-  categoria: "sala" | "cocina" | "habitacion" | "bano" | "fachada" | "otra"
+  categoria: "principal" | "sala" | "sala_estar" | "comedor" | "cocina" | "habitacion" | "bano" | "zona_lavado" | "parqueadero" | "deposito" | "fachada" | "otra"
   nombre_archivo: string
   url_publica: string
   orden: number
   created_at: string
 }
 
+export type PropiedadVideo = {
+  id: string
+  propiedad_id: string
+  nombre_archivo: string
+  url_publica: string
+  storage_path: string
+  created_at: string
+}
+
 export type PropiedadConImagenes = Propiedad & {
   imagenes?: PropiedadImagen[]
+  video?: PropiedadVideo | null
 }
 
 export type CiudadDisponible = {

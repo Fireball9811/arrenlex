@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
+import { createAdminClient } from "@/lib/supabase/admin"
+import { getUserRole } from "@/lib/auth/role"
 import type { PropiedadImagen } from "@/lib/types/database"
 
 // GET - Listar imágenes de una propiedad
@@ -20,7 +22,8 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "propiedad_id requerido" }, { status: 400 })
   }
 
-  const { data, error } = await supabase
+  const adminClient = createAdminClient()
+  const { data, error } = await adminClient
     .from("propiedades_imagenes")
     .select("*")
     .eq("propiedad_id", propiedadId)
@@ -45,12 +48,16 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "No autorizado" }, { status: 401 })
   }
 
+  const role = await getUserRole(supabase, user)
+  if (role !== "admin" && role !== "propietario") {
+    return NextResponse.json({ error: "Solo administradores o propietarios pueden subir imágenes" }, { status: 403 })
+  }
+
   const formData = await request.formData()
   const propiedadId = formData.get("propiedad_id") as string
-  const categoria = formData.get("categoria") as "sala" | "cocina" | "habitacion" | "bano" | "fachada" | "otra"
+  const categoria = formData.get("categoria") as string
   const files = formData.getAll("archivo") as File[]
 
-  // Validaciones
   if (!propiedadId || !categoria || !files || files.length === 0) {
     return NextResponse.json(
       { error: "Faltan campos requeridos: propiedad_id, categoria, archivo" },
@@ -58,14 +65,21 @@ export async function POST(request: Request) {
     )
   }
 
-  // Verificar que la propiedad pertenezca al usuario
-  const { data: propiedad } = await supabase
+  const adminClient = createAdminClient()
+
+  // Obtener la propiedad para verificar permisos y obtener el owner real
+  const { data: propiedad } = await adminClient
     .from("propiedades")
     .select("user_id")
     .eq("id", propiedadId)
     .single()
 
-  if (!propiedad || propiedad.user_id !== user.id) {
+  if (!propiedad) {
+    return NextResponse.json({ error: "Propiedad no encontrada" }, { status: 404 })
+  }
+
+  // Propietario solo puede operar en sus propias propiedades
+  if (role === "propietario" && propiedad.user_id !== user.id) {
     return NextResponse.json({ error: "No tienes permiso para esta propiedad" }, { status: 403 })
   }
 
@@ -92,17 +106,17 @@ export async function POST(request: Request) {
 
   try {
     const resultados = []
+    // Usar el user_id del propietario real para la ruta de storage
+    const storageOwnerId = propiedad.user_id
 
     for (const file of files) {
       if (!(file instanceof File)) continue
 
-      // Generar nombre de archivo único
       const fileExt = file.name.split(".").pop()
       const safeFileName = `${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`
-      const storagePath = `${user.id}/${propiedadId}/${categoria}/${safeFileName}`
+      const storagePath = `${storageOwnerId}/${propiedadId}/${categoria}/${safeFileName}`
 
-      // Subir a Supabase Storage
-      const { data: uploadData, error: uploadError } = await supabase.storage
+      const { error: uploadError } = await supabase.storage
         .from("propiedades")
         .upload(storagePath, file)
 
@@ -110,17 +124,15 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: uploadError.message }, { status: 500 })
       }
 
-      // Obtener URL pública
       const { data: { publicUrl } } = supabase.storage
         .from("propiedades")
         .getPublicUrl(storagePath)
 
-      // Guardar en la tabla propiedades_imagenes
-      const { data: imagenData, error: dbError } = await supabase
+      const { data: imagenData, error: dbError } = await adminClient
         .from("propiedades_imagenes")
         .insert({
           propiedad_id: propiedadId,
-          categoria: categoria,
+          categoria,
           nombre_archivo: file.name,
           url_publica: publicUrl,
         })
@@ -128,7 +140,6 @@ export async function POST(request: Request) {
         .single()
 
       if (dbError) {
-        // Si falla la inserción, eliminar el archivo subido
         await supabase.storage.from("propiedades").remove([storagePath])
         return NextResponse.json({ error: dbError.message }, { status: 500 })
       }
