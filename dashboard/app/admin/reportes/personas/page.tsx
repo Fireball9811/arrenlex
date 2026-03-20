@@ -1,5 +1,8 @@
 "use client"
 
+// Forzar renderizado dinámico para evitar errores de hidratación
+export const dynamic = 'force-dynamic'
+
 import { useEffect, useState } from "react"
 import Link from "next/link"
 import { Card, CardContent } from "@/components/ui/card"
@@ -21,34 +24,34 @@ type Counts = {
 
 type TabValue = "inquilinos-activos" | "propietarios" | "usuarios-sistema" | "historial-inquilinos" | "roles-permisos" | "contactos"
 
+const INITIAL_TABS = [
+  { value: "inquilinos-activos" as const, label: "Inquilinos Activos", count: 0 },
+  { value: "propietarios" as const, label: "Propietarios", count: 0 },
+  { value: "usuarios-sistema" as const, label: "Usuarios Sistema", count: 0 },
+  { value: "historial-inquilinos" as const, label: "Inquilinos Inactivos", count: 0 },
+  { value: "roles-permisos" as const, label: "Roles", count: 0 },
+  { value: "contactos" as const, label: "Contactos", count: 0 },
+]
+
 export default function PersonasPage() {
   const [counts, setCounts] = useState<Counts | null>(null)
-  const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState<TabValue>("propietarios")
 
   useEffect(() => {
     fetch("/api/reportes/personas/counts")
       .then((r) => r.json())
-      .then((data) => {
-        setCounts(data)
-        setLoading(false)
-      })
-      .catch(() => setLoading(false))
+      .then((data) => setCounts(data))
+      .catch(() => {})
   }, [])
 
-  const formatCount = (count: number | undefined) => {
-    if (loading) return "..."
-    return count ?? 0
-  }
-
-  const tabs: { value: TabValue; label: string; count: number }[] = [
-    { value: "inquilinos-activos", label: "Inquilinos Activos", count: counts?.inquilinosActivos || 0 },
-    { value: "propietarios", label: "Propietarios", count: counts?.propietarios || 0 },
-    { value: "usuarios-sistema", label: "Usuarios Sistema", count: counts?.usuariosSistema || 0 },
-    { value: "historial-inquilinos", label: "Inquilinos Inactivos", count: counts?.historialInquilinos || 0 },
-    { value: "roles-permisos", label: "Roles", count: counts?.roles || 0 },
-    { value: "contactos", label: "Contactos", count: counts?.contactos || 0 },
-  ]
+  const tabs = INITIAL_TABS.map((tab) => ({
+    ...tab,
+    count: counts?.[tab.value === "inquilinos-activos" ? "inquilinosActivos" :
+                    tab.value === "historial-inquilinos" ? "historialInquilinos" :
+                    tab.value === "usuarios-sistema" ? "usuariosSistema" :
+                    tab.value === "roles-permisos" ? "roles" :
+                    tab.value] || 0
+  }))
 
   return (
     <div>
@@ -74,7 +77,7 @@ export default function PersonasPage() {
           >
             <CardContent className="p-4">
               <p className="text-sm text-muted-foreground">{tab.label}</p>
-              <p className="text-2xl font-bold">{formatCount(tab.count)}</p>
+              <p className="text-2xl font-bold">{counts ? tab.count : 0}</p>
             </CardContent>
           </Card>
         ))}

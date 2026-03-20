@@ -22,8 +22,8 @@ export async function GET() {
   const admin = createAdminClient()
 
   try {
-    // Obtener todos los arrendatarios con sus contratos
-    const { data: arrendatariosConContratos, error: errorArrendatarios } = await admin
+    // Obtener TODOS los arrendatarios con sus contratos (sin filtro de usuario)
+    const { data: arrendatarios, error: errorArrendatarios } = await admin
       .from("arrendatarios")
       .select(`
         id,
@@ -33,7 +33,6 @@ export async function GET() {
         celular,
         user_id,
         created_at,
-        users!inner(activo, bloqueado),
         contratos(id, estado, fecha_fin)
       `)
 
@@ -42,13 +41,36 @@ export async function GET() {
       return NextResponse.json({ error: errorArrendatarios.message }, { status: 500 })
     }
 
+    // Obtener información de usuarios por separado para los que tienen user_id
+    const userIds = (arrendatarios || [])
+      .map(a => a.user_id)
+      .filter((id): id is string => id !== null && id !== undefined)
+
+    const usuariosMap = new Map<string, { activo: boolean; bloqueado: boolean }>()
+
+    if (userIds.length > 0) {
+      const { data: usuarios } = await admin
+        .from("perfiles")
+        .select("id, activo, bloqueado")
+        .in("id", userIds)
+
+      if (usuarios) {
+        for (const usuario of usuarios) {
+          usuariosMap.set(usuario.id, {
+            activo: usuario.activo ?? false,
+            bloqueado: usuario.bloqueado ?? false
+          })
+        }
+      }
+    }
+
     // Estados activos de contrato
     const estadosActivos = new Set(["activo", "borrador"])
 
     // Filtrar inquilinos inactivos:
     // 1. No tienen contrato
     // 2. Solo tienen contratos inactivos (terminado, vencido, etc)
-    const inquilinosInactivos = (arrendatariosConContratos || [])
+    const inquilinosInactivos = (arrendatarios || [])
       .filter(arrendatario => {
         const contratos = arrendatario.contratos || []
         if (contratos.length === 0) return true // Sin contrato
@@ -64,6 +86,8 @@ export async function GET() {
             )[0]
           : null
 
+        const userInfo = arrendatario.user_id ? usuariosMap.get(arrendatario.user_id) : null
+
         return {
           id: arrendatario.id,
           nombre: arrendatario.nombre,
@@ -75,8 +99,8 @@ export async function GET() {
           tieneUsuario: !!arrendatario.user_id,
           tieneContrato: contratos.length > 0,
           estadoContrato: ultimoContrato?.estado || null,
-          activo: (arrendatario as any).users?.activo ?? false,
-          bloqueado: (arrendatario as any).users?.bloqueado ?? false,
+          activo: userInfo?.activo ?? false,
+          bloqueado: userInfo?.bloqueado ?? false,
         }
       })
 

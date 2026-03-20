@@ -118,11 +118,13 @@ export function HistorialInquilinosTab() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Inquilinos Inactivos ({inquilinos.length})</CardTitle>
+          <CardTitle>Inquilinos Inactivos ({loading ? 0 : inquilinos.length})</CardTitle>
         </CardHeader>
         <CardContent>
           {loading ? (
-            <p className="text-muted-foreground">Cargando...</p>
+            <div className="flex items-center justify-center p-8">
+              <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent"></div>
+            </div>
           ) : inquilinos.length === 0 ? (
             <p className="text-muted-foreground">No hay inquilinos inactivos</p>
           ) : (
@@ -197,16 +199,13 @@ export function HistorialInquilinosTab() {
                         </td>
                         <td className="p-3 text-center">
                           <div className="flex items-center justify-center gap-1">
-                            {/* Editar arrendatario */}
                             <Link href={`/reportes/personas/arrendatarios/${i.id}`}>
                               <Button size="sm" variant="outline" title="Editar arrendatario">
                                 <Pencil className="h-3 w-3" />
                               </Button>
                             </Link>
-                            {/* Botones de usuario - solo si tiene usuario */}
                             {i.tieneUsuario && (
                               <>
-                                {/* Activo/Inactivar */}
                                 <Button
                                   size="sm"
                                   variant={i.activo ? "outline" : "default"}
@@ -215,7 +214,6 @@ export function HistorialInquilinosTab() {
                                 >
                                   <Power className="h-3 w-3" />
                                 </Button>
-                                {/* Bloquear/Desbloquear */}
                                 <Button
                                   size="sm"
                                   variant={i.bloqueado ? "outline" : "destructive"}
@@ -224,7 +222,6 @@ export function HistorialInquilinosTab() {
                                 >
                                   {i.bloqueado ? <CheckCircle className="h-3 w-3" /> : <XCircle className="h-3 w-3" />}
                                 </Button>
-                                {/* Eliminar */}
                                 <Button
                                   size="sm"
                                   variant="destructive"

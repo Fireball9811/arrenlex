@@ -12,7 +12,9 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
           <div className="font-semibold text-gray-700">Sistema Arrenlex</div>
           <div className="flex items-center gap-4">
             <UserEmail />
-            <Image src="/Logo.png" alt="Arrenlex" width={280} height={92} className="h-20 w-auto object-contain" />
+            <div className="relative h-20 w-auto">
+              <Image src="/Logo.png" alt="Arrenlex" fill className="object-contain" priority />
+            </div>
           </div>
         </header>
         <main className="flex-1 overflow-y-auto p-6">{children}</main>
