@@ -102,7 +102,7 @@ export function HistorialInquilinosTab() {
       .catch((err) => alert("Error: " + err))
   }
 
-  const getEstadoLabel = (estado: string | null, tieneContrato: boolean) => {
+  const getEstadoLabel = (estado: string | null | undefined, tieneContrato: boolean) => {
     if (!tieneContrato) return { label: "Sin contrato", color: "bg-gray-100 text-gray-800" }
     if (estado === "terminado") return { label: "Terminado", color: "bg-red-100 text-red-800" }
     if (estado === "vencido") return { label: "Vencido", color: "bg-orange-100 text-orange-800" }
