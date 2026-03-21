@@ -39,6 +39,8 @@ export default function ContratosPage() {
 
   // Filtros (solo admin)
   const [filtroEstado, setFiltroEstado] = useState<string>("todos")
+  const [busquedaArrendatario, setBusquedaArrendatario] = useState<string>("")
+  const [busquedaPropietario, setBusquedaPropietario] = useState<string>("")
 
   useEffect(() => {
     // Cargar contratos y verificar si es admin
@@ -61,13 +63,33 @@ export default function ContratosPage() {
       if (filtroEstado !== "todos") {
         filtrados = filtrados.filter(c => c.estado === filtroEstado)
       }
+
+      // Búsqueda por arrendatario
+      if (busquedaArrendatario.trim()) {
+        const busqueda = busquedaArrendatario.toLowerCase()
+        filtrados = filtrados.filter(c =>
+          c.arrendatario?.nombre?.toLowerCase().includes(busqueda) ||
+          c.arrendatario?.cedula?.includes(busqueda)
+        )
+      }
+
+      // Búsqueda por propietario
+      if (busquedaPropietario.trim()) {
+        const busqueda = busquedaPropietario.toLowerCase()
+        filtrados = filtrados.filter(c =>
+          c.propietario?.nombre?.toLowerCase().includes(busqueda) ||
+          c.propietario?.email?.toLowerCase().includes(busqueda)
+        )
+      }
     }
 
     setContratosFiltrados(filtrados)
-  }, [filtroEstado, contratos, isAdmin])
+  }, [filtroEstado, busquedaArrendatario, busquedaPropietario, contratos, isAdmin])
 
   const limpiarFiltros = () => {
     setFiltroEstado("todos")
+    setBusquedaArrendatario("")
+    setBusquedaPropietario("")
   }
 
   async function handleDelete(id: string) {
@@ -209,7 +231,27 @@ export default function ContratosPage() {
                     </SelectContent>
                   </Select>
                 </div>
-                {filtroEstado !== "todos" && (
+                <div className="flex items-center gap-2">
+                  <label className="text-sm text-muted-foreground">Arrendatario:</label>
+                  <input
+                    type="text"
+                    placeholder="Buscar por nombre o cédula..."
+                    className="w-64 rounded-md border border-input bg-background px-3 py-2 text-sm"
+                    value={busquedaArrendatario}
+                    onChange={(e) => setBusquedaArrendatario(e.target.value)}
+                  />
+                </div>
+                <div className="flex items-center gap-2">
+                  <label className="text-sm text-muted-foreground">Propietario:</label>
+                  <input
+                    type="text"
+                    placeholder="Buscar por nombre o email..."
+                    className="w-64 rounded-md border border-input bg-background px-3 py-2 text-sm"
+                    value={busquedaPropietario}
+                    onChange={(e) => setBusquedaPropietario(e.target.value)}
+                  />
+                </div>
+                {(filtroEstado !== "todos" || busquedaArrendatario || busquedaPropietario) && (
                   <Button variant="ghost" size="sm" onClick={limpiarFiltros}>
                     Limpiar filtros
                   </Button>
@@ -230,18 +272,18 @@ export default function ContratosPage() {
         <Card>
           <CardHeader>
             <CardTitle>
-              {filtroEstado !== "todos"
+              {filtroEstado !== "todos" || busquedaArrendatario || busquedaPropietario
                 ? "No se encontraron contratos con los filtros aplicados"
                 : t.contratos.sinContratos}
             </CardTitle>
             <CardDescription>
-              {filtroEstado !== "todos"
+              {filtroEstado !== "todos" || busquedaArrendatario || busquedaPropietario
                 ? "Prueba con otros filtros o límpialos para ver todos los contratos"
                 : t.contratos.sinContratosDesc}
             </CardDescription>
           </CardHeader>
           <CardContent>
-            {filtroEstado !== "todos" ? (
+            {filtroEstado !== "todos" || busquedaArrendatario || busquedaPropietario ? (
               <Button variant="outline" onClick={limpiarFiltros}>
                 Limpiar filtros
               </Button>
@@ -305,16 +347,16 @@ export default function ContratosPage() {
                       </TableCell>
                       <TableCell>
                         <div className="flex justify-end gap-2">
-                          <Button variant="ghost" size="sm" asChild>
-                            <Link href={`/contratos/${c.id}`} title="Ver">
+                          <Button variant="ghost" size="sm" title="Ver" asChild>
+                            <Link href={`/contratos/${c.id}`}>
                               <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                 <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/>
                                 <circle cx="12" cy="12" r="3"/>
                               </svg>
                             </Link>
                           </Button>
-                          <Button variant="ghost" size="sm" asChild>
-                            <Link href={`/contratos/${c.id}/editar`} title="Editar">
+                          <Button variant="ghost" size="sm" title="Editar" asChild>
+                            <Link href={`/contratos/${c.id}/editar`}>
                               <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                 <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/>
                               </svg>
