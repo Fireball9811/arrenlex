@@ -206,6 +206,19 @@ export type PropiedadVideo = {
   created_at: string
 }
 
+export type PropiedadServicio = {
+  id: string
+  propiedad_id: string
+  nombre: string
+  referencia: string | null
+  pagina_web: string | null
+  telefono: string | null
+  pago_promedio: number
+  estrato: number | null
+  fecha_vencimiento: string | null
+  created_at: string
+}
+
 export type PropiedadConImagenes = Propiedad & {
   imagenes?: PropiedadImagen[]
   video?: PropiedadVideo | null

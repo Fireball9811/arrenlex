@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input"
 import { ArrowLeft, Save, X } from "lucide-react"
 import { GaleríaImagenes } from "@/components/propiedades/galeria-imagenes"
+import { ServiciosPropiedad } from "@/components/propiedades/servicios-propiedad"
 import type { PropiedadImagen } from "@/lib/types/database"
 
 interface Propiedad {
@@ -518,15 +519,21 @@ export default function EditarPropiedadPage() {
       </Card>
       </div>
 
-      {/* Galería de fotos por categoría */}
-      <div className="xl:col-span-1">
-        <h2 className="text-xl font-semibold mb-4">Fotos de la Propiedad</h2>
-        <GaleríaImagenes
-          propiedadId={propiedadId}
-          imagenes={imagenes}
-          onImagenesChange={setImagenes}
-          readonly={loading}
-        />
+      {/* Galería de fotos y Servicios */}
+      <div className="xl:col-span-1 space-y-6">
+        <div>
+          <h2 className="text-xl font-semibold mb-4">Fotos de la Propiedad</h2>
+          <GaleríaImagenes
+            propiedadId={propiedadId}
+            imagenes={imagenes}
+            onImagenesChange={setImagenes}
+            readonly={loading}
+          />
+        </div>
+        <div>
+          <h2 className="text-xl font-semibold mb-4">Servicios Públicos</h2>
+          <ServiciosPropiedad propiedadId={propiedadId} />
+        </div>
       </div>
       </div>
     </div>
