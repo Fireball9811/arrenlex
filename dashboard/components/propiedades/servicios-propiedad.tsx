@@ -13,6 +13,15 @@ type Props = {
 
 const ESTRATO_OPCIONES = [1, 2, 3, 4, 5, 6]
 
+const VENCIMIENTO_OPCIONES = [
+  "Del 1 al 5",
+  "Del 6 al 10",
+  "Del 11 al 15",
+  "Del 16 al 20",
+  "Del 21 al 25",
+  "Del 26 al 31",
+]
+
 const formatMonedaCOP = (valor: number): string => {
   if (!valor) return "—"
   return new Intl.NumberFormat("es-CO", {
@@ -248,12 +257,17 @@ export function ServiciosPropiedad({ propiedadId }: Props) {
                 </select>
               </div>
               <div className="sm:col-span-2">
-                <label className="block text-xs font-medium mb-1">Fecha de vencimiento</label>
-                <Input
-                  type="date"
+                <label className="block text-xs font-medium mb-1">Día de vencimiento (rango del mes)</label>
+                <select
                   value={form.fecha_vencimiento}
                   onChange={(e) => handleFormChange("fecha_vencimiento", e.target.value)}
-                />
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                >
+                  <option value="">Sin fecha de vencimiento</option>
+                  {VENCIMIENTO_OPCIONES.map((op) => (
+                    <option key={op} value={op}>{op}</option>
+                  ))}
+                </select>
               </div>
             </div>
 
@@ -307,13 +321,7 @@ export function ServiciosPropiedad({ propiedadId }: Props) {
                       <span>{formatMonedaCOP(servicio.pago_promedio)} promedio</span>
                     )}
                     {servicio.fecha_vencimiento && (
-                      <span>
-                        Vence:{" "}
-                        {new Date(servicio.fecha_vencimiento + "T00:00:00").toLocaleDateString(
-                          "es-CO",
-                          { day: "2-digit", month: "short", year: "numeric" }
-                        )}
-                      </span>
+                      <span>Vence: {servicio.fecha_vencimiento}</span>
                     )}
                     {servicio.pagina_web && (
                       <a
