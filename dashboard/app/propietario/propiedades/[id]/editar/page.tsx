@@ -517,23 +517,22 @@ export default function EditarPropiedadPage() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Servicios Públicos */}
+      <div className="mt-6">
+        <ServiciosPropiedad propiedadId={propiedadId} />
+      </div>
       </div>
 
-      {/* Galería de fotos y Servicios */}
-      <div className="xl:col-span-1 space-y-6">
-        <div>
-          <h2 className="text-xl font-semibold mb-4">Fotos de la Propiedad</h2>
-          <GaleríaImagenes
-            propiedadId={propiedadId}
-            imagenes={imagenes}
-            onImagenesChange={setImagenes}
-            readonly={loading}
-          />
-        </div>
-        <div>
-          <h2 className="text-xl font-semibold mb-4">Servicios Públicos</h2>
-          <ServiciosPropiedad propiedadId={propiedadId} />
-        </div>
+      {/* Galería de fotos */}
+      <div className="xl:col-span-1">
+        <h2 className="text-xl font-semibold mb-4">Fotos de la Propiedad</h2>
+        <GaleríaImagenes
+          propiedadId={propiedadId}
+          imagenes={imagenes}
+          onImagenesChange={setImagenes}
+          readonly={loading}
+        />
       </div>
       </div>
     </div>
