@@ -6,8 +6,10 @@ import { getUserRole } from "@/lib/auth/role"
 /**
  * GET /api/propietario/pendientes-mes
  * Retorna las propiedades con contratos activos que no tienen recibo en el mes actual.
+ * Query params:
+ *   propietario_id (UUID) — solo admin puede usarlo para filtrar por propietario
  */
-export async function GET() {
+export async function GET(request: Request) {
   const supabase = await createClient()
   const {
     data: { user },
@@ -22,6 +24,9 @@ export async function GET() {
     return NextResponse.json({ error: "Sin permiso" }, { status: 403 })
   }
 
+  const { searchParams } = new URL(request.url)
+  const propietarioId = role === "admin" ? searchParams.get("propietario_id") : null
+
   const admin = createAdminClient()
 
   // Calcular primer y último día del mes actual
@@ -32,30 +37,23 @@ export async function GET() {
   const ultimoDia = new Date(anio, mes, 0).toISOString().split("T")[0]
 
   // Obtener contratos activos del propietario con info de propiedad y arrendatario
-  const queryContratos =
-    role === "propietario"
-      ? admin
-          .from("contratos")
-          .select(`
-            id,
-            propiedad_id,
-            arrendatario_id,
-            propiedad:propiedades(id, direccion, ciudad, barrio, valor_arriendo),
-            arrendatario:arrendatarios(id, nombre, celular, email)
-          `)
-          .eq("user_id", user.id)
-          .eq("estado", "activo")
-      : admin
-          .from("contratos")
-          .select(`
-            id,
-            propiedad_id,
-            arrendatario_id,
-            user_id,
-            propiedad:propiedades(id, direccion, ciudad, barrio, valor_arriendo),
-            arrendatario:arrendatarios(id, nombre, celular, email)
-          `)
-          .eq("estado", "activo")
+  let queryContratos = admin
+    .from("contratos")
+    .select(`
+      id,
+      propiedad_id,
+      arrendatario_id,
+      user_id,
+      propiedad:propiedades(id, direccion, ciudad, barrio, valor_arriendo),
+      arrendatario:arrendatarios(id, nombre, celular, email)
+    `)
+    .eq("estado", "activo")
+
+  if (role === "propietario") {
+    queryContratos = queryContratos.eq("user_id", user.id)
+  } else if (role === "admin" && propietarioId) {
+    queryContratos = queryContratos.eq("user_id", propietarioId)
+  }
 
   const { data: contratos, error: errorContratos } = await queryContratos
 
@@ -69,19 +67,17 @@ export async function GET() {
   }
 
   // Obtener recibos del mes actual para el propietario
-  const reciboQuery =
-    role === "propietario"
-      ? admin
-          .from("recibos_pago")
-          .select("id, propiedad_id")
-          .eq("user_id", user.id)
-          .gte("fecha_recibo", primerDia)
-          .lte("fecha_recibo", ultimoDia)
-      : admin
-          .from("recibos_pago")
-          .select("id, propiedad_id")
-          .gte("fecha_recibo", primerDia)
-          .lte("fecha_recibo", ultimoDia)
+  let reciboQuery = admin
+    .from("recibos_pago")
+    .select("id, propiedad_id")
+    .gte("fecha_recibo", primerDia)
+    .lte("fecha_recibo", ultimoDia)
+
+  if (role === "propietario") {
+    reciboQuery = reciboQuery.eq("user_id", user.id)
+  } else if (role === "admin" && propietarioId) {
+    reciboQuery = reciboQuery.eq("user_id", propietarioId)
+  }
 
   const { data: recibosMes, error: errorRecibos } = await reciboQuery
 

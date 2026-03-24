@@ -6,7 +6,10 @@ import { getUserRole } from "@/lib/auth/role"
 /**
  * GET /api/propietario/historial-recibos
  * Retorna los recibos del propietario agrupados por arrendatario.
- * Query params: fecha_inicio (YYYY-MM-DD), fecha_fin (YYYY-MM-DD)
+ * Query params:
+ *   fecha_inicio   (YYYY-MM-DD)
+ *   fecha_fin      (YYYY-MM-DD)
+ *   propietario_id (UUID) — solo admin puede usarlo para filtrar por propietario
  */
 export async function GET(request: Request) {
   const supabase = await createClient()
@@ -26,10 +29,11 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url)
   const fechaInicio = searchParams.get("fecha_inicio")
   const fechaFin = searchParams.get("fecha_fin")
+  const propietarioId = role === "admin" ? searchParams.get("propietario_id") : null
 
-  const admin = createAdminClient()
+  const adminClient = createAdminClient()
 
-  let query = admin
+  let query = adminClient
     .from("recibos_pago")
     .select(`
       id,
@@ -49,6 +53,8 @@ export async function GET(request: Request) {
 
   if (role === "propietario") {
     query = query.eq("user_id", user.id)
+  } else if (role === "admin" && propietarioId) {
+    query = query.eq("user_id", propietarioId)
   }
 
   if (fechaInicio) {
