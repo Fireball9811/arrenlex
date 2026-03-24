@@ -23,20 +23,6 @@ export default function FinancieroPage() {
       color: "bg-blue-50 border-blue-200",
     },
     {
-      title: t.reportes.reporteConcepto,
-      description: t.reportes.descConcepto,
-      href: "/reportes/financiero/concepto",
-      icon: "📑",
-      color: "bg-purple-50 border-purple-200",
-    },
-    {
-      title: t.reportes.consignarPago,
-      description: t.reportes.descConsignar,
-      href: "/reportes/financiero/consignar",
-      icon: "💳",
-      color: "bg-green-50 border-green-200",
-    },
-    {
       title: t.reportes.pendientesPagar,
       description: t.reportes.descPendientes,
       href: "/reportes/financiero/pendientes",

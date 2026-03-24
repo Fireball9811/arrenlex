@@ -155,18 +155,6 @@ export default function PropietarioDashboardPage() {
             </CardHeader>
           </Card>
         </Link>
-        
-        <Link href="/propietario/reportes/gestion-pagos">
-          <Card className="h-full transition hover:shadow-md">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <BarChart3 className="h-5 w-5" />
-                {t.dashboard.propietario.gestionPagos}
-              </CardTitle>
-              <CardDescription>{t.dashboard.propietario.verPagos}</CardDescription>
-            </CardHeader>
-          </Card>
-        </Link>
       </div>
     </div>
   )

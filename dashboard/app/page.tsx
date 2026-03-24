@@ -91,7 +91,7 @@ export default function HomePage() {
 
             {/* WhatsApp */}
             <a
-              href="https://wa.me/573183863210"
+              href="https://wa.me/573114433413"
               target="_blank"
               rel="noopener noreferrer"
               className="group flex flex-col items-center gap-3 rounded-2xl border border-teal-200 bg-teal-50/80 px-6 py-8 text-center transition hover:border-teal-400 hover:bg-teal-100"
@@ -103,7 +103,7 @@ export default function HomePage() {
                 <p className="text-xs font-semibold uppercase tracking-widest text-teal-600">
                   {c.whatsappLabel}
                 </p>
-                <p className="mt-1.5 text-base font-medium text-slate-800">+57 318 386 3210</p>
+                <p className="mt-1.5 text-base font-medium text-slate-800">+57 311 443 3413</p>
               </div>
             </a>
 

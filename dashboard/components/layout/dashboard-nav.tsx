@@ -124,7 +124,7 @@ export function DashboardNav() {
         )}
       </Link>
 
-      {(isAdmin || isPropietario) && (
+      {isAdmin && (
         <Link href="/reportes/gestion-pagos" className={linkClass}>
           <CreditCard />
           {t.sidebar.gestionPagos}
