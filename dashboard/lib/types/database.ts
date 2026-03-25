@@ -21,6 +21,15 @@ export type Propiedad = {
   cuenta_bancaria_tipo?: string | null
   cuenta_bancaria_numero?: string | null
   cuenta_bancaria_titular?: string | null
+  notificaciones_email?: boolean
+  created_at: string
+}
+
+export type NotificacionEnviada = {
+  id: string
+  contrato_id: string
+  tipo: "recordatorio_5_dias" | "mora_1_dia" | "seguimiento_3_dias"
+  fecha_envio: string
   created_at: string
 }
 

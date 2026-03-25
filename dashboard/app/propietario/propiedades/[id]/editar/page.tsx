@@ -33,6 +33,7 @@ interface Propiedad {
   cuenta_bancaria_tipo?: string
   cuenta_bancaria_numero?: string
   cuenta_bancaria_titular?: string
+  notificaciones_email?: boolean
 }
 
 // Función para formatear moneda colombiana
@@ -499,6 +500,27 @@ export default function EditarPropiedadPage() {
                   />
                 </div>
               </div>
+            </div>
+
+            {/* Toggle de notificaciones por correo */}
+            <div className="border-t pt-4">
+              <label className="flex items-center gap-3 cursor-pointer select-none">
+                <div className="relative">
+                  <input
+                    type="checkbox"
+                    className="sr-only peer"
+                    checked={propiedad.notificaciones_email ?? false}
+                    onChange={(e) => handleChange("notificaciones_email", e.target.checked)}
+                  />
+                  <div className="w-10 h-6 bg-gray-200 peer-focus:ring-2 peer-focus:ring-primary rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary" />
+                </div>
+                <div>
+                  <span className="text-sm font-medium">Notificaciones por correo</span>
+                  <p className="text-xs text-muted-foreground">
+                    Envía recordatorios automáticos de vencimiento de contrato al propietario y arrendatarios
+                  </p>
+                </div>
+              </label>
             </div>
 
             {/* Action Buttons */}

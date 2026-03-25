@@ -55,6 +55,7 @@ export default function EditarPropiedadPage() {
     cuenta_bancaria_tipo: "",
     cuenta_bancaria_numero: "",
     cuenta_bancaria_titular: "",
+    notificaciones_email: false,
   })
 
   useEffect(() => {
@@ -109,6 +110,7 @@ export default function EditarPropiedadPage() {
           cuenta_bancaria_tipo: propData.cuenta_bancaria_tipo ?? "",
           cuenta_bancaria_numero: propData.cuenta_bancaria_numero ?? "",
           cuenta_bancaria_titular: propData.cuenta_bancaria_titular ?? "",
+          notificaciones_email: propData.notificaciones_email ?? false,
         })
         setUser_id(propData.user_id ?? "")
         setImagenes(imgData)
@@ -142,6 +144,7 @@ export default function EditarPropiedadPage() {
         cuentaBancariaTipo: form.cuenta_bancaria_tipo,
         cuentaBancariaNumero: form.cuenta_bancaria_numero,
         cuentaBancariaTitular: form.cuenta_bancaria_titular,
+        notificaciones_email: form.notificaciones_email,
       }
       if (role === "admin" && user_id) body.user_id = user_id
 
@@ -437,6 +440,29 @@ export default function EditarPropiedadPage() {
                       />
                     </div>
                   </div>
+                </div>
+
+                {/* Toggle de notificaciones por correo */}
+                <div className="sm:col-span-2 border-t pt-4">
+                  <label className="flex items-center gap-3 cursor-pointer select-none">
+                    <div className="relative">
+                      <input
+                        type="checkbox"
+                        className="sr-only peer"
+                        checked={form.notificaciones_email}
+                        onChange={(e) =>
+                          setForm({ ...form, notificaciones_email: e.target.checked })
+                        }
+                      />
+                      <div className="w-10 h-6 bg-gray-200 peer-focus:ring-2 peer-focus:ring-primary rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary" />
+                    </div>
+                    <div>
+                      <span className="text-sm font-medium">Notificaciones por correo</span>
+                      <p className="text-xs text-muted-foreground">
+                        Envía recordatorios automáticos de vencimiento de contrato al propietario y arrendatarios
+                      </p>
+                    </div>
+                  </label>
                 </div>
 
                 {error && (

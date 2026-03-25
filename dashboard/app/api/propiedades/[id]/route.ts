@@ -129,6 +129,9 @@ export async function PUT(
     cuenta_bancaria_tipo: body.cuentaBancariaTipo ?? body.cuenta_bancaria_tipo ?? null,
     cuenta_bancaria_numero: body.cuentaBancariaNumero ?? body.cuenta_bancaria_numero ?? null,
     cuenta_bancaria_titular: body.cuentaBancariaTitular ?? body.cuenta_bancaria_titular ?? null,
+    ...(body.notificaciones_email !== undefined && {
+      notificaciones_email: Boolean(body.notificaciones_email),
+    }),
   }
 
   if (role === "admin" && body.user_id != null) {
