@@ -7,6 +7,7 @@ export function SignOutButton({ children }: { children: React.ReactNode }) {
   const router = useRouter()
 
   async function handleSignOut() {
+    sessionStorage.removeItem("arrenlex_user_role")
     const supabase = createClient()
     await supabase.auth.signOut()
     router.push("/login")

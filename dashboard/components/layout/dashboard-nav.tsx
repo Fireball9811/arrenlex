@@ -4,11 +4,19 @@ import { useEffect, useState } from "react"
 import Link from "next/link"
 import { BarChart3, User, FileText, Home, Building2, FileCheck, Mail, CreditCard, MessageSquare, Wrench } from "lucide-react"
 import type { UserRole } from "@/lib/auth/role"
+import { getDashboardPathByRole } from "@/lib/auth/redirect-by-role"
 import { useLang } from "@/lib/i18n/context"
+
+const ROLE_CACHE_KEY = "arrenlex_user_role"
 
 export function DashboardNav() {
   const { t } = useLang()
-  const [role, setRole] = useState<UserRole | null>(null)
+  const [role, setRole] = useState<UserRole | null>(() => {
+    if (typeof window !== "undefined") {
+      return (sessionStorage.getItem(ROLE_CACHE_KEY) as UserRole) ?? null
+    }
+    return null
+  })
   const [pendientesCount, setPendientesCount] = useState<number>(0)
   const [intakeCount, setIntakeCount] = useState<number>(0)
   const [mantenimientoPendientesCount, setMantenimientoPendientesCount] = useState<number>(0)
@@ -17,10 +25,14 @@ export function DashboardNav() {
     fetch("/api/auth/me")
       .then((res) => (res.ok ? res.json() : null))
       .then((data: { role?: UserRole } | null) => {
-        if (data?.role) setRole(data.role)
-        else setRole("inquilino")
+        const r: UserRole = data?.role ?? "inquilino"
+        setRole(r)
+        sessionStorage.setItem(ROLE_CACHE_KEY, r)
       })
-      .catch(() => setRole("inquilino"))
+      .catch(() => {
+        setRole("inquilino")
+        sessionStorage.setItem(ROLE_CACHE_KEY, "inquilino")
+      })
   }, [])
 
   useEffect(() => {
@@ -53,10 +65,12 @@ export function DashboardNav() {
 
   const linkClass = "flex items-center gap-2 rounded p-2 transition hover:bg-gray-800 [&_svg]:size-5 [&_svg]:shrink-0"
 
+  const dashboardHref = role ? getDashboardPathByRole(role) : "/dashboard"
+
   return (
     <nav className="flex-1 space-y-2 p-4">
       {(isAdmin || isPropietario) && (
-        <Link href="/dashboard" className={linkClass}>
+        <Link href={dashboardHref} className={linkClass}>
           <BarChart3 />
           {t.sidebar.dashboard}
         </Link>

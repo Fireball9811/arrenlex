@@ -167,6 +167,26 @@ export default function MantenimientoPage() {
     }
   }
 
+  const diasDesde = (dateStr: string): string => {
+    if (!dateStr) return "—"
+    try {
+      const fecha = new Date(dateStr)
+      if (isNaN(fecha.getTime())) return dateStr
+      const hoy = new Date()
+      hoy.setHours(0, 0, 0, 0)
+      fecha.setHours(0, 0, 0, 0)
+      const diff = Math.floor((hoy.getTime() - fecha.getTime()) / (1000 * 60 * 60 * 24))
+      if (diff < 0) return "0 días"
+      if (diff === 0) return "Hoy"
+      if (diff === 1) return "1 día"
+      return `${diff} días`
+    } catch {
+      return dateStr
+    }
+  }
+
+  const todayStr = new Date().toISOString().split("T")[0]
+
   if (role === null) {
     return (
       <div className="p-6">
@@ -236,12 +256,12 @@ export default function MantenimientoPage() {
               <div>
                 <label className="mb-1 block text-sm font-medium">{t.mantenimiento.desdeCuando}</label>
                 <input
-                  type="text"
+                  type="date"
                   required
+                  max={todayStr}
                   className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                   value={desdeCuando}
                   onChange={(e) => setDesdeCuando(e.target.value)}
-                  placeholder={t.mantenimiento.placeholderDesdeCuando}
                 />
               </div>
               {formMessage && (
@@ -336,12 +356,12 @@ export default function MantenimientoPage() {
               <div>
                 <label className="mb-1 block text-sm font-medium">{t.mantenimiento.desdeCuando}</label>
                 <input
-                  type="text"
+                  type="date"
                   required
+                  max={todayStr}
                   className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                   value={desdeCuando}
                   onChange={(e) => setDesdeCuando(e.target.value)}
-                  placeholder={t.mantenimiento.placeholderDesdeCuando}
                 />
               </div>
               {formMessage && (
@@ -424,7 +444,7 @@ export default function MantenimientoPage() {
                               <td className="max-w-[200px] truncate p-2" title={s.detalle}>
                                 {s.detalle || "—"}
                               </td>
-                              <td className="p-2">{s.desde_cuando}</td>
+                              <td className="p-2">{diasDesde(s.desde_cuando)}</td>
                               <td className="p-2">{s.responsable || "—"}</td>
                               <td className="p-2">{formatDate(s.created_at)}</td>
                               <td className="p-2">

@@ -5,6 +5,7 @@ import { UserEmail } from "@/components/auth/user-email"
 import { DashboardNav } from "@/components/layout/dashboard-nav"
 import { DashboardSidebarFooter } from "@/components/layout/dashboard-sidebar-footer"
 import { RoleGuard } from "@/components/layout/role-guard"
+import { InactivityGuard } from "@/components/layout/inactivity-guard"
 
 export default function DashboardLayout({
   children,
@@ -51,7 +52,9 @@ export default function DashboardLayout({
         </header>
 
         <main className="flex-1 overflow-y-auto p-6">
-          <RoleGuard>{children}</RoleGuard>
+          <InactivityGuard>
+            <RoleGuard>{children}</RoleGuard>
+          </InactivityGuard>
         </main>
       </div>
     </div>

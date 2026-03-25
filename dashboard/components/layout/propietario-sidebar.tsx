@@ -79,6 +79,9 @@ export function PropietarioSidebar() {
           <span className="text-gray-600">|</span>
           <span className={lang === "en" ? "text-white" : "text-gray-500"}>EN</span>
         </button>
+        <Link href="/propietario/perfil" className="block rounded p-2 text-left text-sm text-white transition hover:bg-gray-800">
+          Mi perfil
+        </Link>
         <Link href="/cambio-contrasena" className="block rounded p-2 text-left text-sm text-white transition hover:bg-gray-800">
           {t.sidebar.cambioContrasena}
         </Link>

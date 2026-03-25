@@ -482,7 +482,7 @@ export default function MensajesPage() {
       .then((data: { role?: UserRole } | null) => {
         const r = data?.role ?? null
         setRole(r)
-        if (r === "inquilino") { router.replace("/dashboard"); return }
+        if (r === "inquilino") { router.replace("/inquilino/dashboard"); return }
       })
       .catch(() => setRole(null))
   }, [router])
