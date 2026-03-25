@@ -9,18 +9,18 @@ export function DashboardSidebarFooter() {
   const { t, lang, setLang } = useLang()
 
   return (
-    <div className="space-y-2 border-t border-gray-700 p-4">
+    <div className="relative space-y-2 border-t border-indigo-700 p-4">
       <button
         onClick={() => setLang(lang === "es" ? "en" : "es")}
-        className="flex w-full items-center justify-center gap-1 rounded p-2 text-xs font-semibold text-gray-400 transition hover:bg-gray-800 hover:text-white"
+        className="flex w-full items-center justify-center gap-1 rounded p-2 text-xs font-semibold text-indigo-300 transition hover:bg-indigo-800 hover:text-white"
       >
-        <span className={lang === "es" ? "text-white" : "text-gray-500"}>ES</span>
-        <span className="text-gray-600">|</span>
-        <span className={lang === "en" ? "text-white" : "text-gray-500"}>EN</span>
+        <span className={lang === "es" ? "text-white" : "text-indigo-400"}>ES</span>
+        <span className="text-indigo-600">|</span>
+        <span className={lang === "en" ? "text-white" : "text-indigo-400"}>EN</span>
       </button>
       <Link
         href="/cambio-contrasena"
-        className="block rounded p-2 text-left text-sm text-white transition hover:bg-gray-800"
+        className="block rounded p-2 text-left text-sm text-white transition hover:bg-indigo-800"
       >
         {t.sidebar.cambioContrasena}
       </Link>

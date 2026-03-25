@@ -57,12 +57,12 @@ export async function POST(
   <style>
     body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
     .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-    .header { background: #2c5282; color: white; padding: 20px; text-align: center; border-radius: 5px 5px 0 0; }
+    .header { background: #4f46e5; color: white; padding: 20px; text-align: center; border-radius: 5px 5px 0 0; }
     .content { background: #f7fafc; padding: 30px 20px; border: 1px solid #e2e8f0; }
     .details { background: white; padding: 20px; margin: 20px 0; border-radius: 5px; border: 1px solid #e2e8f0; }
     .details p { margin: 5px 0; }
-    .amount { font-size: 24px; font-weight: bold; color: #2c5282; text-align: center; margin: 20px 0; }
-    .button { display: inline-block; background: #2c5282; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; margin: 20px 0; }
+    .amount { font-size: 24px; font-weight: bold; color: #4f46e5; text-align: center; margin: 20px 0; }
+    .button { display: inline-block; background: #4f46e5; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; margin: 20px 0; font-weight: 600; }
     .footer { text-align: center; padding: 20px; font-size: 12px; color: #718096; }
   </style>
 </head>

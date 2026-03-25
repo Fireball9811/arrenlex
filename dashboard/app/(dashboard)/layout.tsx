@@ -15,10 +15,15 @@ export default function DashboardLayout({
   return (
     <div className="flex h-screen bg-gray-100">
       {/* Sidebar */}
-      <aside className="flex w-64 flex-col bg-gray-900 text-white">
+      <aside className="relative flex w-64 flex-col bg-indigo-900 text-white overflow-hidden">
+        {/* Marca de agua */}
+        <div className="pointer-events-none select-none absolute inset-0 flex items-center justify-center opacity-[0.06]">
+          <Image src="/Logo.png" alt="" width={220} height={220} className="w-48 object-contain" />
+        </div>
+
         <Link
           href="/dashboard"
-          className="flex items-center gap-2 border-b border-gray-700 p-6"
+          className="relative flex items-center gap-2 border-b border-indigo-700 p-6"
         >
           <Image
             src="/Logo.png"

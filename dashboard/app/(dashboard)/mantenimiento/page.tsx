@@ -167,21 +167,44 @@ export default function MantenimientoPage() {
     }
   }
 
-  const diasDesde = (dateStr: string): string => {
-    if (!dateStr) return "—"
-    try {
-      const fecha = new Date(dateStr)
-      if (isNaN(fecha.getTime())) return dateStr
-      const hoy = new Date()
-      hoy.setHours(0, 0, 0, 0)
-      fecha.setHours(0, 0, 0, 0)
-      const diff = Math.floor((hoy.getTime() - fecha.getTime()) / (1000 * 60 * 60 * 24))
-      if (diff < 0) return "0 días"
-      if (diff === 0) return "Hoy"
-      if (diff === 1) return "1 día"
-      return `${diff} días`
-    } catch {
-      return dateStr
+  const parseLocalDate = (s: string): Date | null => {
+    if (!s) return null
+    // Strings solo-fecha (YYYY-MM-DD) deben parsearse en hora local, no UTC
+    if (/^\d{4}-\d{2}-\d{2}$/.test(s)) {
+      const [y, m, d] = s.split("-").map(Number)
+      return new Date(y, m - 1, d)
+    }
+    const d = new Date(s)
+    return isNaN(d.getTime()) ? null : d
+  }
+
+  const diasDesde = (dateStr: string, fallbackDate?: string): { dias: string; esAprox: boolean; textoOriginal?: string } => {
+    const esFechaValida = /^\d{4}-\d{2}-\d{2}$/.test(dateStr)
+    let fecha = parseLocalDate(dateStr)
+    let esAprox = false
+
+    if (!fecha && fallbackDate) {
+      fecha = parseLocalDate(fallbackDate)
+      esAprox = true
+    }
+
+    if (!fecha) return { dias: dateStr || "—", esAprox: false }
+
+    const hoy = new Date()
+    hoy.setHours(0, 0, 0, 0)
+    fecha.setHours(0, 0, 0, 0)
+    const diff = Math.floor((hoy.getTime() - fecha.getTime()) / (1000 * 60 * 60 * 24))
+
+    let dias: string
+    if (diff < 0) dias = "0 días"
+    else if (diff === 0) dias = "Hoy"
+    else if (diff === 1) dias = "1 día"
+    else dias = `${diff} días`
+
+    return {
+      dias,
+      esAprox,
+      textoOriginal: esAprox && !esFechaValida ? dateStr : undefined,
     }
   }
 
@@ -444,7 +467,22 @@ export default function MantenimientoPage() {
                               <td className="max-w-[200px] truncate p-2" title={s.detalle}>
                                 {s.detalle || "—"}
                               </td>
-                              <td className="p-2">{diasDesde(s.desde_cuando)}</td>
+                              <td className="p-2 whitespace-nowrap">
+                                {(() => {
+                                  const r = diasDesde(s.desde_cuando, s.created_at)
+                                  return (
+                                    <>
+                                      <span className={r.esAprox ? "text-muted-foreground" : ""}>{r.dias}</span>
+                                      {r.esAprox && (
+                                        <span className="ml-1 text-xs text-amber-600" title="Calculado desde la fecha de reporte">*</span>
+                                      )}
+                                      {r.textoOriginal && (
+                                        <div className="text-xs text-muted-foreground mt-0.5">{r.textoOriginal}</div>
+                                      )}
+                                    </>
+                                  )
+                                })()}
+                              </td>
                               <td className="p-2">{s.responsable || "—"}</td>
                               <td className="p-2">{formatDate(s.created_at)}</td>
                               <td className="p-2">

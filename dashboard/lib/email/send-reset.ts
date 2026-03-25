@@ -34,7 +34,7 @@ export async function sendPasswordResetEmail({
 <body style="font-family: system-ui, sans-serif; line-height: 1.5; color: #333; max-width: 560px; margin: 0 auto; padding: 24px;">
   <h1 style="font-size: 1.25rem;">Restablecer tu contraseña</h1>
   <p>Recibimos una solicitud para restablecer la contraseña de tu cuenta.</p>
-  <p><a href="${resetLink}" style="display: inline-block; background: #2563eb; color: #fff; padding: 10px 20px; text-decoration: none; border-radius: 6px;">Restablecer contraseña</a></p>
+  <p><a href="${resetLink}" style="display: inline-block; background: #4f46e5; color: #fff; padding: 10px 20px; text-decoration: none; border-radius: 6px; font-weight: 600;">Restablecer contraseña</a></p>
   <p style="font-size: 0.875rem; color: #666;">Este enlace expira en ${expiresMinutes} minutos. Si no solicitaste este cambio, puedes ignorar este correo.</p>
   <p style="font-size: 0.875rem; color: #666;">Si el botón no funciona, copia y pega este enlace en tu navegador:</p>
   <p style="font-size: 0.75rem; word-break: break-all;">${resetLink}</p>

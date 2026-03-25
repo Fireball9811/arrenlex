@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
-import { ArrowLeft, Send, X, Printer, Loader2, Download } from "lucide-react"
+import { ArrowLeft, Send, X, Printer, Loader2 } from "lucide-react"
 import Link from "next/link"
 
 export default function VistaPreviaReciboContent() {
@@ -332,15 +332,11 @@ export default function VistaPreviaReciboContent() {
           <h1 className="text-2xl font-bold">Vista Previa del Recibo</h1>
         </div>
         <div className="flex gap-2">
-          <Button onClick={handleGenerarPDF} variant="outline">
-            <Download className="mr-2 h-4 w-4" />
-            Descargar PDF
-          </Button>
           <Button onClick={handleImprimir} variant="outline">
             <Printer className="mr-2 h-4 w-4" />
             Imprimir
           </Button>
-          <Button onClick={handleEnviar} disabled={sending} className="bg-green-600 hover:bg-green-700">
+          <Button onClick={handleEnviar} disabled={sending} className="bg-indigo-600 hover:bg-indigo-700 text-white">
             {sending ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -484,15 +480,11 @@ export default function VistaPreviaReciboContent() {
             Cancelar y Editar
           </Button>
         </Link>
-        <Button onClick={handleGenerarPDF} variant="outline" className="flex-1 max-w-xs">
-          <Download className="mr-2 h-4 w-4" />
-          Descargar PDF
-        </Button>
         <Button onClick={handleImprimir} variant="outline" className="flex-1 max-w-xs">
           <Printer className="mr-2 h-4 w-4" />
           Imprimir
         </Button>
-        <Button onClick={handleEnviar} disabled={sending} className="flex-1 max-w-xs bg-green-600 hover:bg-green-700">
+        <Button onClick={handleEnviar} disabled={sending} className="flex-1 max-w-xs bg-indigo-600 hover:bg-indigo-700 text-white">
           {sending ? (
             <>
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -546,7 +538,7 @@ export default function VistaPreviaReciboContent() {
                 <Button
                   onClick={confirmarEnvio}
                   disabled={!emailDestino || sending}
-                  className="flex-1 bg-green-600 hover:bg-green-700"
+                  className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white"
                 >
                   {sending ? (
                     <>

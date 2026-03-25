@@ -195,7 +195,7 @@ function buildBody(params: SendAplicacionParams, baseUrl: string): string {
   ].join(""))
 
   const linkPanel = baseUrl
-    ? `<p style="margin: 16px 0 0;"><a href="${baseUrl}/mensajes" style="display: inline-block; background: #0e7490; color: #fff; text-decoration: none; padding: 10px 20px; border-radius: 6px; font-size: 0.875rem; font-weight: 600;">Ver detalle en el panel de Arrenlex</a></p>`
+    ? `<p style="margin: 16px 0 0;"><a href="${baseUrl}/mensajes" style="display: inline-block; background: #4f46e5; color: #fff; text-decoration: none; padding: 10px 20px; border-radius: 6px; font-size: 0.875rem; font-weight: 600;">Ver detalle en el panel de Arrenlex</a></p>`
     : ""
 
   return `${secArrendatario}${secLaboral}${secCoarrendatario}${secHogar}${linkPanel}`

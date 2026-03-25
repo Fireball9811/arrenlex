@@ -18,7 +18,7 @@ export function SignOutButton({ children }: { children: React.ReactNode }) {
     <button
       type="button"
       onClick={handleSignOut}
-      className="block w-full rounded p-2 text-left text-sm transition hover:bg-gray-800"
+      className="block w-full rounded p-2 text-left text-sm transition hover:bg-violet-800/80"
     >
       {children}
     </button>

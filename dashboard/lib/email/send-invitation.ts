@@ -41,7 +41,7 @@ export async function sendInvitationEmail({
     <p style="margin: 0 0 8px 0;"><strong>Correo:</strong> ${to}</p>
     <p style="margin: 0;"><strong>Contraseña temporal:</strong> <code style="background: #fff; padding: 2px 6px; border-radius: 4px;">${tempPassword}</code></p>
   </div>
-  <p><a href="${loginUrl}" style="display: inline-block; background: #2563eb; color: #fff; padding: 10px 20px; text-decoration: none; border-radius: 6px;">Ir a inicio de sesión</a></p>
+  <p><a href="${loginUrl}" style="display: inline-block; background: #4f46e5; color: #fff; padding: 10px 20px; text-decoration: none; border-radius: 6px; font-weight: 600;">Ir a inicio de sesión</a></p>
   
   <div style="background: #fef3c7; border: 1px solid #fcd34d; border-radius: 8px; padding: 12px; margin: 16px 0;">
     <p style="margin: 0; font-weight: bold; color: #92400e;">⚠️ Importante:</p>
