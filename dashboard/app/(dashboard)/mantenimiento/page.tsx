@@ -178,17 +178,14 @@ export default function MantenimientoPage() {
     return isNaN(d.getTime()) ? null : d
   }
 
-  const diasDesde = (dateStr: string, fallbackDate?: string): { dias: string; esAprox: boolean; textoOriginal?: string } => {
-    const esFechaValida = /^\d{4}-\d{2}-\d{2}$/.test(dateStr)
+  const diasDesde = (dateStr: string, fallbackDate?: string): { dias: string } => {
     let fecha = parseLocalDate(dateStr)
-    let esAprox = false
 
     if (!fecha && fallbackDate) {
       fecha = parseLocalDate(fallbackDate)
-      esAprox = true
     }
 
-    if (!fecha) return { dias: dateStr || "—", esAprox: false }
+    if (!fecha) return { dias: "—" }
 
     const hoy = new Date()
     hoy.setHours(0, 0, 0, 0)
@@ -201,11 +198,7 @@ export default function MantenimientoPage() {
     else if (diff === 1) dias = "1 día"
     else dias = `${diff} días`
 
-    return {
-      dias,
-      esAprox,
-      textoOriginal: esAprox && !esFechaValida ? dateStr : undefined,
-    }
+    return { dias }
   }
 
   const todayStr = new Date().toISOString().split("T")[0]
@@ -468,20 +461,7 @@ export default function MantenimientoPage() {
                                 {s.detalle || "—"}
                               </td>
                               <td className="p-2 whitespace-nowrap">
-                                {(() => {
-                                  const r = diasDesde(s.desde_cuando, s.created_at)
-                                  return (
-                                    <>
-                                      <span className={r.esAprox ? "text-muted-foreground" : ""}>{r.dias}</span>
-                                      {r.esAprox && (
-                                        <span className="ml-1 text-xs text-amber-600" title="Calculado desde la fecha de reporte">*</span>
-                                      )}
-                                      {r.textoOriginal && (
-                                        <div className="text-xs text-muted-foreground mt-0.5">{r.textoOriginal}</div>
-                                      )}
-                                    </>
-                                  )
-                                })()}
+                                {diasDesde(s.desde_cuando, s.created_at).dias}
                               </td>
                               <td className="p-2">{s.responsable || "—"}</td>
                               <td className="p-2">{formatDate(s.created_at)}</td>
