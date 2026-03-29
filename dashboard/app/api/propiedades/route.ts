@@ -167,6 +167,14 @@ export async function POST(request: Request) {
         cuenta_bancaria_tipo: body.cuenta_bancaria_tipo || null,
         cuenta_bancaria_numero: body.cuenta_bancaria_numero || null,
         cuenta_bancaria_titular: body.cuenta_bancaria_titular || null,
+        valor_inmueble: body.valor_inmueble ? Number(body.valor_inmueble) : null,
+        gastos_operativos: body.gastos_operativos ? Number(body.gastos_operativos) : null,
+        cap: body.cap ? Number(body.cap) : null,
+        grm: body.grm ? Number(body.grm) : null,
+        cuota_mensual: body.cuota_mensual ? Number(body.cuota_mensual) : null,
+        intereses_anuales: body.intereses_anuales ? Number(body.intereses_anuales) : null,
+        cash_on_cash: body.cash_on_cash ? Number(body.cash_on_cash) : null,
+        ber: body.ber ? Number(body.ber) : null,
       })
       .select()
       .single()

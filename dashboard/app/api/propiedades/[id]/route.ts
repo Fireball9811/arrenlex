@@ -132,6 +132,30 @@ export async function PUT(
     ...(body.notificaciones_email !== undefined && {
       notificaciones_email: Boolean(body.notificaciones_email),
     }),
+    ...(body.valor_inmueble !== undefined && {
+      valor_inmueble: body.valor_inmueble ? Number(body.valor_inmueble) : null,
+    }),
+    ...(body.gastos_operativos !== undefined && {
+      gastos_operativos: body.gastos_operativos ? Number(body.gastos_operativos) : null,
+    }),
+    ...(body.cap !== undefined && {
+      cap: body.cap ? Number(body.cap) : null,
+    }),
+    ...(body.grm !== undefined && {
+      grm: body.grm ? Number(body.grm) : null,
+    }),
+    ...(body.cuota_mensual !== undefined && {
+      cuota_mensual: body.cuota_mensual ? Number(body.cuota_mensual) : null,
+    }),
+    ...(body.intereses_anuales !== undefined && {
+      intereses_anuales: body.intereses_anuales ? Number(body.intereses_anuales) : null,
+    }),
+    ...(body.cash_on_cash !== undefined && {
+      cash_on_cash: body.cash_on_cash ? Number(body.cash_on_cash) : null,
+    }),
+    ...(body.ber !== undefined && {
+      ber: body.ber ? Number(body.ber) : null,
+    }),
   }
 
   if (role === "admin" && body.user_id != null) {

@@ -1,12 +1,15 @@
 "use client"
 
+"use client"
+
 import { useEffect, useState } from "react"
 import { useRouter, useParams } from "next/navigation"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
-import { ArrowLeft, Save, X } from "lucide-react"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
+import { ArrowLeft, Save, X, Info } from "lucide-react"
 import { GaleríaImagenes } from "@/components/propiedades/galeria-imagenes"
 import { ServiciosPropiedad } from "@/components/propiedades/servicios-propiedad"
 import type { PropiedadImagen } from "@/lib/types/database"
@@ -34,6 +37,14 @@ interface Propiedad {
   cuenta_bancaria_numero?: string
   cuenta_bancaria_titular?: string
   notificaciones_email?: boolean
+  valor_inmueble?: number | null
+  gastos_operativos?: number | null
+  cap?: number | null
+  grm?: number | null
+  cuota_mensual?: number | null
+  intereses_anuales?: number | null
+  cash_on_cash?: number | null
+  ber?: number | null
 }
 
 // Función para formatear moneda colombiana
@@ -51,6 +62,39 @@ const parseMoneda = (valor: string): number => {
   const limpio = valor.replace(/[$\s.]/g, "").replace(/,/g, "")
   const num = parseInt(limpio)
   return isNaN(num) ? 0 : num
+}
+
+// Función para calcular CAP
+const calcularCAP = (valorArriendo: number, gastosOperativos: number, valorInmueble: number): number | null => {
+  if (!valorArriendo || !valorInmueble || valorInmueble === 0) return null
+  const ingresoAnual = valorArriendo * 12
+  const resultado = ((ingresoAnual - gastosOperativos) / valorInmueble) * 100
+  return Math.round(resultado * 100) / 100 // Redondear a 2 decimales
+}
+
+// Función para calcular GRM (Gross Rent Multiplier) - Porcentaje de retorno bruto anual
+const calcularGRM = (valorArriendo: number, valorInmueble: number): number | null => {
+  if (!valorArriendo || !valorInmueble || valorInmueble === 0) return null
+  const ingresoAnual = valorArriendo * 12
+  const resultado = (ingresoAnual / valorInmueble) * 100
+  return Math.round(resultado * 100) / 100 // Redondear a 2 decimales
+}
+
+// Función para calcular Cash on Cash
+const calcularCashOnCash = (valorArriendo: number, gastosOperativos: number, cuotaMensual: number, valorInmueble: number): number | null => {
+  if (!valorArriendo || !valorInmueble || valorInmueble === 0) return null
+  const ingresoAnual = valorArriendo * 12
+  const cuotaAnual = cuotaMensual * 12
+  const resultado = ((ingresoAnual - gastosOperativos - cuotaAnual) / valorInmueble) * 100
+  return Math.round(resultado * 100) / 100 // Redondear a 2 decimales
+}
+
+// Función para calcular BER (Break-Even Rent)
+const calcularBER = (gastosOperativos: number, cuotaMensual: number): number | null => {
+  if (cuotaMensual === 0) return null
+  const gastosMensuales = gastosOperativos / 12
+  const resultado = gastosMensuales + cuotaMensual
+  return Math.round(resultado)
 }
 
 export default function EditarPropiedadPage() {
@@ -76,6 +120,17 @@ export default function EditarPropiedadPage() {
   const [ascensorDisplay, setAscensorDisplay] = useState("")
   const [depositosDisplay, setDepositosDisplay] = useState("")
   const [parqueaderosDisplay, setParqueaderosDisplay] = useState("")
+
+  // Estados para campos financieros
+  const [valorInmuebleDisplay, setValorInmuebleDisplay] = useState("")
+  const [gastosOperativosDisplay, setGastosOperativosDisplay] = useState("")
+  const [capCalculado, setCapCalculado] = useState<number | null>(null)
+  const [grmCalculado, setGrmCalculado] = useState<number | null>(null)
+  const [cashOnCashCalculado, setCashOnCashCalculado] = useState<number | null>(null)
+  const [berCalculado, setBerCalculado] = useState<number | null>(null)
+  const [gastosOperativosEditadoManualmente, setGastosOperativosEditadoManualmente] = useState(false)
+  const [cuotaMensualDisplay, setCuotaMensualDisplay] = useState("")
+  const [interesesAnualesDisplay, setInteresesAnualesDisplay] = useState("")
 
   // Cargar datos de la propiedad
   useEffect(() => {
@@ -162,6 +217,20 @@ export default function EditarPropiedadPage() {
         setDepositosDisplay(propData.depositos?.toString() || "")
         setParqueaderosDisplay(propData.parqueaderos?.toString() || "")
 
+        // Inicializar campos financieros
+        setValorInmuebleDisplay(formatMoneda(propData.valor_inmueble || 0))
+        // Si no hay gastos operativos, calcular el 20% del ingreso anual
+        const gastosOperativosIniciales = propData.gastos_operativos ?? (propData.valor_arriendo ? (propData.valor_arriendo * 12) * 0.20 : 0)
+        setGastosOperativosDisplay(formatMoneda(gastosOperativosIniciales))
+        // Marcar como editado manualmente solo si ya tenía un valor guardado
+        setGastosOperativosEditadoManualmente(propData.gastos_operativos !== null && propData.gastos_operativos !== undefined)
+        setCapCalculado(propData.cap || null)
+        setGrmCalculado(propData.grm || null)
+        setCashOnCashCalculado(propData.cash_on_cash || null)
+        setBerCalculado(propData.ber || null)
+        setCuotaMensualDisplay(formatMoneda(propData.cuota_mensual || 0))
+        setInteresesAnualesDisplay(propData.intereses_anuales?.toString() || "")
+
         setLoading(false)
       } catch (err) {
         console.error("Error general:", err)
@@ -172,6 +241,45 @@ export default function EditarPropiedadPage() {
 
     cargarDatos()
   }, [router, propiedadId])
+
+  // Calcular CAP, GRM y Cash on Cash automáticamente cuando cambian los valores
+  useEffect(() => {
+    if (propiedad) {
+      const valorArriendo = propiedad.valor_arriendo || 0
+      const valorInmueble = propiedad.valor_inmueble || 0
+      const cuotaMensual = propiedad.cuota_mensual || 0
+      let gastosOperativos = propiedad.gastos_operativos || 0
+
+      // Si no se han editado manualmente los gastos operativos, calcular el 20% del ingreso anual
+      if (!gastosOperativosEditadoManualmente && valorArriendo > 0) {
+        gastosOperativos = (valorArriendo * 12) * 0.20
+        setGastosOperativosDisplay(formatMoneda(gastosOperativos))
+        setPropiedad(prev => prev ? {
+          ...prev,
+          gastos_operativos: gastosOperativos
+        } : null)
+      }
+
+      const cap = calcularCAP(valorArriendo, gastosOperativos, valorInmueble)
+      const grm = calcularGRM(valorArriendo, valorInmueble)
+      const cashOnCash = calcularCashOnCash(valorArriendo, gastosOperativos, cuotaMensual, valorInmueble)
+      const ber = calcularBER(gastosOperativos, cuotaMensual)
+
+      setCapCalculado(cap)
+      setGrmCalculado(grm)
+      setCashOnCashCalculado(cashOnCash)
+      setBerCalculado(ber)
+
+      // Actualizar el objeto propiedad con los valores calculados
+      setPropiedad(prev => prev ? {
+        ...prev,
+        cap: cap,
+        grm: grm,
+        cash_on_cash: cashOnCash,
+        ber: ber
+      } : null)
+    }
+  }, [propiedad?.valor_arriendo, propiedad?.valor_inmueble, propiedad?.cuota_mensual, propiedad?.gastos_operativos])
 
   const handleChange = (field: keyof Propiedad, value: any) => {
     if (propiedad) {
@@ -498,6 +606,191 @@ export default function EditarPropiedadPage() {
                     value={propiedad.cuenta_bancaria_titular || ""}
                     onChange={(e) => handleChange("cuenta_bancaria_titular", e.target.value)}
                   />
+                </div>
+              </div>
+            </div>
+
+            {/* Indicadores Financieros */}
+            <div className="border-t pt-4">
+              <h3 className="text-lg font-semibold mb-4">Indicadores Financieros</h3>
+
+              {/* Primera fila: Datos de entrada */}
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
+                {/* Valor del Inmueble */}
+                <div>
+                  <label className="block text-sm font-medium mb-1">Valor del Inmueble</label>
+                  <Input
+                    type="text"
+                    inputMode="numeric"
+                    placeholder="$ 0"
+                    value={valorInmuebleDisplay}
+                    onChange={(e) => {
+                      const val = e.target.value.replace(/[^0-9]/g, "")
+                      const numVal = parseInt(val) || 0
+                      setValorInmuebleDisplay(formatMoneda(numVal))
+                      handleChange("valor_inmueble", numVal || null)
+                    }}
+                  />
+                </div>
+
+                {/* Gastos Operativos */}
+                <div>
+                  <label className="block text-sm font-medium mb-1">
+                    Gastos Operativos
+                    {!gastosOperativosEditadoManualmente && (
+                      <span className="ml-2 text-xs text-blue-600">(Auto: 20% ingreso anual)</span>
+                    )}
+                  </label>
+                  <Input
+                    type="text"
+                    inputMode="numeric"
+                    placeholder="$ 0"
+                    value={gastosOperativosDisplay}
+                    onChange={(e) => {
+                      const val = e.target.value.replace(/[^0-9]/g, "")
+                      const numVal = parseInt(val) || 0
+                      setGastosOperativosDisplay(formatMoneda(numVal))
+                      handleChange("gastos_operativos", numVal || null)
+                      setGastosOperativosEditadoManualmente(true)
+                    }}
+                  />
+                </div>
+
+                {/* Cuota Mensual */}
+                <div>
+                  <label className="block text-sm font-medium mb-1">Cuota Mensual</label>
+                  <Input
+                    type="text"
+                    inputMode="numeric"
+                    placeholder="$ 0"
+                    value={cuotaMensualDisplay}
+                    onChange={(e) => {
+                      const val = e.target.value.replace(/[^0-9]/g, "")
+                      const numVal = parseInt(val) || 0
+                      setCuotaMensualDisplay(formatMoneda(numVal))
+                      handleChange("cuota_mensual", numVal || null)
+                    }}
+                  />
+                </div>
+
+                {/* Intereses Anuales */}
+                <div>
+                  <label className="block text-sm font-medium mb-1">Intereses Anuales (%)</label>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    placeholder="0"
+                    value={interesesAnualesDisplay}
+                    onChange={(e) => {
+                      const numVal = parseFloat(e.target.value) || 0
+                      setInteresesAnualesDisplay(e.target.value)
+                      handleChange("intereses_anuales", numVal || null)
+                    }}
+                  />
+                </div>
+              </div>
+
+              {/* Segunda fila: Indicadores calculados */}
+              <div className="bg-slate-50 p-4 rounded-lg">
+                <h4 className="text-sm font-semibold mb-3 text-slate-700">Indicadores Calculados</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                  {/* CAP (Cap Rate) */}
+                  <div>
+                    <label className="block text-sm font-medium mb-1 flex items-center gap-1">
+                      CAP (Cap Rate)
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Info className="h-4 w-4 text-muted-foreground cursor-help" />
+                          </TooltipTrigger>
+                          <TooltipContent className="max-w-xs">
+                            <p className="text-sm">El Cap Rate muestra la rentabilidad anual de una propiedad.</p>
+                            <p className="text-sm mt-2">Se calcula tomando el ingreso anual por arriendo, restando los gastos, y dividiendo ese resultado por el valor del inmueble.</p>
+                            <p className="text-sm mt-2 font-medium">El porcentaje final indica cuánto está produciendo la inversión cada año sobre su precio de compra.</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    </label>
+                    <Input
+                      type="text"
+                      readOnly
+                      value={capCalculado !== null ? `${capCalculado.toFixed(2)}%` : "---"}
+                      className="bg-muted cursor-not-allowed"
+                    />
+                  </div>
+
+                  {/* GRM (Gross Rent Multiplier) */}
+                  <div>
+                    <label className="block text-sm font-medium mb-1 flex items-center gap-1">
+                      GRM
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Info className="h-4 w-4 text-muted-foreground cursor-help" />
+                          </TooltipTrigger>
+                          <TooltipContent className="max-w-xs">
+                            <p className="text-sm">El GRM (Gross Rent Multiplier) es un indicador que muestra el porcentaje de retorno bruto anual.</p>
+                            <p className="text-sm mt-2">Se calcula dividiendo el ingreso anual por renta entre el valor del inmueble, sin descontar gastos.</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    </label>
+                    <Input
+                      type="text"
+                      readOnly
+                      value={grmCalculado !== null ? `${grmCalculado.toFixed(2)}%` : "---"}
+                      className="bg-muted cursor-not-allowed"
+                    />
+                  </div>
+
+                  {/* Cash on Cash */}
+                  <div>
+                    <label className="block text-sm font-medium mb-1 flex items-center gap-1">
+                      Cash on Cash
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Info className="h-4 w-4 text-muted-foreground cursor-help" />
+                          </TooltipTrigger>
+                          <TooltipContent className="max-w-xs">
+                            <p className="text-sm">El Cash on Cash es un indicador que muestra la rentabilidad anual real del dinero que efectivamente invertiste de tu bolsillo.</p>
+                            <p className="text-sm mt-2">Se calcula dividiendo el flujo de efectivo anual (ganancia después de gastos y deuda) entre el capital propio invertido.</p>
+                            <p className="text-sm mt-2 font-medium">El resultado es un porcentaje que indica cuánto está generando tu dinero cada año sobre lo que realmente aportaste.</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    </label>
+                    <Input
+                      type="text"
+                      readOnly
+                      value={cashOnCashCalculado !== null ? `${cashOnCashCalculado.toFixed(2)}%` : "---"}
+                      className="bg-muted cursor-not-allowed"
+                    />
+                  </div>
+
+                  {/* BER (Break-Even Rent) */}
+                  <div>
+                    <label className="block text-sm font-medium mb-1 flex items-center gap-1">
+                      BER (Arriendo Mínimo)
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Info className="h-4 w-4 text-muted-foreground cursor-help" />
+                          </TooltipTrigger>
+                          <TooltipContent className="max-w-xs">
+                            <p className="text-sm">Indica el arriendo mínimo que debe generar el inmueble para cubrir todos los costos (gastos operativos + cuota del crédito).</p>
+                            <p className="text-sm mt-2">Si el arriendo real está por debajo de este valor, la inversión genera flujo negativo.</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    </label>
+                    <Input
+                      type="text"
+                      readOnly
+                      value={berCalculado !== null ? formatMoneda(berCalculado) : "---"}
+                      className="bg-muted cursor-not-allowed"
+                    />
+                  </div>
                 </div>
               </div>
             </div>

@@ -22,6 +22,15 @@ export type Propiedad = {
   cuenta_bancaria_numero?: string | null
   cuenta_bancaria_titular?: string | null
   notificaciones_email?: boolean
+  // Campos financieros
+  valor_inmueble?: number | null
+  gastos_operativos?: number | null
+  cap?: number | null
+  grm?: number | null
+  cuota_mensual?: number | null
+  intereses_anuales?: number | null
+  cash_on_cash?: number | null
+  ber?: number | null
   created_at: string
 }
 
