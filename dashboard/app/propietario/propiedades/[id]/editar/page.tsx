@@ -305,7 +305,7 @@ export default function EditarPropiedadPage() {
         throw new Error(`HTTP ${res.status}`)
       }
 
-      router.push("/propietario/propiedades")
+      router.push("/propiedades")
     } catch (err: any) {
       setError(`Error al guardar: ${err.message}`)
     } finally {
@@ -340,7 +340,7 @@ export default function EditarPropiedadPage() {
   return (
     <div suppressHydrationWarning>
       <div className="mb-6 flex items-center gap-4">
-        <Link href="/propietario/propiedades">
+        <Link href="/propiedades">
           <Button variant="outline" size="sm">
             <ArrowLeft className="mr-2 h-4 w-4" />
             Volver
@@ -831,7 +831,7 @@ export default function EditarPropiedadPage() {
                 <Save className="mr-2 h-4 w-4" />
                 {saving ? "Guardando..." : "Guardar Cambios"}
               </Button>
-              <Link href="/propietario/propiedades" className="flex-1">
+              <Link href="/propiedades" className="flex-1">
                 <Button variant="outline" className="w-full">
                   <X className="mr-2 h-4 w-4" />
                   Cancelar
