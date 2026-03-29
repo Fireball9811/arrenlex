@@ -615,9 +615,9 @@ export default function EditarPropiedadPage() {
               <h3 className="text-lg font-semibold mb-4">Indicadores Financieros</h3>
 
               {/* Primera fila: Datos de entrada */}
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
+              <div className="grid grid-cols-1 md:grid-cols-7 gap-4 mb-4">
                 {/* Valor del Inmueble */}
-                <div>
+                <div className="md:col-span-2">
                   <label className="block text-sm font-medium mb-1">Valor del Inmueble</label>
                   <Input
                     type="text"
@@ -634,11 +634,20 @@ export default function EditarPropiedadPage() {
                 </div>
 
                 {/* Gastos Operativos */}
-                <div>
-                  <label className="block text-sm font-medium mb-1">
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium mb-1 flex items-center gap-1">
                     Gastos Operativos
                     {!gastosOperativosEditadoManualmente && (
-                      <span className="ml-2 text-xs text-blue-600">(Auto: 20% ingreso anual)</span>
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Info className="h-4 w-4 text-muted-foreground cursor-help" />
+                          </TooltipTrigger>
+                          <TooltipContent className="max-w-xs">
+                            <p className="text-sm">20% ingresos anuales</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
                     )}
                   </label>
                   <Input
@@ -657,7 +666,7 @@ export default function EditarPropiedadPage() {
                 </div>
 
                 {/* Cuota Mensual */}
-                <div>
+                <div className="md:col-span-2">
                   <label className="block text-sm font-medium mb-1">Cuota Mensual</label>
                   <Input
                     type="text"
@@ -673,8 +682,8 @@ export default function EditarPropiedadPage() {
                   />
                 </div>
 
-                {/* Intereses Anuales */}
-                <div>
+                {/* Intereses Anuales - mitad del tamaño */}
+                <div className="md:col-span-1">
                   <label className="block text-sm font-medium mb-1">Intereses Anuales (%)</label>
                   <Input
                     type="number"
