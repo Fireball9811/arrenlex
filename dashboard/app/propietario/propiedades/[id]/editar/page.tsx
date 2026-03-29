@@ -1,7 +1,5 @@
 "use client"
 
-"use client"
-
 import { useEffect, useState } from "react"
 import { useRouter, useParams } from "next/navigation"
 import Link from "next/link"
@@ -13,6 +11,7 @@ import { ArrowLeft, Save, X, Info } from "lucide-react"
 import { GaleríaImagenes } from "@/components/propiedades/galeria-imagenes"
 import { ServiciosPropiedad } from "@/components/propiedades/servicios-propiedad"
 import type { PropiedadImagen } from "@/lib/types/database"
+import { classifyCAP, classifyGRM, classifyCashOnCash, classifyBER, type IndicatorClassification } from "@/lib/financial-indicators"
 
 interface Propiedad {
   id: string
@@ -131,6 +130,12 @@ export default function EditarPropiedadPage() {
   const [gastosOperativosEditadoManualmente, setGastosOperativosEditadoManualmente] = useState(false)
   const [cuotaMensualDisplay, setCuotaMensualDisplay] = useState("")
   const [interesesAnualesDisplay, setInteresesAnualesDisplay] = useState("")
+
+  // Estados para clasificaciones de colores
+  const [capClassification, setCapClassification] = useState<IndicatorClassification | null>(null)
+  const [grmClassification, setGrmClassification] = useState<IndicatorClassification | null>(null)
+  const [cocClassification, setCocClassification] = useState<IndicatorClassification | null>(null)
+  const [berClassification, setBerClassification] = useState<IndicatorClassification | null>(null)
 
   // Cargar datos de la propiedad
   useEffect(() => {
@@ -269,6 +274,12 @@ export default function EditarPropiedadPage() {
       setGrmCalculado(grm)
       setCashOnCashCalculado(cashOnCash)
       setBerCalculado(ber)
+
+      // Clasificar indicadores por colores
+      setCapClassification(classifyCAP(cap))
+      setGrmClassification(classifyGRM(grm))
+      setCocClassification(classifyCashOnCash(cashOnCash))
+      setBerClassification(classifyBER(valorArriendo, ber))
 
       // Actualizar el objeto propiedad con los valores calculados
       setPropiedad(prev => prev ? {
@@ -724,7 +735,12 @@ export default function EditarPropiedadPage() {
                       type="text"
                       readOnly
                       value={capCalculado !== null ? `${capCalculado.toFixed(2)}%` : "---"}
-                      className="bg-muted cursor-not-allowed"
+                      className="cursor-not-allowed"
+                      style={
+                        capClassification
+                          ? { backgroundColor: capClassification.backgroundColor, color: capClassification.textColor, border: "none" }
+                          : { backgroundColor: "rgba(0,0,0,0.05)" }
+                      }
                     />
                   </div>
 
@@ -748,7 +764,12 @@ export default function EditarPropiedadPage() {
                       type="text"
                       readOnly
                       value={grmCalculado !== null ? `${grmCalculado.toFixed(2)}%` : "---"}
-                      className="bg-muted cursor-not-allowed"
+                      className="cursor-not-allowed"
+                      style={
+                        grmClassification
+                          ? { backgroundColor: grmClassification.backgroundColor, color: grmClassification.textColor, border: "none" }
+                          : { backgroundColor: "rgba(0,0,0,0.05)" }
+                      }
                     />
                   </div>
 
@@ -773,7 +794,12 @@ export default function EditarPropiedadPage() {
                       type="text"
                       readOnly
                       value={cashOnCashCalculado !== null ? `${cashOnCashCalculado.toFixed(2)}%` : "---"}
-                      className="bg-muted cursor-not-allowed"
+                      className="cursor-not-allowed"
+                      style={
+                        cocClassification
+                          ? { backgroundColor: cocClassification.backgroundColor, color: cocClassification.textColor, border: "none" }
+                          : { backgroundColor: "rgba(0,0,0,0.05)" }
+                      }
                     />
                   </div>
 
@@ -797,7 +823,12 @@ export default function EditarPropiedadPage() {
                       type="text"
                       readOnly
                       value={berCalculado !== null ? formatMoneda(berCalculado) : "---"}
-                      className="bg-muted cursor-not-allowed"
+                      className="cursor-not-allowed"
+                      style={
+                        berClassification
+                          ? { backgroundColor: berClassification.backgroundColor, color: berClassification.textColor, border: "none" }
+                          : { backgroundColor: "rgba(0,0,0,0.05)" }
+                      }
                     />
                   </div>
                 </div>
