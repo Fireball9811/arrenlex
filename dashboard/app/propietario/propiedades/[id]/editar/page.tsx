@@ -724,9 +724,13 @@ export default function EditarPropiedadPage() {
                             <Info className="h-4 w-4 text-muted-foreground cursor-help" />
                           </TooltipTrigger>
                           <TooltipContent className="max-w-xs">
-                            <p className="text-sm">El Cap Rate muestra la rentabilidad anual de una propiedad.</p>
+                            <p className="text-sm font-medium mb-2">El Cap Rate muestra la rentabilidad anual de una propiedad.</p>
                             <p className="text-sm mt-2">Se calcula tomando el ingreso anual por arriendo, restando los gastos, y dividiendo ese resultado por el valor del inmueble.</p>
-                            <p className="text-sm mt-2 font-medium">El porcentaje final indica cuánto está produciendo la inversión cada año sobre su precio de compra.</p>
+                            <div className="mt-3 space-y-1">
+                              <p className="text-sm">🔴 Menor a 5%: Baja rentabilidad. Activo defensivo o sobrevalorado.</p>
+                              <p className="text-sm">🟡 Entre 5% y 7%: Retorno estable acorde a mercado.</p>
+                              <p className="text-sm">🟢 Mayor a 7%: Alta rentabilidad. Buena oportunidad de inversión.</p>
+                            </div>
                           </TooltipContent>
                         </Tooltip>
                       </TooltipProvider>
@@ -754,8 +758,13 @@ export default function EditarPropiedadPage() {
                             <Info className="h-4 w-4 text-muted-foreground cursor-help" />
                           </TooltipTrigger>
                           <TooltipContent className="max-w-xs">
-                            <p className="text-sm">El GRM (Gross Rent Multiplier) es un indicador que muestra el porcentaje de retorno bruto anual.</p>
+                            <p className="text-sm font-medium mb-2">El GRM (Gross Rent Multiplier) muestra el porcentaje de retorno bruto anual.</p>
                             <p className="text-sm mt-2">Se calcula dividiendo el ingreso anual por renta entre el valor del inmueble, sin descontar gastos.</p>
+                            <div className="mt-3 space-y-1">
+                              <p className="text-sm">🔴 Mayor a 18: Inmueble caro en relación a su renta.</p>
+                              <p className="text-sm">🟡 Entre 14 y 18: Precio acorde al mercado.</p>
+                              <p className="text-sm">🟢 Menor a 14: Excelente relación precio/renta.</p>
+                            </div>
                           </TooltipContent>
                         </Tooltip>
                       </TooltipProvider>
@@ -783,9 +792,13 @@ export default function EditarPropiedadPage() {
                             <Info className="h-4 w-4 text-muted-foreground cursor-help" />
                           </TooltipTrigger>
                           <TooltipContent className="max-w-xs">
-                            <p className="text-sm">El Cash on Cash es un indicador que muestra la rentabilidad anual real del dinero que efectivamente invertiste de tu bolsillo.</p>
+                            <p className="text-sm font-medium mb-2">El Cash on Cash muestra la rentabilidad anual real del dinero que efectivamente invertiste de tu bolsillo.</p>
                             <p className="text-sm mt-2">Se calcula dividiendo el flujo de efectivo anual (ganancia después de gastos y deuda) entre el capital propio invertido.</p>
-                            <p className="text-sm mt-2 font-medium">El resultado es un porcentaje que indica cuánto está generando tu dinero cada año sobre lo que realmente aportaste.</p>
+                            <div className="mt-3 space-y-1">
+                              <p className="text-sm">🔴 Menor a 5%: Bajo retorno sobre el capital invertido.</p>
+                              <p className="text-sm">🟡 Entre 5% y 8%: Retorno aceptable con riesgo moderado.</p>
+                              <p className="text-sm">🟢 Mayor a 8%: Alto rendimiento del capital invertido.</p>
+                            </div>
                           </TooltipContent>
                         </Tooltip>
                       </TooltipProvider>
@@ -813,8 +826,13 @@ export default function EditarPropiedadPage() {
                             <Info className="h-4 w-4 text-muted-foreground cursor-help" />
                           </TooltipTrigger>
                           <TooltipContent className="max-w-xs">
-                            <p className="text-sm">Indica el arriendo mínimo que debe generar el inmueble para cubrir todos los costos (gastos operativos + cuota del crédito).</p>
+                            <p className="text-sm font-medium mb-2">Indica el arriendo mínimo que debe generar el inmueble para cubrir todos los costos.</p>
                             <p className="text-sm mt-2">Si el arriendo real está por debajo de este valor, la inversión genera flujo negativo.</p>
+                            <div className="mt-3 space-y-1">
+                              <p className="text-sm">🔴 Arriendo menor al punto de equilibrio: Flujo negativo.</p>
+                              <p className="text-sm">🟡 Arriendo igual al punto de equilibrio: Sin pérdida ni ganancia.</p>
+                              <p className="text-sm">🟢 Arriendo mayor al punto de equilibrio: Flujo positivo saludable.</p>
+                            </div>
                           </TooltipContent>
                         </Tooltip>
                       </TooltipProvider>
