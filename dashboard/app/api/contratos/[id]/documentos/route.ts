@@ -166,12 +166,12 @@ export async function POST(
       )
     }
 
-    // Validar tamaño (máx 20MB)
-    const maxSize = 20 * 1024 * 1024 // 20MB
+    // Validar tamaño (máx 40MB)
+    const maxSize = 40 * 1024 * 1024 // 40MB
     if (file.size > maxSize) {
       console.log("❌ Archivo demasiado grande:", file.size)
       return NextResponse.json(
-        { error: "El archivo supera el tamaño máximo de 20MB" },
+        { error: "El archivo supera el tamaño máximo de 40MB" },
         { status: 400 }
       )
     }

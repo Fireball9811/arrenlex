@@ -85,7 +85,7 @@ export async function POST(request: Request) {
 
   // Validar tipo y tamaño de archivos
   const allowedTypes = ["image/jpeg", "image/jpg", "image/png", "image/webp"]
-  const maxSize = 10 * 1024 * 1024 // 10MB
+  const maxSize = 40 * 1024 * 1024 // 40MB
 
   for (const file of files) {
     if (file instanceof File) {
@@ -97,7 +97,7 @@ export async function POST(request: Request) {
       }
       if (file.size > maxSize) {
         return NextResponse.json(
-          { error: `El archivo ${file.name} es muy grande. Máximo 10MB` },
+          { error: `El archivo ${file.name} es muy grande. Máximo 40MB` },
           { status: 400 }
         )
       }

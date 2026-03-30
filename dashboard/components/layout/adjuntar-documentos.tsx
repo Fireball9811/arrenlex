@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button"
 import { createClient } from "@/lib/supabase/client"
 import { useLang } from "@/lib/i18n/context"
 
-const MAX_SIZE_BYTES = 20 * 1024 * 1024 // 20 MB
+const MAX_SIZE_BYTES = 40 * 1024 * 1024 // 40 MB
 const ALLOWED_TYPES = [
   "image/jpeg",
   "image/jpg",
