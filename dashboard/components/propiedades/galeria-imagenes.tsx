@@ -5,14 +5,15 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { X, Upload, Image as ImageIcon, Loader2, AlertCircle, Video, CheckCircle2, Trash2 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { createClient } from "@/lib/supabase/client"
+import { uploadImageToSupabase } from "@/lib/supabase-storage"
 import type { PropiedadImagen, PropiedadVideo } from "@/lib/types/database"
 
 // ─── Constantes ────────────────────────────────────────────────────────────
 const FORMATOS_FOTO = "image/jpeg,image/jpg,image/png,image/webp"
 const FORMATOS_VIDEO_ACCEPT = "video/mp4,video/webm,video/quicktime,video/x-msvideo"
-const FOTO_MAX_MB = 40
+const FOTO_MAX_MB = 50
 const FOTO_MAX_BYTES = FOTO_MAX_MB * 1024 * 1024
-const VIDEO_MAX_MB = 1024  // 1 GB
+const VIDEO_MAX_MB = 50
 const VIDEO_MAX_BYTES = VIDEO_MAX_MB * 1024 * 1024
 const VIDEO_MAX_MINUTOS = 12
 
@@ -85,7 +86,7 @@ export function GaleríaImagenes({ propiedadId, imagenes, onImagenesChange, read
     })
   }
 
-  // ─── Upload de imágenes ──────────────────────────────────────────────────
+  // ─── Upload de imágenes (directo a Supabase desde el cliente) ───────────
   const handleSubirFoto = useCallback(
     async (archivos: FileList | File[] | null, categoria: CategoriaValue) => {
       if (!archivos || archivos.length === 0) return
@@ -116,19 +117,43 @@ export function GaleríaImagenes({ propiedadId, imagenes, onImagenesChange, read
 
       setSubiendoCategoria(categoria)
       try {
-        const fd = new FormData()
-        fd.append("propiedad_id", propiedadId)
-        fd.append("categoria", categoria)
-        for (const f of aSubir) fd.append("archivo", f)
-
-        const res = await fetch("/api/propiedades/imagenes", { method: "POST", body: fd })
-        if (!res.ok) {
-          const err = await res.json()
-          setErrorImg(categoria, err.error || "Error al subir la imagen.")
+        const supabase = createClient()
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!user) {
+          setErrorImg(categoria, "Debes iniciar sesión para subir imágenes.")
           return
         }
-        const data = await res.json()
-        onImagenesChange([...imagenes, ...data])
+
+        const nuevasImagenes: PropiedadImagen[] = []
+
+        for (const archivo of aSubir) {
+          // Subir directamente a Supabase Storage
+          const { url, path } = await uploadImageToSupabase(archivo, propiedadId, categoria, user.id)
+
+          // Registrar en la base de datos vía API
+          const res = await fetch(`/api/propiedades/${propiedadId}/imagenes/registrar`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              categoria,
+              nombre_archivo: archivo.name,
+              url_publica: url,
+            }),
+          })
+
+          if (!res.ok) {
+            const err = await res.json()
+            setErrorImg(categoria, err.error || "Error al registrar la imagen.")
+            // Revertir subida
+            await supabase.storage.from("propiedades").remove([path])
+            return
+          }
+
+          const imagen = await res.json()
+          nuevasImagenes.push(imagen)
+        }
+
+        onImagenesChange([...imagenes, ...nuevasImagenes])
       } catch {
         setErrorImg(categoria, "Error de red al subir la imagen.")
       } finally {

@@ -13,6 +13,8 @@ import {
 import { Camera } from "lucide-react"
 import type { Propiedad } from "@/lib/types/database"
 import { useLang } from "@/lib/i18n/context"
+import { uploadImageToSupabase } from "@/lib/supabase-storage"
+import { createClient } from "@/lib/supabase/client"
 
 type PropiedadConPropietario = Propiedad & {
   propietario?: { id: string; nombre: string | null; email: string } | null
@@ -58,27 +60,20 @@ export default function PropiedadesPage() {
   async function handleSubirFoto(propiedadId: string, file: File) {
     setSubiendoPorId((prev) => ({ ...prev, [propiedadId]: true }))
 
-    const formData = new FormData()
-    formData.append("propiedad_id", propiedadId)
-    formData.append("categoria", "fachada")
-    formData.append("archivo", file)
-
     try {
-      const res = await fetch("/api/propiedades/imagenes", {
-        method: "POST",
-        body: formData,
-      })
-
-      const data = await res.json()
-      if (data.error) {
-        alert(data.error || "Error al subir la foto")
+      const supabase = createClient()
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) {
+        alert("Debes iniciar sesión para subir imágenes.")
         return
       }
-      // La API devuelve un array de imágenes
-      const imagenes = Array.isArray(data) ? data : []
-      if (imagenes.length > 0 && imagenes[0].url_publica) {
-        setImagenPorPropiedadId((prev) => ({ ...prev, [propiedadId]: imagenes[0].url_publica }))
-      }
+
+      // Subir directamente a Supabase Storage
+      const { url } = await uploadImageToSupabase(file, propiedadId, "fachada", user.id)
+
+      setImagenPorPropiedadId((prev) => ({ ...prev, [propiedadId]: url }))
+    } catch (error) {
+      alert(error instanceof Error ? error.message : "Error al subir la foto")
     } finally {
       setSubiendoPorId((prev) => ({ ...prev, [propiedadId]: false }))
     }
