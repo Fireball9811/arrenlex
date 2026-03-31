@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
+import { FileEdit } from "lucide-react"
 import {
   Card,
   CardContent,
@@ -221,6 +222,12 @@ export default function PropietarioContratosPage() {
                       <div className="flex justify-end gap-2">
                         <Button variant="outline" size="sm" asChild>
                           <Link href={`/propietario/contratos/${c.id}`}>Ver</Link>
+                        </Button>
+                        <Button variant="outline" size="sm" asChild>
+                          <Link href={`/contratos/${c.id}/editar`}>
+                            <FileEdit className="h-4 w-4 mr-1" />
+                            Editar
+                          </Link>
                         </Button>
                       </div>
                     </td>

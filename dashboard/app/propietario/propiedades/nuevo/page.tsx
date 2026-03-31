@@ -1,12 +1,13 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { ServiciosPropiedad } from "@/components/propiedades/servicios-propiedad"
 import { ArrowLeft, CheckCircle, Save, Zap } from "lucide-react"
+import { createClient } from "@/lib/supabase/client"
 
 const formatMoneda = (valor: number): string =>
   new Intl.NumberFormat("es-CO", {
@@ -41,6 +42,34 @@ export default function NuevaPropiedadPage() {
   const [cuentaTipo, setCuentaTipo] = useState("")
   const [cuentaNumero, setCuentaNumero] = useState("")
   const [cuentaTitular, setCuentaTitular] = useState("")
+  const [llaveBancaria, setLlaveBancaria] = useState("")
+
+  // Cargar automáticamente los datos bancarios del perfil del propietario
+  useEffect(() => {
+    const loadBankData = async () => {
+      const supabase = createClient()
+      const { data: { user } } = await supabase.auth.getUser()
+
+      if (user) {
+        // Obtener todos los datos bancarios del perfil del usuario
+        const { data: perfil } = await supabase
+          .from("perfiles")
+          .select("nombre, cuenta_bancaria_1_entidad, cuenta_bancaria_1_numero, cuenta_bancaria_1_tipo, llave_bancaria_1")
+          .eq("id", user.id)
+          .single()
+
+        if (perfil) {
+          // Llenar campos automáticamente si existen datos
+          if (perfil.nombre) setCuentaTitular(perfil.nombre)
+          if (perfil.cuenta_bancaria_1_entidad) setCuentaEntidad(perfil.cuenta_bancaria_1_entidad)
+          if (perfil.cuenta_bancaria_1_numero) setCuentaNumero(perfil.cuenta_bancaria_1_numero)
+          if (perfil.cuenta_bancaria_1_tipo) setCuentaTipo(perfil.cuenta_bancaria_1_tipo)
+          if (perfil.llave_bancaria_1) setLlaveBancaria(perfil.llave_bancaria_1)
+        }
+      }
+    }
+    loadBankData()
+  }, [])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -74,6 +103,7 @@ export default function NuevaPropiedadPage() {
           cuenta_bancaria_tipo: cuentaTipo || null,
           cuenta_bancaria_numero: cuentaNumero.trim() || null,
           cuenta_bancaria_titular: cuentaTitular.trim() || null,
+          llave_bancaria: llaveBancaria.trim() || null,
         }),
       })
       if (!res.ok) {
@@ -192,14 +222,19 @@ export default function NuevaPropiedadPage() {
                   disabled={guardado}
                 >
                   <option value="">Seleccionar...</option>
-                  <option value="apartamento">Apartamento</option>
                   <option value="apartaestudio">Apartaestudio</option>
+                  <option value="apartamento">Apartamento</option>
+                  <option value="bodega">Bodega</option>
                   <option value="casa">Casa</option>
+                  <option value="casaquinta">Casa Quinta</option>
+                  <option value="deposito">Depósito</option>
+                  <option value="finca">Finca</option>
+                  <option value="glamping">Glamping</option>
                   <option value="habitacion">Habitación</option>
                   <option value="local">Local</option>
-                  <option value="oficina">Oficina</option>
                   <option value="lote">Lote</option>
-                  <option value="finca">Finca</option>
+                  <option value="oficina">Oficina</option>
+                  <option value="parqueadero">Parqueadero</option>
                 </select>
               </div>
               <div>
@@ -328,9 +363,12 @@ export default function NuevaPropiedadPage() {
           <CardHeader>
             <CardTitle>Información Legal y Bancaria</CardTitle>
             <CardDescription>Datos de matrícula y cuenta para consignación del arriendo</CardDescription>
+            <p className="text-xs text-muted-foreground mt-1">
+              ✓ Los datos bancarios se cargaron automáticamente de tu perfil. Puedes editarlos si es necesario.
+            </p>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <div>
                 <label className="mb-1 block text-sm font-medium">Matrícula Inmobiliaria</label>
                 <Input
@@ -347,8 +385,11 @@ export default function NuevaPropiedadPage() {
                   onChange={(e) => setCuentaEntidad(e.target.value)}
                   autoComplete="off"
                   disabled={guardado}
+                  placeholder="Ej: Bancolombia, Nequi, Davivienda..."
                 />
               </div>
+            </div>
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
               <div>
                 <label className="mb-1 block text-sm font-medium">Tipo de Cuenta</label>
                 <select
@@ -362,8 +403,6 @@ export default function NuevaPropiedadPage() {
                   <option value="corriente">Corriente</option>
                 </select>
               </div>
-            </div>
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <div>
                 <label className="mb-1 block text-sm font-medium">Número de Cuenta</label>
                 <Input
@@ -374,12 +413,24 @@ export default function NuevaPropiedadPage() {
                 />
               </div>
               <div>
-                <label className="mb-1 block text-sm font-medium">Titular de la Cuenta</label>
+                <label className="mb-1 block text-sm font-medium">Llave Bancaria</label>
+                <Input
+                  value={llaveBancaria}
+                  onChange={(e) => setLlaveBancaria(e.target.value)}
+                  autoComplete="off"
+                  disabled={guardado}
+                  placeholder="Opcional"
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-sm font-medium">Titular</label>
                 <Input
                   value={cuentaTitular}
                   onChange={(e) => setCuentaTitular(e.target.value)}
                   autoComplete="off"
                   disabled={guardado}
+                  className="bg-muted/50"
+                  placeholder="Tu nombre"
                 />
               </div>
             </div>

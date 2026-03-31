@@ -167,6 +167,7 @@ export async function POST(request: Request) {
         cuenta_bancaria_tipo: body.cuenta_bancaria_tipo || null,
         cuenta_bancaria_numero: body.cuenta_bancaria_numero || null,
         cuenta_bancaria_titular: body.cuenta_bancaria_titular || null,
+        llave_bancaria: body.llave_bancaria || null,
         valor_inmueble: body.valor_inmueble ? Number(body.valor_inmueble) : null,
         gastos_operativos: body.gastos_operativos ? Number(body.gastos_operativos) : null,
         cap: body.cap ? Number(body.cap) : null,

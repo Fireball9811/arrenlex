@@ -44,6 +44,7 @@ export async function GET(request: Request) {
     )
 
     // Obtener todas las propiedades según el rol
+    // Solo propiedades que NO estén arrendadas
     let query = admin.from("propiedades").select("*")
 
     if (role === "propietario") {
@@ -51,6 +52,7 @@ export async function GET(request: Request) {
     }
 
     const { data: todasPropiedades, error: errorPropiedades } = await query
+      .neq("estado", "arrendado")  // Excluir propiedades arrendadas
       .order("created_at", { ascending: false })
 
     if (errorPropiedades) {
@@ -58,9 +60,9 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: errorPropiedades.message }, { status: 500 })
     }
 
-    // Filtrar propiedades sin contrato activo
+    // Filtrar propiedades sin contrato activo Y que no estén arrendadas
     const propiedadesDisponibles = (todasPropiedades || []).filter(
-      p => !propiedadesOcupadas.has(p.id)
+      p => !propiedadesOcupadas.has(p.id) && p.estado !== "arrendado"
     )
 
     console.log("✓ Propiedades disponibles:", propiedadesDisponibles.length, "de", todasPropiedades?.length || 0)
