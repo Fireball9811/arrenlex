@@ -1,13 +1,17 @@
 import { NextResponse } from "next/server"
-import { createClient } from "@/lib/supabase/server"
-import { createAdminClient } from "@/lib/supabase/admin"
-import { getUserRole } from "@/lib/auth/role"
 
 /**
- * DEBUG endpoint - Verifica las propiedades del usuario autenticado
- * Accede a: http://localhost:3000/api/debug-propiedades
+ * DEBUG endpoint - deshabilitado en producción
  */
 export async function GET() {
+  if (process.env.NODE_ENV === "production") {
+    return NextResponse.json({ error: "Not found" }, { status: 404 })
+  }
+
+  const { createClient } = await import("@/lib/supabase/server")
+  const { createAdminClient } = await import("@/lib/supabase/admin")
+  const { getUserRole } = await import("@/lib/auth/role")
+
   try {
     const supabase = await createClient()
     const {
@@ -21,26 +25,22 @@ export async function GET() {
     const role = await getUserRole(supabase, user)
     const admin = createAdminClient()
 
-    // 1. Verificar perfil del usuario
     const { data: perfil, error: errorPerfil } = await admin
       .from("perfiles")
       .select("*")
       .eq("user_id", user.id)
       .single()
 
-    // 2. Buscar propiedades por propietario_id
     const { data: porPropietarioId, error: errorPropietarioId, count: countPropietarioId } = await admin
       .from("propiedades")
       .select("id, titulo, propietario_id, user_id, ciudad", { count: "exact" })
       .eq("propietario_id", user.id)
 
-    // 3. Buscar propiedades por user_id
     const { data: porUserId, error: errorUserId, count: countUserId } = await admin
       .from("propiedades")
       .select("id, titulo, propietario_id, user_id, ciudad", { count: "exact" })
       .eq("user_id", user.id)
 
-    // 4. Ver un ejemplo de propiedad para conocer su estructura
     const { data: ejemplos, error: errorEjemplos } = await admin
       .from("propiedades")
       .select("*")
@@ -85,8 +85,8 @@ export async function GET() {
       diagnostico: {
         tienePropioedaresConPropietarioId: (porPropietarioId?.length || 0) > 0,
         tienePropioedaresConUserId: (porUserId?.length || 0) > 0,
-        recomendacion: porPropietarioId?.length ? 
-          "✅ Usa propietario_id para filtrar" : 
+        recomendacion: porPropietarioId?.length ?
+          "✅ Usa propietario_id para filtrar" :
           porUserId?.length ?
           "✅ Usa user_id para filtrar" :
           "❌ No hay propiedades asignadas a este usuario",
@@ -97,7 +97,6 @@ export async function GET() {
   } catch (error) {
     return NextResponse.json({
       error: error instanceof Error ? error.message : "Error desconocido",
-      stack: error instanceof Error ? error.stack : null,
     }, { status: 500 })
   }
 }
