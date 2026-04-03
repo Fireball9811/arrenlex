@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { getUserRole } from "@/lib/auth/role"
+import { handleSupabaseError, handleApiError } from "@/lib/api-error"
 
 // GET - Listar contratos del usuario
 export async function GET(request: Request) {
@@ -76,7 +77,7 @@ export async function GET(request: Request) {
 
   if (error) {
     console.error("❌ Error en query:", error)
-    return NextResponse.json({ error: error.message }, { status: 500 })
+    return handleSupabaseError("contratos GET", error)
   }
 
   console.log("✓ Contratos encontrados:", data?.length || 0)
@@ -219,7 +220,7 @@ export async function POST(request: Request) {
 
   if (error) {
     console.error("❌ Error insertando contrato:", error.message, error.details, error.hint)
-    return NextResponse.json({ error: error.message, details: error.details }, { status: 500 })
+    return handleSupabaseError("contratos POST", error)
   }
 
   console.log("✓ Contrato creado exitosamente:", data?.id)

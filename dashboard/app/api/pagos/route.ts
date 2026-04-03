@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { getUserRole } from "@/lib/auth/role"
+import { handleSupabaseError } from "@/lib/api-error"
 
 /**
  * GET - Lista pagos. Admin: todos. Propietario: solo los de sus contratos.
@@ -49,7 +50,7 @@ export async function GET(request: Request) {
     .order("created_at", { ascending: false })
 
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 })
+    return handleSupabaseError("pagos GET", error)
   }
 
   // Normalizar: Supabase puede devolver relaciones anidadas como array u objeto
@@ -185,7 +186,7 @@ export async function POST(request: Request) {
   const { data, error } = await supabase.from("pagos").insert(insert).select().single()
 
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 })
+    return handleSupabaseError("pagos POST", error)
   }
 
   return NextResponse.json(data)
