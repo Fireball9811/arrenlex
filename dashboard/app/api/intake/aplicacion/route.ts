@@ -223,7 +223,7 @@ export async function POST(request: Request) {
   }).catch((err) => console.error("[intake/aplicacion] Error enviando emails:", err))
 
   // Enviar WhatsApp al CEO
-  sendWhatsAppCEO(
+  const waResult = await sendWhatsAppCEO(
     buildAplicacionWhatsAppText({
       propiedadRef,
       canonArriendo: propiedad.valor_arriendo ?? null,
@@ -238,7 +238,11 @@ export async function POST(request: Request) {
       mascotas: toNullableInt(mascotas),
       negocio: toNullableText(negocio),
     })
-  ).catch((err) => console.error("[intake/aplicacion] Error enviando WhatsApp:", err))
+  ).catch((err) => {
+    console.error("[intake/aplicacion] Error enviando WhatsApp:", err)
+    return { success: false, error: String(err) }
+  })
+  console.log("[intake/aplicacion] WhatsApp result:", JSON.stringify(waResult))
 
   return NextResponse.json({ id: inserted?.id, ok: true }, { status: 201 })
 }
