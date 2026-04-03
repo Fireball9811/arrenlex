@@ -87,23 +87,6 @@ export async function POST(request: Request) {
           )
         }
 
-        // #region agent log
-        fetch("http://127.0.0.1:7242/ingest/ff442eb1-c8fb-4919-a950-d18bdf14310b", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            location: "invitaciones/route.ts:reinvite_before_update",
-            message: "Re-invitación: usuario existente, email_confirmed_at",
-            data: {
-              email: emailTrimmed,
-              userId: existingUser.id,
-              email_confirmed_at: (existingUser as { email_confirmed_at?: string }).email_confirmed_at ?? null,
-              hypothesisId: "H1",
-            },
-            timestamp: Date.now(),
-          }),
-        }).catch(() => {})
-        // #endregion
         const { error: updateError } = await admin.auth.admin.updateUserById(
           existingUser.id,
           {
@@ -158,24 +141,6 @@ export async function POST(request: Request) {
         { status: 500 }
       )
     }
-
-    // #region agent log
-    fetch("http://127.0.0.1:7242/ingest/ff442eb1-c8fb-4919-a950-d18bdf14310b", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        location: "invitaciones/route.ts:new_user_created",
-        message: "Nuevo usuario creado, email_confirmed_at",
-        data: {
-          email: emailTrimmed,
-          userId: newUser.user.id,
-          email_confirmed_at: (newUser.user as { email_confirmed_at?: string }).email_confirmed_at ?? null,
-          hypothesisId: "H3",
-        },
-        timestamp: Date.now(),
-      }),
-    }).catch(() => {})
-    // #endregion
 
     const nombreFinal =
       typeof bodyNombre === "string" && bodyNombre.trim()

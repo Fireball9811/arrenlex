@@ -2,17 +2,11 @@ import { NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 import { createAdminClient, isAdmin } from "@/lib/supabase/admin"
 
-interface RouteContext {
-  params: Promise<{ id: string }>
-}
-
 /**
  * POST - Crea un usuario de sistema para un arrendatario que tiene contrato activo
  * y envía las credenciales por correo electrónico
  */
 export async function POST(request: Request) {
-  console.log("🔵 [crear-usuario-arrendatario] POST iniciado")
-
   const supabase = await createClient()
   const {
     data: { user },
@@ -82,8 +76,6 @@ export async function POST(request: Request) {
     arrendatarioId: arrendatarioId,
   }
 
-  console.log("✓ Creando usuario para arrendatario:", { email, userData })
-
   try {
     // Crear el usuario usando el sistema de invitaciones de Supabase
     const { data: inviteData, error: inviteError } = await admin.auth.admin.inviteUserByEmail(
@@ -96,17 +88,11 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: inviteError.message }, { status: 500 })
     }
 
-    console.log("✓ Usuario creado exitosamente:", inviteData)
-
-    // Generar una contraseña temporal y enviarla por correo
-    const passwordTemporal = generarContrasenaTemporal()
-
     // Obtener el ID del usuario creado desde auth.users
     let nuevoUserId: string | null = null
     if (inviteData?.user?.id) {
       nuevoUserId = inviteData.user.id
     } else {
-      // Si no viene en inviteData, buscar por email
       const { data: usersList } = await admin.auth.admin.listUsers({ perPage: 1000 })
       const nuevoUser = usersList?.users.find(u => u.email?.toLowerCase() === email.toLowerCase())
       nuevoUserId = nuevoUser?.id || null
@@ -126,7 +112,7 @@ export async function POST(request: Request) {
       console.error("⚠️ Error actualizando perfil:", updateError)
     }
 
-    // IMPORTANTE: Vincular el user_id con el arrendatario
+    // Vincular el user_id con el arrendatario
     if (nuevoUserId) {
       const { error: updateArrendatarioError } = await admin
         .from("arrendatarios")
@@ -135,54 +121,24 @@ export async function POST(request: Request) {
 
       if (updateArrendatarioError) {
         console.error("⚠️ Error vinculando user_id con arrendatario:", updateArrendatarioError)
-      } else {
-        console.log("✓ Arrendatario vinculado con user_id:", nuevoUserId)
       }
     }
 
-    // Enviar correo con las credenciales
-    await enviarCredencialesPorCorreo(email, userData.nombre, passwordTemporal)
-
     return NextResponse.json({
       success: true,
-      message: "Usuario creado y credenciales enviadas por correo",
+      message: "Usuario creado y correo de invitación enviado",
       email: email,
     })
 
   } catch (error: any) {
     console.error("❌ Error creando usuario:", error)
-    return NextResponse.json({ error: error.message }, { status: 500 })
+    return NextResponse.json({ error: "Error al crear usuario" }, { status: 500 })
   }
 }
 
 function generarContrasenaTemporal(): string {
   const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%"
-  let password = ""
-  for (let i = 0; i < 12; i++) {
-    password += chars.charAt(Math.floor(Math.random() * chars.length))
-  }
-  return password
-}
-
-async function enviarCredencialesPorCorreo(email: string, nombre: string, password: string) {
-  // TODO: Implementar el envío real de correo
-  // Por ahora, solo loguear las credenciales
-  console.log("📧 [CORREO] Enviando credenciales a:", email)
-  console.log("📧 [CORREO] Asunto: Credenciales de acceso a Arrenlex")
-  console.log("📧 [CORREO] Contenido:")
-  console.log(`  Hola ${nombre},`)
-  console.log(`  Tu cuenta de Arrenlex ha sido creada exitosamente.`)
-  console.log(`  Correo: ${email}`)
-  console.log(`  Contraseña temporal: ${password}`)
-  console.log(`  Por favor, cambia tu contraseña al iniciar sesión por primera vez.`)
-  console.log(`  Ingresa a: ${process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"}`)
-
-  // En producción, aquí se usaría un servicio de correo como Resend, SendGrid, etc.
-  // const resend = new Resend(process.env.RESEND_API_KEY)
-  // await resend.emails.send({
-  //   from: "Arrenlex <noreply@arrenlex.com>",
-  //   to: email,
-  //   subject: "Tus credenciales de acceso a Arrenlex",
-  //   html: `...`
-  // })
+  const array = new Uint32Array(12)
+  crypto.getRandomValues(array)
+  return Array.from(array).map(n => chars[n % chars.length]).join("")
 }

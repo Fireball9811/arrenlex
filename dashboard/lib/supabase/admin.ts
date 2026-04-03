@@ -25,10 +25,9 @@ export function createAdminClient() {
 export function isAdmin(email: string | undefined): boolean {
   if (!email) return false
   const admins = process.env.ADMIN_EMAILS ?? ""
-  const placeholder = "REEMPLAZA_CON_TU_EMAIL"
 
-  if (!admins.trim() || admins.trim() === placeholder) {
-    return true
+  if (!admins.trim()) {
+    return false
   }
 
   return admins.split(",").some((e) => e.trim().toLowerCase() === email.toLowerCase())

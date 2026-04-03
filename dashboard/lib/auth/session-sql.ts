@@ -2,8 +2,13 @@ import { SignJWT, jwtVerify } from "jose"
 import { cookies } from "next/headers"
 
 const COOKIE_NAME = "arrenlex_session"
-const JWT_SECRET = process.env.JWT_SECRET ?? process.env.AUTH_SECRET ?? "change-me-in-production"
-const SECRET = new TextEncoder().encode(JWT_SECRET)
+
+const JWT_SECRET_RAW = process.env.JWT_SECRET ?? process.env.AUTH_SECRET
+if (!JWT_SECRET_RAW) {
+  throw new Error("JWT_SECRET o AUTH_SECRET no está configurado en las variables de entorno")
+}
+const SECRET = new TextEncoder().encode(JWT_SECRET_RAW)
+
 const JWT_ISSUER = "arrenlex"
 const JWT_AUDIENCE = "arrenlex-app"
 const EXPIRY = "7d"
