@@ -1,3 +1,10 @@
+/**
+ * @deprecated Este sistema de autenticación SQL/JWT no está en uso.
+ * El frontend usa Supabase Auth directamente (supabase.auth.signInWithPassword).
+ * El middleware y todos los API routes usan supabase.auth.getUser().
+ * Este archivo puede eliminarse en una limpieza futura si se confirma que
+ * ningún flujo lo invoca.
+ */
 import { SignJWT, jwtVerify } from "jose"
 import { cookies } from "next/headers"
 
