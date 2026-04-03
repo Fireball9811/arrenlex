@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server"
+import { handleSupabaseError, handleApiError } from "@/lib/api-error"
 
 export async function GET(request: Request) {
   console.log("🔵 [propiedades] GET iniciado")
@@ -182,20 +183,14 @@ export async function POST(request: Request) {
 
     if (error) {
       console.error("❌ Error creando propiedad:", error)
-      return NextResponse.json(
-        { error: error.message },
-        { status: 500 }
-      )
+      return handleSupabaseError("propiedades POST", error)
     }
 
     console.log("✓ Propiedad creada con matrícula:", numeroMatricula)
     return NextResponse.json(data)
 
-  } catch (err: any) {
-    console.error("❌ ERROR GENERAL:", err?.message || err)
-    return NextResponse.json(
-      { error: "Error interno del servidor", details: err?.message },
-      { status: 500 }
-    )
+  } catch (err: unknown) {
+    console.error("❌ ERROR GENERAL:", err)
+    return handleApiError("propiedades POST", err)
   }
 }
