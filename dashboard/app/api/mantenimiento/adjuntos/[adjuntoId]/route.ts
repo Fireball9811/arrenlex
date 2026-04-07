@@ -39,7 +39,7 @@ export async function GET(
 
   if (errAdj || !adjunto) return NextResponse.json({ error: "Not found" }, { status: 404 })
 
-  const gestion = adjunto.mantenimiento_gestiones as {
+  const gestion = (adjunto.mantenimiento_gestiones as unknown) as {
     solicitud_id: string
     solicitudes_mantenimiento: { propiedades: { user_id?: string } | null } | null
   } | null
@@ -92,7 +92,7 @@ export async function DELETE(
 
   if (errAdj || !adjunto) return NextResponse.json({ error: "Not found" }, { status: 404 })
 
-  const gestion = adjunto.mantenimiento_gestiones as {
+  const gestion = (adjunto.mantenimiento_gestiones as unknown) as {
     solicitudes_mantenimiento: { propiedades: { user_id?: string } | null } | null
   } | null
 

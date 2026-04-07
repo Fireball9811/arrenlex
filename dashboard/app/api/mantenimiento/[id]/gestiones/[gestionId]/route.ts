@@ -38,7 +38,7 @@ export async function PATCH(
 
   if (errG || !gestion) return NextResponse.json({ error: "Not found" }, { status: 404 })
 
-  const solicitud = gestion.solicitudes_mantenimiento as {
+  const solicitud = (gestion.solicitudes_mantenimiento as unknown) as {
     propiedad_id: string
     propiedades: { user_id?: string } | null
   } | null
@@ -103,7 +103,7 @@ export async function DELETE(
 
   if (errG || !gestion) return NextResponse.json({ error: "Not found" }, { status: 404 })
 
-  const solicitud = gestion.solicitudes_mantenimiento as {
+  const solicitud = (gestion.solicitudes_mantenimiento as unknown) as {
     propiedades: { user_id?: string } | null
   } | null
   if (role === "propietario" && solicitud?.propiedades?.user_id !== user.id) {

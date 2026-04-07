@@ -223,7 +223,7 @@ export async function GET(
       }
     }
 
-    const pdfFinal = await pdfDoc.save()
+    const pdfFinal = Buffer.from(await pdfDoc.save())
 
     const nombreArchivo = [
       "Inventario",
