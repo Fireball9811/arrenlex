@@ -112,7 +112,7 @@ export default function PropietarioPendientesMesPage() {
     <div suppressHydrationWarning>
       <div className="mb-6">
         <Link
-          href="/propietario/reportes"
+          href="/reportes"
           className="mb-2 flex items-center gap-2 text-sm text-muted-foreground hover:underline"
         >
           <ArrowLeft className="h-4 w-4" />

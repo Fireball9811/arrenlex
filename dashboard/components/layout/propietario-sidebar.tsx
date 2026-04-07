@@ -52,7 +52,7 @@ export function PropietarioSidebar() {
         <Link href="/propietario/recibos" className="block rounded p-2 transition hover:bg-indigo-800">
           {t.sidebar.recibos}
         </Link>
-        <Link href="/propietario/reportes" className="block rounded p-2 transition hover:bg-indigo-800">
+        <Link href="/reportes" className="block rounded p-2 transition hover:bg-indigo-800">
           {t.sidebar.reportes}
         </Link>
         <Link href="/nuevo" className="block rounded p-2 transition hover:bg-indigo-800">
