@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState, useCallback } from "react"
+import Link from "next/link"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Button } from "@/components/ui/button"
@@ -169,7 +170,6 @@ export default function MantenimientoPage() {
 
   const parseLocalDate = (s: string): Date | null => {
     if (!s) return null
-    // Strings solo-fecha (YYYY-MM-DD) deben parsearse en hora local, no UTC
     if (/^\d{4}-\d{2}-\d{2}$/.test(s)) {
       const [y, m, d] = s.split("-").map(Number)
       return new Date(y, m - 1, d)
@@ -433,62 +433,71 @@ export default function MantenimientoPage() {
               {STATUS_MANT_VALUES.map((value) => {
                 const filtered = solicitudes.filter((s) => s.status === value)
                 return (
-                <TabsContent key={value} value={value} className="mt-4">
-                  {filtered.length === 0 ? (
-                    <p className="py-8 text-muted-foreground">{t.mantenimiento.sinSolicitudes}</p>
-                  ) : (
-                    <div className="overflow-x-auto">
-                      <table className="w-full text-sm">
-                        <thead>
-                          <tr className="border-b">
-                            <th className="p-2 text-left font-medium">{t.mantenimiento.columnas.nombre}</th>
-                            <th className="p-2 text-left font-medium">{t.mantenimiento.columnas.propiedad}</th>
-                            <th className="p-2 text-left font-medium">{t.mantenimiento.columnas.detalle}</th>
-                            <th className="p-2 text-left font-medium">{t.mantenimiento.columnas.desdeCuando}</th>
-                            <th className="p-2 text-left font-medium">{t.mantenimiento.columnas.responsable}</th>
-                            <th className="p-2 text-left font-medium">{t.mantenimiento.columnas.fecha}</th>
-                            <th className="p-2 text-left font-medium">{t.mantenimiento.columnas.estado}</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {filtered.map((s) => (
-                            <tr key={s.id} className="border-b">
-                              <td className="p-2">{s.nombre_completo}</td>
-                              <td className="max-w-[200px] truncate p-2" title={refPropiedad(s)}>
-                                {refPropiedad(s)}
-                              </td>
-                              <td className="max-w-[200px] truncate p-2" title={s.detalle}>
-                                {s.detalle || "—"}
-                              </td>
-                              <td className="p-2 whitespace-nowrap">
-                                {diasDesde(s.desde_cuando, s.created_at).dias}
-                              </td>
-                              <td className="p-2">{s.responsable || "—"}</td>
-                              <td className="p-2">{formatDate(s.created_at)}</td>
-                              <td className="p-2">
-                                <select
-                                  value={s.status}
-                                  onChange={(e) => handleChangeStatus(s.id, e.target.value)}
-                                  disabled={updatingId === s.id}
-                                  className="rounded border bg-background px-2 py-1 text-sm"
-                                >
-                                  {STATUS_MANT_VALUES.map((val) => (
-                                    <option key={val} value={val}>
-                                      {t.mantenimiento.estados[val as keyof typeof t.mantenimiento.estados]}
-                                    </option>
-                                  ))}
-                                </select>
-                                {updatingId === s.id && (
-                                  <span className="ml-1 text-xs text-muted-foreground">{t.mantenimiento.guardando}</span>
-                                )}
-                              </td>
+                  <TabsContent key={value} value={value} className="mt-4">
+                    {filtered.length === 0 ? (
+                      <p className="py-8 text-muted-foreground">{t.mantenimiento.sinSolicitudes}</p>
+                    ) : (
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-sm">
+                          <thead>
+                            <tr className="border-b">
+                              <th className="p-2 text-left font-medium">{t.mantenimiento.columnas.nombre}</th>
+                              <th className="p-2 text-left font-medium">{t.mantenimiento.columnas.propiedad}</th>
+                              <th className="p-2 text-left font-medium">{t.mantenimiento.columnas.detalle}</th>
+                              <th className="p-2 text-left font-medium">{t.mantenimiento.columnas.desdeCuando}</th>
+                              <th className="p-2 text-left font-medium">{t.mantenimiento.columnas.responsable}</th>
+                              <th className="p-2 text-left font-medium">{t.mantenimiento.columnas.fecha}</th>
+                              <th className="p-2 text-left font-medium">{t.mantenimiento.columnas.estado}</th>
+                              <th className="p-2 text-left font-medium">{t.mantenimiento.columnas.acciones ?? t.mensajes.columnas.acciones}</th>
                             </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  )}
-                </TabsContent>
+                          </thead>
+                          <tbody>
+                            {filtered.map((s) => (
+                              <tr key={s.id} className="border-b">
+                                <td className="p-2">{s.nombre_completo}</td>
+                                <td className="max-w-[200px] truncate p-2" title={refPropiedad(s)}>
+                                  {refPropiedad(s)}
+                                </td>
+                                <td className="max-w-[200px] truncate p-2" title={s.detalle}>
+                                  {s.detalle || "—"}
+                                </td>
+                                <td className="p-2 whitespace-nowrap">
+                                  {diasDesde(s.desde_cuando, s.created_at).dias}
+                                </td>
+                                <td className="p-2">{s.responsable || "—"}</td>
+                                <td className="p-2">{formatDate(s.created_at)}</td>
+                                <td className="p-2">
+                                  <select
+                                    value={s.status}
+                                    onChange={(e) => handleChangeStatus(s.id, e.target.value)}
+                                    disabled={updatingId === s.id}
+                                    className="rounded border bg-background px-2 py-1 text-sm"
+                                  >
+                                    {STATUS_MANT_VALUES.map((val) => (
+                                      <option key={val} value={val}>
+                                        {t.mantenimiento.estados[val as keyof typeof t.mantenimiento.estados]}
+                                      </option>
+                                    ))}
+                                  </select>
+                                  {updatingId === s.id && (
+                                    <span className="ml-1 text-xs text-muted-foreground">{t.mantenimiento.guardando}</span>
+                                  )}
+                                </td>
+                                <td className="p-2">
+                                  <Link
+                                    href={`/mantenimiento/${s.id}`}
+                                    className="inline-flex items-center rounded border px-2 py-1 text-xs font-medium hover:bg-muted transition-colors"
+                                  >
+                                    {t.mantenimiento.verRegistros}
+                                  </Link>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </TabsContent>
                 )
               })}
             </Tabs>

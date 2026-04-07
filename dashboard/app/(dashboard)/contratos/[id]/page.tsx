@@ -12,7 +12,7 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import type { ContratoConRelaciones } from "@/lib/types/database"
-import { FileText, Download, Edit, ArrowLeft, Trash2 } from "lucide-react"
+import { FileText, Download, Edit, ArrowLeft, Trash2, ClipboardList } from "lucide-react"
 import { DocumentosContrato } from "@/components/contratos/documentos-contrato"
 import { RecibosContrato } from "@/components/contratos/recibos-contrato"
 
@@ -43,6 +43,10 @@ export default function ContratoDetallePage() {
     if (res.ok) {
       router.push("/contratos")
     }
+  }
+
+  async function handleDownloadInventario() {
+    window.open(`/api/contratos/${params.id}/inventario-pdf`, "_blank")
   }
 
   async function handleDownloadPDF() {
@@ -111,6 +115,10 @@ export default function ContratoDetallePage() {
           <Button variant="outline" onClick={handleDownloadPDF}>
             <Download className="mr-2 h-4 w-4" />
             Descargar PDF
+          </Button>
+          <Button variant="outline" onClick={handleDownloadInventario}>
+            <ClipboardList className="mr-2 h-4 w-4" />
+            Inventario PDF
           </Button>
           <Button variant="outline" asChild>
             <Link href={`/contratos/${contrato.id}/editar`}>

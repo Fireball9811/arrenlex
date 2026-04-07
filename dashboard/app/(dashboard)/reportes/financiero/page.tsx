@@ -29,6 +29,13 @@ export default function FinancieroPage() {
       icon: "⏳",
       color: "bg-amber-50 border-amber-200",
     },
+    {
+      title: t.mantenimiento.rentabilidad.cardTitulo,
+      description: t.mantenimiento.rentabilidad.cardDesc,
+      href: "/reportes/financiero/rentabilidad",
+      icon: "📊",
+      color: "bg-green-50 border-green-200",
+    },
   ]
 
   return (

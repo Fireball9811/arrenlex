@@ -6,7 +6,48 @@ import { getUserRole } from "@/lib/auth/role"
 const VALID_STATUSES = ["pendiente", "ejecucion", "completado"] as const
 
 /**
- * PATCH - Actualiza el status y opcionalmente el responsable de una solicitud de mantenimiento.
+ * GET /api/mantenimiento/[id]
+ * Devuelve una solicitud de mantenimiento con datos de la propiedad.
+ * Solo admin y propietario de la propiedad.
+ */
+export async function GET(
+  _req: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const { id } = await params
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+
+  if (!user) return NextResponse.json({ error: "No autorizado" }, { status: 401 })
+
+  const role = await getUserRole(supabase, user)
+  if (role === "inquilino") return NextResponse.json({ error: "No autorizado" }, { status: 403 })
+
+  const admin = createAdminClient()
+
+  const { data, error } = await admin
+    .from("solicitudes_mantenimiento")
+    .select(`
+      id, propiedad_id, nombre_completo, detalle, desde_cuando,
+      responsable, status, arrendatario_id, created_at,
+      propiedades ( id, direccion, ciudad, barrio, user_id )
+    `)
+    .eq("id", id)
+    .single()
+
+  if (error || !data) return NextResponse.json({ error: "Solicitud no encontrada" }, { status: 404 })
+
+  const prop = data.propiedades as { user_id?: string } | null
+  if (role === "propietario" && prop?.user_id !== user.id) {
+    return NextResponse.json({ error: "No autorizado" }, { status: 403 })
+  }
+
+  return NextResponse.json(data)
+}
+
+/**
+ * PATCH /api/mantenimiento/[id]
+ * Actualiza el status y opcionalmente el responsable de una solicitud de mantenimiento.
  * Solo admin o propietario de la propiedad asociada.
  * Body: { status?: 'pendiente' | 'ejecucion' | 'completado', responsable?: string }
  */
