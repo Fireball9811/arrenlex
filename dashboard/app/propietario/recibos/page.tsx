@@ -59,6 +59,7 @@ export default function RecibosPage() {
 
   const getEstadoColor = (estado: string) => {
     switch (estado?.toLowerCase()) {
+      case "completado":
       case "emitido":
         return "bg-green-100 text-green-800"
       case "borrador":

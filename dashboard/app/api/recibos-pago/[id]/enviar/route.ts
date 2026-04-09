@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin"
+import { getUserRole } from "@/lib/auth/role"
 import { Resend } from 'resend'
 
 const resend = new Resend(process.env.RESEND_API_KEY)
@@ -19,29 +20,46 @@ export async function POST(
     return NextResponse.json({ error: "No autorizado" }, { status: 401 })
   }
 
-  // Obtener email personalizado del body
-  let customEmail = null
+  const role = await getUserRole(supabase, user)
+  if (role !== "admin" && role !== "propietario") {
+    return NextResponse.json({ error: "No autorizado" }, { status: 403 })
+  }
+
+  // Obtener emails del body (arrendatario y propietario)
+  let emailsToSend: string[] = []
   try {
     const body = await request.json()
-    customEmail = body.email
+    if (body.emails && Array.isArray(body.emails)) {
+      emailsToSend = body.emails.filter((e: string) => e && e.trim() !== "")
+    } else if (body.email) {
+      emailsToSend = [body.email]
+    }
   } catch {
     // Si no hay body, continuar sin email personalizado
   }
 
   const admin = createAdminClient()
 
-  // Obtener el recibo con información completa
-  const { data: recibo, error } = await admin
+  // Obtener el recibo completo con todos los datos
+  const { data: recibo, error: fetchError } = await admin
     .from("recibos_pago")
     .select(`
       *,
-      propiedad:propiedades(direccion, ciudad, barrio)
+      propiedad:propiedades(direccion, ciudad, barrio, user_id)
     `)
     .eq("id", id)
     .single()
 
-  if (error || !recibo) {
+  if (fetchError || !recibo) {
     return NextResponse.json({ error: "Recibo no encontrado" }, { status: 404 })
+  }
+
+  // Si es propietario, verificar que la propiedad pertenezca al usuario
+  if (role === "propietario") {
+    const propiedad = recibo.propiedad as any
+    if (!propiedad || propiedad.user_id !== user.id) {
+      return NextResponse.json({ error: "No tienes permiso para ver este recibo" }, { status: 403 })
+    }
   }
 
   // Generar URL del PDF
@@ -109,45 +127,67 @@ export async function POST(
   `
 
   try {
-    // Usar email personalizado si se proporcionó, si no buscar el del arrendatario
-    let toEmail = customEmail
+    // Si no se proporcionaron emails, intentar obtener solo el del propietario
+    if (emailsToSend.length === 0) {
+      // Obtener email del propietario desde la propiedad
+      if (recibo.propiedad?.user_id) {
+        const { data: propietario } = await admin
+          .from("perfiles")
+          .select("email")
+          .eq("id", recibo.propiedad.user_id)
+          .single()
 
-    if (!toEmail) {
-      // Obtener email del arrendatario desde la tabla arrendatarios
-      const { data: arrendatario } = await admin
-        .from("arrendatarios")
-        .select("email")
-        .eq("nombre", recibo.arrendador_nombre)
-        .single()
-
-      toEmail = arrendatario?.email
+        if (propietario?.email) {
+          emailsToSend.push(propietario.email)
+        }
+      }
     }
 
-    // Si aún no hay email, usar uno por defecto
-    if (!toEmail) {
-      return NextResponse.json({ error: "No se pudo determinar el email del destinatario. Por favor ingrésalo manualmente." }, { status: 400 })
+    // Si aún no hay emails, retornar error (pero permitir enviar si el usuario los proporcionó)
+    if (emailsToSend.length === 0) {
+      return NextResponse.json({ error: "No se pudo determinar ningún email. Por favor ingrésalo manualmente." }, { status: 400 })
     }
 
-    // Enviar email usando Resend
-    const { data, error: emailError } = await resend.emails.send({
-      from: 'Arrenlex <noreply@arrenlex.com>',
-      to: toEmail,
-      subject: `Recibo de Pago - ${recibo.numero_recibo || 'N/A'}`,
-      html: emailHtml,
-    })
+    // Enviar emails a todos los destinatarios
+    const resultados = []
+    for (const toEmail of emailsToSend) {
+      const { data, error: emailError } = await resend.emails.send({
+        from: 'Arrenlex <noreply@arrenlex.com>',
+        to: toEmail,
+        subject: `Recibo de Pago - ${recibo.numero_recibo || 'N/A'}`,
+        html: emailHtml,
+      })
 
-    if (emailError) {
-      console.error("Error enviando email:", emailError)
-      return NextResponse.json({ error: "Error al enviar el email" }, { status: 500 })
+      if (emailError) {
+        console.error(`Error enviando email a ${toEmail}:`, emailError)
+        resultados.push({ email: toEmail, success: false, error: emailError.message })
+      } else {
+        resultados.push({ email: toEmail, success: true, data })
+      }
     }
 
-    // Marcar el recibo como enviado
+    // Verificar si al menos un email fue enviado exitosamente
+    const algunExito = resultados.some(r => r.success)
+    if (!algunExito) {
+      return NextResponse.json({ error: "Error al enviar todos los emails", resultados }, { status: 500 })
+    }
+
+    // Marcar el recibo como enviado y cambiar estado a completado
     await admin
       .from("recibos_pago")
-      .update({ enviado: true, fecha_envio: new Date().toISOString() })
+      .update({
+        enviado: true,
+        fecha_envio: new Date().toISOString(),
+        estado: "completado"
+      })
       .eq("id", id)
 
-    return NextResponse.json({ success: true, message: "Email enviado correctamente", data })
+    const exitosos = resultados.filter(r => r.success).length
+    return NextResponse.json({
+      success: true,
+      message: `Email enviado correctamente a ${exitosos} destinatario(s)`,
+      resultados
+    })
   } catch (err: any) {
     console.error("Error en endpoint de envío:", err)
     return NextResponse.json({ error: err.message }, { status: 500 })

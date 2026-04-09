@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin"
+import { getUserRole } from "@/lib/auth/role"
 
 export async function GET(
   request: Request,
@@ -16,21 +17,40 @@ export async function GET(
     return NextResponse.json({ error: "No autorizado" }, { status: 401 })
   }
 
+  const role = await getUserRole(supabase, user)
+  if (role !== "admin" && role !== "propietario") {
+    return NextResponse.json({ error: "No autorizado" }, { status: 403 })
+  }
+
   const admin = createAdminClient()
 
-  // Obtener el recibo con información de propiedad
-  const { data: recibo, error } = await admin
+  // Obtener el recibo con su propiedad
+  const { data: recibo, error: fetchError } = await admin
     .from("recibos_pago")
     .select(`
       *,
-      propiedad:propiedades(direccion, ciudad, barrio)
+      propiedad:propiedades(direccion, ciudad, barrio, user_id)
     `)
     .eq("id", id)
     .single()
 
-  if (error || !recibo) {
+  if (fetchError || !recibo) {
     return NextResponse.json({ error: "Recibo no encontrado" }, { status: 404 })
   }
+
+  // Si es propietario, verificar que la propiedad pertenezca al usuario
+  if (role === "propietario") {
+    const propiedad = recibo.propiedad as any
+    if (!propiedad || propiedad.user_id !== user.id) {
+      return NextResponse.json({ error: "No tienes permiso para ver este recibo" }, { status: 403 })
+    }
+  }
+
+  // Cambiar estado a completado al descargar el PDF
+  await admin
+    .from("recibos_pago")
+    .update({ estado: "completado" })
+    .eq("id", id)
 
   // Generar HTML del recibo completamente aislado
   const htmlContent = `

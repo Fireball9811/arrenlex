@@ -48,9 +48,12 @@ export default function ImprimirReciboPage() {
   // Auto imprimir cuando carga
   useEffect(() => {
     if (!loading && recibo) {
+      // Marcar el recibo como completado al imprimir/descargar
+      fetch(`/api/recibos-pago/${reciboId}/pdf`, { method: "GET" })
+        .catch(() => {}) // No es crítico si falla, no mostrar error
       setTimeout(() => window.print(), 500)
     }
-  }, [loading, recibo])
+  }, [loading, recibo, reciboId])
 
   const formatPeso = (n: number) =>
     new Intl.NumberFormat("es-CO", { style: "currency", currency: "COP" }).format(n)

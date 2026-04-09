@@ -20,6 +20,8 @@ export async function GET(request: Request) {
   }
 
   const role = await getUserRole(supabase, user)
+  console.log("🔵 [GET /api/recibos-pago] Rol:", role, "User ID:", user.id)
+
   if (role !== "admin" && role !== "propietario") {
     return NextResponse.json(
       { error: "No tienes permiso para ver recibos" },
@@ -30,32 +32,52 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url)
   const propiedadId = searchParams.get("propiedad_id")
 
+  console.log("📍 propiedad_id:", propiedadId)
+
   const admin = createAdminClient()
 
   let query = admin
     .from("recibos_pago")
     .select(`
       *,
-      propiedad:propiedades(id, direccion, ciudad, barrio, numero_matricula)
+      propiedad:propiedades(id, direccion, ciudad, barrio, numero_matricula, user_id)
     `)
     .order("fecha_recibo", { ascending: false })
-
-  if (role === "propietario") {
-    query = query.eq("user_id", user.id)
-  }
 
   if (propiedadId) {
     query = query.eq("propiedad_id", propiedadId)
   }
 
-  const { data, error } = await query
+  const { data: allData, error } = await query
+
+  console.log("📊 Recibos encontrados (crudos):", allData?.length || 0)
 
   if (error) {
     console.error("Error fetching recibos:", error)
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 
-  return NextResponse.json(data ?? [])
+  // Si es propietario, filtrar por propiedades que les pertenecen
+  let filteredData = allData ?? []
+  if (role === "propietario") {
+    filteredData = (allData ?? []).filter((r: any) => {
+      const propiedad = r.propiedad as any
+      const tienePermiso = propiedad && propiedad.user_id === user.id
+      if (!tienePermiso && r) {
+        console.log("⚠️ Recibo sin permiso:", {
+          reciboId: r.id,
+          propiedadId: r.propiedad_id,
+          propiedadUserId: propiedad?.user_id,
+          userId: user.id,
+        })
+      }
+      return tienePermiso
+    })
+  }
+
+  console.log("✅ Recibos después de filtro:", filteredData.length)
+
+  return NextResponse.json(filteredData)
 }
 
 /**

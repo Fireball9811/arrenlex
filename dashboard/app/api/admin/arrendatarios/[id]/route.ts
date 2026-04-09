@@ -1,9 +1,11 @@
 import { NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin"
+import { getUserRole } from "@/lib/auth/role"
 
 /**
- * GET - Obtiene un arrendatario por ID (solo admin)
+ * GET - Obtiene un arrendatario por ID (admin y propietario)
+ * Los propietarios solo pueden ver arrendatarios con contrato en sus propiedades
  */
 export async function GET(
   request: Request,
@@ -21,36 +23,74 @@ export async function GET(
   const admin = createAdminClient()
   const { id } = await params
 
-  // Verificar que el usuario es admin
-  const { data: perfil } = await admin
-    .from("perfiles")
-    .select("role")
-    .eq("id", user.id)
-    .single()
+  // Obtener rol del usuario
+  const role = await getUserRole(supabase, user)
 
-  if (!perfil || perfil.role !== "admin") {
-    return NextResponse.json({ error: "Solo administradores pueden acceder" }, { status: 403 })
+  // Verificar permisos según rol
+  if (role === "admin") {
+    // Admin puede ver cualquier arrendatario
+    const { data, error } = await admin
+      .from("arrendatarios")
+      .select("*")
+      .eq("id", id)
+      .single()
+
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 500 })
+    }
+
+    if (!data) {
+      return NextResponse.json({ error: "Arrendatario no encontrado" }, { status: 404 })
+    }
+
+    return NextResponse.json(data)
   }
 
-  const { data, error } = await admin
-    .from("arrendatarios")
-    .select("*")
-    .eq("id", id)
-    .single()
+  if (role === "propietario") {
+    // Propietario solo puede ver arrendatarios con contrato en sus propiedades
+    // Primero verificar que el arrendatario tiene un contrato con una propiedad del propietario
+    const { data: contrato, error: contratoError } = await admin
+      .from("contratos")
+      .select(`
+        *,
+        propiedad:propiedades (
+          id,
+          direccion,
+          user_id
+        )
+      `)
+      .eq("arrendatario_id", id)
+      .eq("user_id", user.id)
+      .single()
 
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 })
+    if (contratoError || !contrato) {
+      return NextResponse.json({ error: "No tienes permiso para ver este arrendatario. Solo puedes ver arrendatarios con contrato activo en tus propiedades." }, { status: 403 })
+    }
+
+    // Obtener datos del arrendatario
+    const { data, error } = await admin
+      .from("arrendatarios")
+      .select("*")
+      .eq("id", id)
+      .single()
+
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 500 })
+    }
+
+    if (!data) {
+      return NextResponse.json({ error: "Arrendatario no encontrado" }, { status: 404 })
+    }
+
+    return NextResponse.json(data)
   }
 
-  if (!data) {
-    return NextResponse.json({ error: "Arrendatario no encontrado" }, { status: 404 })
-  }
-
-  return NextResponse.json(data)
+  return NextResponse.json({ error: "No tienes permiso para realizar esta acción" }, { status: 403 })
 }
 
 /**
- * PUT - Actualiza un arrendatario por ID (solo admin)
+ * PUT - Actualiza un arrendatario por ID (admin y propietario)
+ * Los propietarios solo pueden editar arrendatarios con contrato en sus propiedades
  */
 export async function PUT(
   request: Request,
@@ -68,15 +108,27 @@ export async function PUT(
   const admin = createAdminClient()
   const { id } = await params
 
-  // Verificar que el usuario es admin
-  const { data: perfil } = await admin
-    .from("perfiles")
-    .select("role")
-    .eq("id", user.id)
-    .single()
+  // Obtener rol del usuario
+  const role = await getUserRole(supabase, user)
 
-  if (!perfil || perfil.role !== "admin") {
-    return NextResponse.json({ error: "Solo administradores pueden acceder" }, { status: 403 })
+  // Verificar permisos según rol
+  if (role === "admin") {
+    // Admin puede editar cualquier arrendatario
+    // Continuar con la actualización
+  } else if (role === "propietario") {
+    // Propietario solo puede editar arrendatarios con contrato en sus propiedades
+    const { data: contrato } = await admin
+      .from("contratos")
+      .select("id")
+      .eq("arrendatario_id", id)
+      .eq("user_id", user.id)
+      .single()
+
+    if (!contrato) {
+      return NextResponse.json({ error: "No tienes permiso para editar este arrendatario. Solo puedes editar arrendatarios con contrato activo en tus propiedades." }, { status: 403 })
+    }
+  } else {
+    return NextResponse.json({ error: "No tienes permiso para realizar esta acción" }, { status: 403 })
   }
 
   try {

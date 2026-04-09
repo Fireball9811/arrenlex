@@ -1,10 +1,12 @@
 import { NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin"
+import { getUserRole } from "@/lib/auth/role"
 
 /**
- * GET - Obtiene TODOS los arrendatarios con contratos activos o borrador
- * Incluye información del propietario de la propiedad
+ * GET - Obtiene los arrendatarios con contratos activos o borrador
+ * - Admin: ve TODOS los arrendatarios con contrato activo
+ * - Propietario: SOLO ve arrendatarios con contrato en sus propiedades
  */
 export async function GET() {
   console.log("🔵 [inquilinos-activos] GET iniciado")
@@ -20,12 +22,17 @@ export async function GET() {
 
   const admin = createAdminClient()
 
+  // Obtener rol del usuario
+  const role = await getUserRole(supabase, user)
+  console.log("✓ Rol:", role)
+
   try {
-    // Obtener arrendatarios con contratos activos o borrador (en proceso)
-    const { data: contratosActivos, error: errorContratos } = await admin
+    // Construir query según el rol
+    let query = admin
       .from("contratos")
       .select(`
         id,
+        user_id,
         arrendatario_id,
         arrendatarios!inner(id, nombre, cedula, email, celular, user_id),
         propiedad_id,
@@ -33,6 +40,17 @@ export async function GET() {
         estado
       `)
       .in("estado", ["activo", "borrador"])
+
+    // Si es propietario, filtrar solo sus contratos
+    if (role === "propietario") {
+      query = query.eq("user_id", user.id)
+      console.log("✓ Filtrando contratos por propietario:", user.id)
+    } else {
+      console.log("✓ Admin: mostrando todos los contratos activos")
+    }
+
+    // Obtener arrendatarios con contratos activos o borrador (en proceso)
+    const { data: contratosActivos, error: errorContratos } = await query
 
     console.log("✓ Contratos activos/borrador encontrados:", contratosActivos?.length || 0)
 

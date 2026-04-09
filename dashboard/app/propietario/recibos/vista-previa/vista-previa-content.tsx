@@ -19,7 +19,8 @@ export default function VistaPreviaReciboContent() {
   const [error, setError] = useState<string | null>(null)
   const [recibo, setRecibo] = useState<any>(null)
   const [mostrarModalEmail, setMostrarModalEmail] = useState(false)
-  const [emailDestino, setEmailDestino] = useState("")
+  const [emailArrendatario, setEmailArrendatario] = useState("")
+  const [emailPropietario, setEmailPropietario] = useState("")
 
   // Cargar datos del recibo
   useEffect(() => {
@@ -48,16 +49,41 @@ export default function VistaPreviaReciboContent() {
   const handleEnviar = async () => {
     if (!reciboId || !recibo) return
 
-    // Abrir modal para confirmar y permitir cambiar email
-    // Buscar email del arrendatario desde el contrato si existe
-    let emailSugerido = recibo.arrendatario_email || recibo.arrendador_email || ""
+    // Obtener emails automáticamente del arrendatario y propietario
+    let emailArrendatarioSugerido = recibo.arrendatarios?.email || ""
+    let emailPropietarioSugerido = ""
 
-    setEmailDestino(emailSugerido)
+    // Obtener email del propietario desde el contrato
+    // El contrato tiene user_id que es el ID del propietario en perfiles
+    if (recibo.contratos?.user_id) {
+      try {
+        const res = await fetch(`/api/perfiles/${recibo.contratos.user_id}/email`)
+        if (res.ok) {
+          const data = await res.json()
+          emailPropietarioSugerido = data.email || ""
+        }
+      } catch {
+        // Si falla, continuar sin email de propietario
+      }
+    }
+
+    setEmailArrendatario(emailArrendatarioSugerido)
+    setEmailPropietario(emailPropietarioSugerido)
     setMostrarModalEmail(true)
   }
 
   const confirmarEnvio = async () => {
     if (!reciboId) return
+
+    // Recopilar emails que tengan valor
+    const emails = []
+    if (emailArrendatario && emailArrendatario.trim()) emails.push(emailArrendatario.trim())
+    if (emailPropietario && emailPropietario.trim()) emails.push(emailPropietario.trim())
+
+    if (emails.length === 0) {
+      alert("No hay emails configurados para enviar. Por favor ingresa al menos un email.")
+      return
+    }
 
     setMostrarModalEmail(false)
     setSending(true)
@@ -65,7 +91,9 @@ export default function VistaPreviaReciboContent() {
       const res = await fetch(`/api/recibos-pago/${reciboId}/enviar`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: emailDestino }),
+        body: JSON.stringify({
+          emails: emails,
+        }),
       })
 
       if (!res.ok) {
@@ -73,10 +101,15 @@ export default function VistaPreviaReciboContent() {
         throw new Error(errorData.error || "Error al enviar el email")
       }
 
-      alert("Recibo enviado correctamente al arrendatario")
+      const destinatarios = []
+      if (emailArrendatario) destinatarios.push(`Arrendatario: ${emailArrendatario}`)
+      if (emailPropietario) destinatarios.push(`Propietario: ${emailPropietario}`)
+
+      alert(`Recibo enviado correctamente a:\n${destinatarios.join("\n")}`)
       router.push("/propietario/recibos")
     } catch (err: any) {
       setError(`Error al enviar: ${err.message}`)
+      setMostrarModalEmail(true) // Reabrir el modal si hay error
     } finally {
       setSending(false)
     }
@@ -84,7 +117,8 @@ export default function VistaPreviaReciboContent() {
 
   const cancelarEnvio = () => {
     setMostrarModalEmail(false)
-    setEmailDestino("")
+    setEmailArrendatario("")
+    setEmailPropietario("")
   }
 
   const handleImprimir = () => {
@@ -506,22 +540,37 @@ export default function VistaPreviaReciboContent() {
             <CardHeader>
               <CardTitle>Enviar Recibo por Email</CardTitle>
               <CardDescription>
-                Confirma el destino del recibo antes de enviarlo
+                El recibo se enviará automáticamente al arrendatario y al propietario
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div>
                 <label className="block text-sm font-medium mb-1">
-                  Email del destinatario (arrendatario)
+                  Email del Arrendatario
                 </label>
                 <Input
                   type="email"
-                  value={emailDestino}
-                  onChange={(e) => setEmailDestino(e.target.value)}
-                  placeholder="ejemplo@correo.com"
+                  value={emailArrendatario}
+                  onChange={(e) => setEmailArrendatario(e.target.value)}
+                  placeholder="arrendatario@correo.com"
                 />
                 <p className="text-xs text-muted-foreground mt-1">
-                  El recibo será enviado a esta dirección de correo
+                  Email del inquilino arrendatario
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-1">
+                  Email del Propietario
+                </label>
+                <Input
+                  type="email"
+                  value={emailPropietario}
+                  onChange={(e) => setEmailPropietario(e.target.value)}
+                  placeholder="propietario@correo.com"
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Email del propietario del inmueble
                 </p>
               </div>
 
@@ -534,10 +583,30 @@ export default function VistaPreviaReciboContent() {
                 </ul>
               </div>
 
+              <div className="bg-green-50 border border-green-200 rounded-lg p-3 text-sm">
+                <p className="font-medium text-green-900">
+                  {emailArrendatario && emailPropietario
+                    ? "✓ Se enviará a ambos correos automáticamente"
+                    : emailArrendatario
+                    ? "✓ Se enviará solo al correo del arrendatario"
+                    : emailPropietario
+                    ? "✓ Se enviará solo al correo del propietario"
+                    : "⚠ Ingresa al menos un email para enviar"}
+                </p>
+              </div>
+
               <div className="flex gap-2">
                 <Button
+                  onClick={cancelarEnvio}
+                  variant="outline"
+                  className="flex-1"
+                  disabled={sending}
+                >
+                  Cancelar
+                </Button>
+                <Button
                   onClick={confirmarEnvio}
-                  disabled={!emailDestino || sending}
+                  disabled={(!emailArrendatario && !emailPropietario) || sending}
                   className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white"
                 >
                   {sending ? (
@@ -551,14 +620,6 @@ export default function VistaPreviaReciboContent() {
                       Confirmar y Enviar
                     </>
                   )}
-                </Button>
-                <Button
-                  onClick={cancelarEnvio}
-                  variant="outline"
-                  disabled={sending}
-                  className="flex-1"
-                >
-                  Cancelar
                 </Button>
               </div>
             </CardContent>

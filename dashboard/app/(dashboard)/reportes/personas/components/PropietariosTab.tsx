@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label"
 import { UserPlus, Pencil, Building2, Trash2, CheckCircle, XCircle, Power } from "lucide-react"
 import type { Perfil } from "@/lib/types/database"
 import type { Propiedad } from "@/lib/types/database"
+import { createClient } from "@/lib/supabase/client"
 
 interface PropietarioConPropiedades extends Perfil {
   propiedades?: Propiedad[]
