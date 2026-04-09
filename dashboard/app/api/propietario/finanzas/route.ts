@@ -154,43 +154,7 @@ export async function GET(request: Request) {
     }
 
     // ============================================
-    // 3. ARRENDATARIOS únicos por año
-    // ============================================
-    const { data: contratos, error: contratosError } = await admin
-      .from("contratos")
-      .select("arrendatario_id, fecha_inicio, propiedad_id")
-      .in("propiedad_id", filteredPropiedadIds)
-      .gte("fecha_inicio", fechaInicioISO.slice(0, 10))
-
-    if (contratosError) throw contratosError
-
-    const arrendatariosPorAnoMap = new Map<number, Set<string>>()
-
-    for (const contrato of contratos ?? []) {
-      if (!contrato.fecha_inicio) continue
-
-      const fecha = new Date(contrato.fecha_inicio)
-      const ano = fecha.getFullYear()
-
-      if (!arrendatariosPorAnoMap.has(ano)) {
-        arrendatariosPorAnoMap.set(ano, new Set())
-      }
-
-      arrendatariosPorAnoMap.get(ano)!.add(contrato.arrendatario_id)
-    }
-
-    // Convertir a array de objetos
-    const arrendatariosPorAno = Array.from(arrendatariosPorAnoMap.entries())
-      .map(([ano, arrendatarios]) => ({
-        ano,
-        cantidad: arrendatarios.size,
-      }))
-      .sort((a, b) => a.ano - b.ano)
-
-    console.log("[API Finanzas] Arrendatarios por año:", arrendatariosPorAno)
-
-    // ============================================
-    // 4. CALCULAR TOTALES
+    // 3. CALCULAR TOTALES
     // ============================================
     const totalIngresos = Array.from(ingresosMap.values()).reduce((sum, val) => sum + val, 0)
     const totalGastos = Array.from(gastosMap.values()).reduce((sum, val) => sum + val, 0)
@@ -245,7 +209,7 @@ export async function GET(request: Request) {
 
     return NextResponse.json({
       datos: datosConNombre,
-      arrendatariosPorAno,
+      arrendatariosPorAno: [],
       totales: {
         ingresos: totalIngresos,
         gastos: totalGastos,

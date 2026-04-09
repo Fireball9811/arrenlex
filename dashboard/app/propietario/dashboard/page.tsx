@@ -16,7 +16,6 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Home, FileText, Mail, BarChart3, Download } from "lucide-react"
 import { useLang } from "@/lib/i18n/context"
 import { IngresosGastosChart } from "@/components/charts/IngresosGastosChart"
-import { ArrendatariosPorAnoChart } from "@/components/charts/ArrendatariosPorAnoChart"
 
 interface DashboardData {
   propiedades: number
@@ -257,15 +256,6 @@ export default function PropietarioDashboardPage() {
               propiedadId={propiedadSeleccionada === "todas" ? undefined : propiedadSeleccionada}
               aniosAtras={aniosAtras}
               vistaMensual={vistaMensual}
-            />
-          </div>
-
-          {/* Gráfica de Arrendatarios por Año */}
-          <div>
-            <h3 className="text-lg font-semibold mb-4">Arrendatarios por Año</h3>
-            <ArrendatariosPorAnoChart
-              propiedadId={propiedadSeleccionada === "todas" ? undefined : propiedadSeleccionada}
-              aniosAtras={aniosAtras}
             />
           </div>
         </CardContent>
