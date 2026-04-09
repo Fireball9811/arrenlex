@@ -4,7 +4,6 @@ import { useEffect, useState } from "react"
 import Image from "next/image"
 import Link from "next/link"
 import { SignOutButton } from "@/components/auth/sign-out-button"
-import { AdjuntarDocumentos } from "@/components/layout/adjuntar-documentos"
 import { useLang } from "@/lib/i18n/context"
 
 export function PropietarioSidebar() {
@@ -90,7 +89,6 @@ export function PropietarioSidebar() {
         <Link href="/cambio-contrasena" className="block rounded p-2 text-left text-sm text-white transition hover:bg-indigo-800">
           {t.sidebar.cambioContrasena}
         </Link>
-        <AdjuntarDocumentos sidebar />
         <SignOutButton>{t.sidebar.cerrarSesion}</SignOutButton>
       </div>
     </aside>
