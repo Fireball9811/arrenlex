@@ -49,21 +49,32 @@ export default function VistaPreviaReciboContent() {
   const handleEnviar = async () => {
     if (!reciboId || !recibo) return
 
-    // Obtener emails automáticamente del arrendatario y propietario
-    let emailArrendatarioSugerido = recibo.arrendatarios?.email || ""
+    let emailArrendatarioSugerido = ""
     let emailPropietarioSugerido = ""
 
-    // Obtener email del propietario desde el contrato
-    // El contrato tiene user_id que es el ID del propietario en perfiles
-    if (recibo.contratos?.user_id) {
+    // Buscar email del arrendatario por nombre
+    if (recibo.arrendador_nombre) {
       try {
-        const res = await fetch(`/api/perfiles/${recibo.contratos.user_id}/email`)
+        const res = await fetch(`/api/arrendatarios/buscar?nombre=${encodeURIComponent(recibo.arrendador_nombre)}`)
+        if (res.ok) {
+          const data = await res.json()
+          emailArrendatarioSugerido = data.email || ""
+        }
+      } catch {
+        // Si falla, continuar sin email
+      }
+    }
+
+    // Buscar email del propietario por nombre
+    if (recibo.propietario_nombre) {
+      try {
+        const res = await fetch(`/api/perfiles/buscar?nombre=${encodeURIComponent(recibo.propietario_nombre)}`)
         if (res.ok) {
           const data = await res.json()
           emailPropietarioSugerido = data.email || ""
         }
       } catch {
-        // Si falla, continuar sin email de propietario
+        // Si falla, continuar sin email
       }
     }
 
