@@ -173,7 +173,8 @@ export async function POST(
     }
 
     // Marcar el recibo como enviado y cambiar estado a completado
-    await admin
+    console.log("📧 Actualizando recibo a completado:", id)
+    const { error: updateError } = await admin
       .from("recibos_pago")
       .update({
         enviado: true,
@@ -181,6 +182,12 @@ export async function POST(
         estado: "completado"
       })
       .eq("id", id)
+
+    if (updateError) {
+      console.error("❌ Error actualizando recibo:", updateError)
+    } else {
+      console.log("✅ Recibo actualizado a completado")
+    }
 
     const exitosos = resultados.filter(r => r.success).length
     return NextResponse.json({

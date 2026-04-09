@@ -47,10 +47,17 @@ export async function GET(
   }
 
   // Cambiar estado a completado al descargar el PDF
-  await admin
+  console.log("📄 PDF - Actualizando recibo a completado:", id)
+  const { error: updateError } = await admin
     .from("recibos_pago")
     .update({ estado: "completado" })
     .eq("id", id)
+
+  if (updateError) {
+    console.error("❌ Error actualizando recibo:", updateError)
+  } else {
+    console.log("✅ Recibo actualizado a completado por PDF")
+  }
 
   // Generar HTML del recibo completamente aislado
   const htmlContent = `

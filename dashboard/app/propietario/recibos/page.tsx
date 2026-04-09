@@ -29,32 +29,48 @@ export default function RecibosPage() {
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    fetch("/api/auth/me")
-      .then((res) => (res.ok ? res.json() : null))
-      .then((data: { role?: string } | null) => {
-        if (data?.role === "inquilino") {
-          router.replace("/inquilino/dashboard")
-          return
-        }
+    const cargarRecibos = () => {
+      fetch("/api/auth/me")
+        .then((res) => (res.ok ? res.json() : null))
+        .then((data: { role?: string } | null) => {
+          if (data?.role === "inquilino") {
+            router.replace("/inquilino/dashboard")
+            return
+          }
 
-        return fetch("/api/recibos-pago")
-          .then((res) => {
-            if (!res.ok) throw new Error(`HTTP ${res.status}`)
-            return res.json()
-          })
-          .then((data: ReciboPago[]) => {
-            setRecibos(data)
-            setLoading(false)
-          })
-          .catch((err) => {
-            setError(`Error: ${err.message}`)
-            setLoading(false)
-          })
-      })
-      .catch(() => {
-        setError("Error de autenticación")
-        setLoading(false)
-      })
+          return fetch("/api/recibos-pago")
+            .then((res) => {
+              if (!res.ok) throw new Error(`HTTP ${res.status}`)
+              return res.json()
+            })
+            .then((data: ReciboPago[]) => {
+              setRecibos(data)
+              setLoading(false)
+            })
+            .catch((err) => {
+              setError(`Error: ${err.message}`)
+              setLoading(false)
+            })
+        })
+        .catch(() => {
+          setError("Error de autenticación")
+          setLoading(false)
+        })
+    }
+
+    cargarRecibos()
+
+    // Recargar cuando la página gana foco (por si volvemos de editar/enviar)
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        cargarRecibos()
+      }
+    }
+
+    document.addEventListener("visibilitychange", handleVisibilityChange)
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange)
+    }
   }, [router])
 
   const getEstadoColor = (estado: string) => {
@@ -125,9 +141,6 @@ export default function RecibosPage() {
                       <FileText className="h-5 w-5 text-blue-600" />
                       <span className="font-semibold">
                         Recibo #{recibo.numero_recibo || recibo.id.slice(0, 8)}
-                      </span>
-                      <span className={`text-xs font-semibold px-2 py-1 rounded ${getEstadoColor(recibo.estado)}`}>
-                        {recibo.estado}
                       </span>
                     </div>
                     <div className="text-sm text-muted-foreground grid grid-cols-4 gap-4">
