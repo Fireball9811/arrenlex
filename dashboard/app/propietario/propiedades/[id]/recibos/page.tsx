@@ -146,9 +146,6 @@ export default function RecibosDePropiedad() {
                       <span className="font-semibold">
                         Recibo #{recibo.numero_recibo || recibo.id.slice(0, 8)}
                       </span>
-                      <span className={`text-xs font-semibold px-2 py-1 rounded ${getEstadoColor(recibo.estado)}`}>
-                        {recibo.estado}
-                      </span>
                     </div>
                     <div className="text-sm text-muted-foreground grid grid-cols-4 gap-4">
                       <div>
