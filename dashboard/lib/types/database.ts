@@ -291,6 +291,7 @@ export type SolicitudMantenimientoConPropiedad = SolicitudMantenimiento & {
 export type IntakeFormulario = {
   id: string
   id_inmueble: string | null
+  propiedad_id: string | null
   nombre: string | null
   email: string | null
   telefono: string | null

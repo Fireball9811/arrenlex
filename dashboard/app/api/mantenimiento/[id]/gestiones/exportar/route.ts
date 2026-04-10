@@ -122,7 +122,7 @@ export async function GET(
   // Generar buffer
   const buffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' })
 
-  return new NextResponse(buffer as Buffer, {
+  return new NextResponse(Buffer.from(buffer), {
     headers: {
       'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
       'Content-Disposition': `attachment; filename="mantenimiento-${propRef.replace(/[^a-zA-Z0-9]/g, '_')}-${new Date().toISOString().split('T')[0]}.xlsx"`
