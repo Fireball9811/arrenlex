@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback, useRef } from "react"
 import { useParams, useRouter } from "next/navigation"
 import Link from "next/link"
-import { ArrowLeft, Plus, Trash2, Paperclip, ExternalLink, Loader2, X, ChevronDown } from "lucide-react"
+import { ArrowLeft, Plus, Trash2, Paperclip, ExternalLink, Loader2, X, ChevronDown, Download } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { useLang } from "@/lib/i18n/context"
@@ -440,6 +440,30 @@ export default function MantenimientoDetallePage() {
 
   const totalGastado = gestiones.reduce((acc, ges) => acc + Number(ges.costo), 0)
 
+  const handleExportar = async () => {
+    try {
+      const res = await fetch(`/api/mantenimiento/${id}/gestiones/exportar`)
+      if (!res.ok) {
+        const errorData = await res.json()
+        alert(`Error: ${errorData.error || 'No se pudo exportar'}`)
+        return
+      }
+
+      // Obtener el blob y descargar
+      const blob = await res.blob()
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `mantenimiento-${new Date().toISOString().split('T')[0]}.xlsx`
+      document.body.appendChild(a)
+      a.click()
+      window.URL.revokeObjectURL(url)
+      document.body.removeChild(a)
+    } catch (error) {
+      alert('Error al exportar: ' + error)
+    }
+  }
+
   if (loading) return <div className="p-6 text-muted-foreground">{t.comun.cargando}</div>
   if (error || !solicitud) return (
     <div className="p-6">
@@ -499,12 +523,23 @@ export default function MantenimientoDetallePage() {
       </Card>
 
       {/* Gestiones header */}
-      <div className="mb-4 flex items-center justify-between">
-        <h2 className="text-lg font-bold">{g.registros}</h2>
-        <Button size="sm" onClick={() => { setShowForm(true); setFormError(null) }}>
-          <Plus className="mr-1 h-4 w-4" />
-          {g.agregarRegistro}
-        </Button>
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h2 className="text-lg font-bold">{g.registros}</h2>
+          <p className="text-xs text-muted-foreground">{gestiones.length} {gestiones.length === 1 ? g.registrosTotales : g.registrosTotalesPlural}</p>
+        </div>
+        <div className="flex items-center gap-2">
+          {gestiones.length > 0 && (
+            <Button size="sm" variant="outline" onClick={handleExportar}>
+              <Download className="mr-1 h-4 w-4" />
+              Exportar Excel
+            </Button>
+          )}
+          <Button size="sm" onClick={() => { setShowForm(true); setFormError(null) }}>
+            <Plus className="mr-1 h-4 w-4" />
+            {g.agregarRegistro}
+          </Button>
+        </div>
       </div>
 
       {/* Form nueva gestión */}
@@ -578,7 +613,7 @@ export default function MantenimientoDetallePage() {
         </Card>
       )}
 
-      {/* Timeline */}
+      {/* Timeline - Layout horizontal profesional */}
       {gestiones.length === 0 ? (
         <Card>
           <CardContent className="py-10 text-center text-muted-foreground">
@@ -586,12 +621,12 @@ export default function MantenimientoDetallePage() {
           </CardContent>
         </Card>
       ) : (
-        <div className="space-y-4">
+        <div className="space-y-3">
           {gestiones.map((ges, idx) => (
-            <Card key={ges.id} className="overflow-hidden">
-              <CardContent className="pt-4">
+            <Card key={ges.id} className="overflow-hidden hover:shadow-md transition-shadow">
+              <CardContent className="p-0">
                 {editingId === ges.id ? (
-                  <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="p-4 grid gap-3 sm:grid-cols-2">
                     <div>
                       <label className="mb-1 block text-sm font-medium">{g.fechaEjecucion}</label>
                       <input
@@ -640,48 +675,50 @@ export default function MantenimientoDetallePage() {
                     </div>
                   </div>
                 ) : (
-                  <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1fr_220px]">
-                    {/* Columna izquierda */}
-                    <div>
-                      <div className="flex items-start justify-between gap-2 mb-2">
+                  <div className="grid grid-cols-1 md:grid-cols-12 gap-0">
+                    {/* Columna izquierda: Info principal */}
+                    <div className="md:col-span-7 lg:col-span-8 p-4 border-b md:border-b-0 md:border-r">
+                      <div className="flex items-start justify-between gap-3 mb-3">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <span className="text-xs font-mono text-muted-foreground bg-muted rounded px-1.5 py-0.5">
-                            #{idx + 1}
+                          <span className="text-xs font-bold text-blue-600 bg-blue-50 rounded-full px-2 py-1 border border-blue-200">
+                            #{gestiones.length - idx}
                           </span>
                           <span className="font-semibold text-sm">{formatDate(ges.fecha_ejecucion)}</span>
                           {ges.proveedor && (
-                            <span className="rounded bg-muted px-2 py-0.5 text-xs">{ges.proveedor}</span>
+                            <span className="rounded bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-700">{ges.proveedor}</span>
                           )}
-                          <span className="font-bold text-green-700 text-sm">{formatCOP(ges.costo)}</span>
                         </div>
-                        <div className="flex gap-1 shrink-0">
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            className="h-7 px-2 text-xs"
-                            onClick={() => startEdit(ges)}
-                          >
-                            {t.comun.editar}
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            className="h-7 px-2 text-red-500 hover:text-red-700"
-                            disabled={deletingGestionId === ges.id}
-                            onClick={() => handleDeleteGestion(ges.id)}
-                          >
-                            {deletingGestionId === ges.id
-                              ? <Loader2 className="h-3 w-3 animate-spin" />
-                              : <Trash2 className="h-3 w-3" />
-                            }
-                          </Button>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xl font-bold text-green-700">{formatCOP(ges.costo)}</span>
+                          <div className="flex gap-1">
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-8 px-2 text-xs"
+                              onClick={() => startEdit(ges)}
+                            >
+                              {t.comun.editar}
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-8 px-2 text-red-500 hover:text-red-700 hover:bg-red-50"
+                              disabled={deletingGestionId === ges.id}
+                              onClick={() => handleDeleteGestion(ges.id)}
+                            >
+                              {deletingGestionId === ges.id
+                                ? <Loader2 className="h-3 w-3 animate-spin" />
+                                : <Trash2 className="h-3 w-3" />
+                              }
+                            </Button>
+                          </div>
                         </div>
                       </div>
-                      <p className="text-sm text-muted-foreground leading-relaxed">{ges.descripcion}</p>
+                      <p className="text-sm text-slate-700 leading-relaxed bg-slate-50/50 p-3 rounded-lg">{ges.descripcion}</p>
                     </div>
 
-                    {/* Columna derecha: adjuntos */}
-                    <div className="border-t pt-3 lg:border-t-0 lg:border-l lg:pt-0 lg:pl-4">
+                    {/* Columna derecha: Adjuntos */}
+                    <div className="md:col-span-5 lg:col-span-4 p-4 bg-slate-50/30">
                       <AdjuntosPanel
                         gestion={ges}
                         solicitudId={id}
@@ -695,16 +732,15 @@ export default function MantenimientoDetallePage() {
           ))}
 
           {/* Total */}
-          <Card className="border-2 border-green-300 bg-green-50">
-            <CardContent className="flex items-center justify-between py-4">
+          <Card className="border-2 border-green-400 bg-gradient-to-r from-green-50 to-emerald-50">
+            <CardContent className="flex items-center justify-between py-5 px-6">
               <div>
-                <p className="font-bold text-green-800">{g.totalGastado}</p>
-                <p className="text-xs text-green-700">
-                  {gestiones.length}{" "}
-                  {gestiones.length !== 1 ? g.registrosTotalesPlural : g.registrosTotales}
+                <p className="font-bold text-green-800 text-lg">{g.totalGastado}</p>
+                <p className="text-sm text-green-700">
+                  {gestiones.length} {gestiones.length !== 1 ? g.registrosTotalesPlural : g.registrosTotales}
                 </p>
               </div>
-              <p className="text-2xl font-bold text-green-900">{formatCOP(totalGastado)}</p>
+              <p className="text-3xl font-bold text-green-900">{formatCOP(totalGastado)}</p>
             </CardContent>
           </Card>
         </div>

@@ -49,10 +49,10 @@ export async function GET(
       costo,
       created_by,
       created_at,
-      mantenimiento_adjuntos ( id, nombre_archivo, storage_path, tipo, created_at )
+      mantenimiento_adjuntos!mantenimiento_adjuntos_gestion_id_fkey ( id, nombre_archivo, storage_path, tipo, created_at )
     `)
     .eq("solicitud_id", id)
-    .order("fecha_ejecucion", { ascending: true })
+    .order("fecha_ejecucion", { ascending: false })
 
   if (error) return handleSupabaseError("gestiones GET", error)
 
