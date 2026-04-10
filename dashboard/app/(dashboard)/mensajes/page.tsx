@@ -407,49 +407,59 @@ function TablaIntake({
                   />
                 </th>
               )}
-              <th className="text-left p-2 font-medium">{tTbl.mensajes.columnas.nombre}</th>
-              <th className="text-left p-2 font-medium">{tTbl.mensajes.columnas.email}</th>
-              <th className="text-left p-2 font-medium">{tTbl.mensajes.columnas.telefono}</th>
-              <th className="text-left p-2 font-medium">{tTbl.mensajes.columnas.personas}</th>
-              <th className="text-left p-2 font-medium">{tTbl.mensajes.columnas.ingresos}</th>
-              <th className="text-left p-2 font-medium">{tTbl.mensajes.columnas.fecha}</th>
+              <th className="text-left p-2 font-medium">Nombre</th>
+              <th className="text-left p-2 font-medium">Email</th>
+              <th className="text-left p-2 font-medium">Ingresos</th>
+              <th className="text-left p-2 font-medium">Personas</th>
+              <th className="text-left p-2 font-medium">Mascotas</th>
+              <th className="text-left p-2 font-medium">Fecha (Bogotá)</th>
               <th className="text-left p-2 font-medium">{tTbl.mensajes.columnas.acciones}</th>
             </tr>
           </thead>
           <tbody>
-            {lista.map((r) => (
-              <tr
-                key={r.id}
-                className={`border-b transition-colors ${
-                  canCompare && seleccionados.has(r.id) ? "bg-primary/5" : "hover:bg-muted/30"
-                }`}
-              >
-                {canCompare && (
+            {lista.map((r) => {
+              // Calcular ingresos totales sumando ambos salarios
+              const salarioPrincipal = r.salario_principal ?? r.salario ?? 0
+              const salarioSecundario = r.salario_secundario ?? r.salario_2 ?? 0
+              const ingresosTotales = salarioPrincipal + salarioSecundario
+              // Obtener personas y mascotas con los campos correctos
+              const personas = r.adultos_habitantes ?? r.personas ?? 0
+              const mascotas = r.mascotas_cantidad ?? r.mascotas ?? 0
+
+              return (
+                <tr
+                  key={r.id}
+                  className={`border-b transition-colors ${
+                    canCompare && seleccionados.has(r.id) ? "bg-primary/5" : "hover:bg-muted/30"
+                  }`}
+                >
+                  {canCompare && (
+                    <td className="p-2">
+                      <input
+                        type="checkbox"
+                        checked={seleccionados.has(r.id)}
+                        onChange={() => onToggle(r.id)}
+                        className="rounded"
+                      />
+                    </td>
+                  )}
+                  <td className="p-2 font-medium">{r.nombre ?? "—"}</td>
+                  <td className="p-2">{r.email ?? "—"}</td>
+                  <td className="p-2">{ingresosTotales > 0 ? formatCurrency(ingresosTotales) : "—"}</td>
+                  <td className="p-2">{personas > 0 ? personas : "—"}</td>
+                  <td className="p-2">{mascotas > 0 ? mascotas : "—"}</td>
+                  <td className="p-2">{formatDate(r.created_at)}</td>
                   <td className="p-2">
-                    <input
-                      type="checkbox"
-                      checked={seleccionados.has(r.id)}
-                      onChange={() => onToggle(r.id)}
-                      className="rounded"
-                    />
+                    <button
+                      onClick={() => onVerDetalle(r)}
+                      className="rounded bg-primary px-3 py-1 text-xs font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
+                    >
+                      {tTbl.mensajes.verDetalle}
+                    </button>
                   </td>
-                )}
-                <td className="p-2 font-medium">{r.nombre ?? "—"}</td>
-                <td className="p-2">{r.email ?? "—"}</td>
-                <td className="p-2">{r.telefono ?? "—"}</td>
-                <td className="p-2">{r.personas ?? "—"}</td>
-                <td className="p-2">{r.ingresos != null ? formatCurrency(r.ingresos) : "—"}</td>
-                <td className="p-2">{formatDate(r.created_at)}</td>
-                <td className="p-2">
-                  <button
-                    onClick={() => onVerDetalle(r)}
-                    className="rounded bg-primary px-3 py-1 text-xs font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
-                  >
-                    {tTbl.mensajes.verDetalle}
-                  </button>
-                </td>
-              </tr>
-            ))}
+                </tr>
+              )
+            })}
           </tbody>
         </table>
       </div>
@@ -539,11 +549,18 @@ export default function MensajesPage() {
     setPasando(false)
     setPasadoOk(null)
     setPasadoError(null)
+
+    // Marcar como gestionado si aún no lo está
     if (!registro.gestionado) {
-      await fetch(`/api/intake/${registro.id}`, { method: "PATCH" })
-      setIntakeRegistros((prev) =>
-        prev.map((r) => (r.id === registro.id ? { ...r, gestionado: true } : r))
-      )
+      try {
+        await fetch(`/api/intake/${registro.id}`, { method: "PATCH" })
+        // Actualizar estado local inmediatamente
+        setIntakeRegistros((prev) =>
+          prev.map((r) => (r.id === registro.id ? { ...r, gestionado: true } : r))
+        )
+      } catch (error) {
+        console.error("[handleAbrirDetalle] Error marcando como gestionado:", error)
+      }
     }
   }, [])
 
@@ -609,7 +626,12 @@ export default function MensajesPage() {
     if (!dateStr) return "—"
     try {
       return new Date(dateStr).toLocaleDateString("es-CO", {
-        day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit",
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+        timeZone: "America/Bogota",
       })
     } catch { return dateStr }
   }
@@ -703,6 +725,7 @@ export default function MensajesPage() {
                   <p className="font-semibold text-muted-foreground uppercase text-xs tracking-wide">{t.mensajes.detalle.coarrendatario}</p>
                   <p><span className="font-medium">{t.mensajes.columnas.nombre}:</span> {intakeSeleccionado.coarrendatario_nombre ?? intakeSeleccionado.nombre_coarrendatario ?? "—"}</p>
                   <p><span className="font-medium">{t.mensajes.detalle.cedula}</span> {intakeSeleccionado.coarrendatario_cedula ?? intakeSeleccionado.cedula_coarrendatario ?? "—"}</p>
+                  <p><span className="font-medium">{t.mensajes.detalle.fechaExpCedula}</span> {intakeSeleccionado.coarrendatario_cedula_expedicion ?? intakeSeleccionado.fecha_expedicion_cedula_coarrendatario ?? "—"}</p>
                   <p><span className="font-medium">{t.mensajes.detalle.telefono}</span> {intakeSeleccionado.coarrendatario_telefono ?? intakeSeleccionado.telefono_coarrendatario ?? "—"}</p>
                   <p><span className="font-medium">Empresa:</span> {intakeSeleccionado.empresa_secundaria ?? intakeSeleccionado.empresa_coarrendatario ?? "—"}</p>
                   <p><span className="font-medium">Antigüedad (meses):</span> {intakeSeleccionado.tiempo_servicio_secundario_meses ?? intakeSeleccionado.antiguedad_meses_2 ?? "—"}</p>

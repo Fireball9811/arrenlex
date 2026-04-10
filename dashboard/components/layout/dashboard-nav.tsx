@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useCallback } from "react"
 import Link from "next/link"
 import { BarChart3, User, FileText, Home, Building2, FileCheck, Mail, CreditCard, MessageSquare, Wrench } from "lucide-react"
 import type { UserRole } from "@/lib/auth/role"
@@ -35,29 +35,48 @@ export function DashboardNav() {
       })
   }, [])
 
-  useEffect(() => {
+  const fetchCounts = useCallback(async () => {
     if (role !== "admin" && role !== "propietario") return
-    fetch("/api/solicitudes-visita/count")
-      .then((res) => (res.ok ? res.json() : { count: 0 }))
-      .then((data: { count?: number }) => setPendientesCount(Number(data?.count) || 0))
-      .catch(() => setPendientesCount(0))
+
+    // Cargar todos los contadores en paralelo
+    const [solicitudesRes, intakeRes, mantenimientoRes] = await Promise.all([
+      fetch("/api/solicitudes-visita/count"),
+      fetch("/api/intake/count"),
+      fetch("/api/mantenimiento/count"),
+    ])
+
+    const solicitudesData = solicitudesRes.ok ? await solicitudesRes.json() : { count: 0 }
+    const intakeData = intakeRes.ok ? await intakeRes.json() : { count: 0 }
+    const mantenimientoData = mantenimientoRes.ok ? await mantenimientoRes.json() : { count: 0 }
+
+    setPendientesCount(Number(solicitudesData?.count) || 0)
+    setIntakeCount(Number(intakeData?.count) || 0)
+    setMantenimientoPendientesCount(Number(mantenimientoData?.count) || 0)
   }, [role])
 
+  // Cargar cuando cambia el role
   useEffect(() => {
-    if (role !== "admin" && role !== "propietario") return
-    fetch("/api/intake/count")
-      .then((res) => (res.ok ? res.json() : { count: 0 }))
-      .then((data: { count?: number }) => setIntakeCount(Number(data?.count) || 0))
-      .catch(() => setIntakeCount(0))
-  }, [role])
+    fetchCounts()
+  }, [fetchCounts])
 
+  // Recargar cada 30 segundos
   useEffect(() => {
     if (role !== "admin" && role !== "propietario") return
-    fetch("/api/mantenimiento/count")
-      .then((res) => (res.ok ? res.json() : { count: 0 }))
-      .then((data: { count?: number }) => setMantenimientoPendientesCount(Number(data?.count) || 0))
-      .catch(() => setMantenimientoPendientesCount(0))
-  }, [role])
+    const interval = setInterval(fetchCounts, 30000)
+    return () => clearInterval(interval)
+  }, [fetchCounts, role])
+
+  // Recargar cuando la ventana gana foco
+  useEffect(() => {
+    if (role !== "admin" && role !== "propietario") return
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        fetchCounts()
+      }
+    }
+    document.addEventListener("visibilitychange", handleVisibilityChange)
+    return () => document.removeEventListener("visibilitychange", handleVisibilityChange)
+  }, [fetchCounts, role])
 
   const isAdmin = role === "admin"
   const isPropietario = role === "propietario"
