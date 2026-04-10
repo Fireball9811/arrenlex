@@ -44,7 +44,7 @@ export function DashboardNav() {
   }, [role])
 
   useEffect(() => {
-    if (role !== "admin") return
+    if (role !== "admin" && role !== "propietario") return
     fetch("/api/intake/count")
       .then((res) => (res.ok ? res.json() : { count: 0 }))
       .then((data: { count?: number }) => setIntakeCount(Number(data?.count) || 0))

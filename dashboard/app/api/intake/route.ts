@@ -4,10 +4,10 @@ import { createAdminClient } from "@/lib/supabase/admin"
 import { getUserRole } from "@/lib/auth/role"
 
 /**
- * GET - Devuelve todos los registros de arrenlex_form_intake.
- * Hace JOIN con propiedades usando matricula_inmobiliaria = id_inmueble
- * para traer valor_arriendo junto a cada registro.
- * Solo accesible para admin.
+ * GET - Devuelve registros de arrenlex_form_intake.
+ * - Admin: ve todos los registros
+ * - Propietario: ve solo registros de sus propiedades
+ * Hace JOIN con propiedades para traer valor_arriendo junto a cada registro.
  */
 export async function GET() {
   const supabase = await createClient()
@@ -20,16 +20,33 @@ export async function GET() {
   }
 
   const role = await getUserRole(supabase, user)
-  if (role !== "admin") {
+  if (role !== "admin" && role !== "propietario") {
     return NextResponse.json({ error: "Prohibido" }, { status: 403 })
   }
 
   const admin = createAdminClient()
 
-  // Traer todos los registros de intake
-  const { data: intakeData, error: intakeError } = await admin
+  // Traer registros de intake según el rol
+  let intakeQuery = admin
     .from("arrenlex_form_intake")
     .select("*")
+
+  if (role === "propietario") {
+    // Para propietarios, primero obtener sus propiedades
+    const { data: propiedades } = await admin
+      .from("propiedades")
+      .select("id")
+      .eq("user_id", user.id)
+
+    if (!propiedades || propiedades.length === 0) {
+      return NextResponse.json([])
+    }
+
+    const propiedadIds = propiedades.map(p => p.id)
+    intakeQuery = intakeQuery.in("propiedad_id", propiedadIds)
+  }
+
+  const { data: intakeData, error: intakeError } = await intakeQuery
     .order("created_at", { ascending: false })
 
   if (intakeError) {

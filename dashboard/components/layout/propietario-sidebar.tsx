@@ -9,6 +9,7 @@ import { useLang } from "@/lib/i18n/context"
 export function PropietarioSidebar() {
   const { t, lang, setLang } = useLang()
   const [pendientesCount, setPendientesCount] = useState(0)
+  const [intakeCount, setIntakeCount] = useState(0)
   const [mantenimientoPendientesCount, setMantenimientoPendientesCount] = useState(0)
 
   useEffect(() => {
@@ -16,6 +17,13 @@ export function PropietarioSidebar() {
       .then((res) => (res.ok ? res.json() : { count: 0 }))
       .then((data: { count?: number }) => setPendientesCount(Number(data?.count) || 0))
       .catch(() => setPendientesCount(0))
+  }, [])
+
+  useEffect(() => {
+    fetch("/api/intake/count")
+      .then((res) => (res.ok ? res.json() : { count: 0 }))
+      .then((data: { count?: number }) => setIntakeCount(Number(data?.count) || 0))
+      .catch(() => setIntakeCount(0))
   }, [])
 
   useEffect(() => {
@@ -59,9 +67,9 @@ export function PropietarioSidebar() {
         </Link>
         <Link href="/mensajes" className="flex items-center justify-between rounded p-2 transition hover:bg-indigo-800">
           {t.sidebar.mensajes}
-          {pendientesCount > 0 && (
+          {(pendientesCount + intakeCount) > 0 && (
             <span className="rounded-full bg-amber-500/90 px-2 py-0.5 text-xs font-medium text-white">
-              {pendientesCount}
+              {pendientesCount + intakeCount}
             </span>
           )}
         </Link>

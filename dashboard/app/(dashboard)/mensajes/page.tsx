@@ -35,7 +35,11 @@ function calcularScore(r: IntakeFormulario): ResultadoScore {
   const canon = r.valor_arriendo
   if (canon == null) return { excluido: false, sinCanon: true }
 
-  const ingresoTotal = (r.salario ?? 0) + (r.salario_2 ?? 0)
+  // Mapeo de campos para compatibilidad con nombres antiguos y nuevos
+  const salarioPrincipal = r.salario_principal ?? r.salario ?? 0
+  const salarioSecundario = r.salario_secundario ?? r.salario_2 ?? 0
+  const ingresoTotal = salarioPrincipal + salarioSecundario
+
   const fmt = (v: number) =>
     new Intl.NumberFormat("es-CO", { style: "currency", currency: "COP", maximumFractionDigits: 0 }).format(v)
 
@@ -46,10 +50,12 @@ function calcularScore(r: IntakeFormulario): ResultadoScore {
   if (r.negocio && r.negocio.trim() !== "" && r.negocio.trim().toLowerCase() !== "no") {
     return { excluido: true, filtro: { aplica: true, motivo: `Uso no residencial indicado: "${r.negocio}"` } }
   }
-  if (canon > 0 && ingresoTotal < canon * 1.5) {
+
+  // Validación de ingresos: mínimo 1.2x el canon (reducido de 1.5x para ser más flexible)
+  if (canon > 0 && ingresoTotal < canon * 1.2) {
     return {
       excluido: true,
-      filtro: { aplica: true, motivo: `Ingresos insuficientes: ${fmt(ingresoTotal)} < 1.5x canon (${fmt(canon * 1.5)})` },
+      filtro: { aplica: true, motivo: `Ingresos insuficientes: ${fmt(ingresoTotal)} < 1.2x canon (${fmt(canon * 1.2)}). Se requiere mínimo ${fmt(canon * 1.2)}.` },
     }
   }
 
@@ -57,13 +63,15 @@ function calcularScore(r: IntakeFormulario): ResultadoScore {
   let ptsPago = 0; let descPago = ""
   if (ratio >= 3) { ptsPago = 50; descPago = `${ratio.toFixed(1)}x canon — Excelente` }
   else if (ratio >= 2) { ptsPago = 38; descPago = `${ratio.toFixed(1)}x canon — Aceptable` }
-  else { ptsPago = 25; descPago = `${ratio.toFixed(1)}x canon — Riesgo medio` }
+  else if (ratio >= 1.5) { ptsPago = 30; descPago = `${ratio.toFixed(1)}x canon — Adecuado` }
+  else { ptsPago = 20; descPago = `${ratio.toFixed(1)}x canon — Mínimo aceptable` }
 
   const meses = r.tiempo_servicio_principal_meses ?? r.antiguedad_meses ?? 0
   let ptsLaboral = 0; let descLaboral = ""
   if (meses >= 24) { ptsLaboral = 20; descLaboral = `${meses} meses — Muy estable` }
   else if (meses >= 12) { ptsLaboral = 13; descLaboral = `${meses} meses — Estable` }
-  else { ptsLaboral = 6; descLaboral = `${meses} meses — Riesgo` }
+  else if (meses >= 6) { ptsLaboral = 8; descLaboral = `${meses} meses — Moderado` }
+  else { ptsLaboral = 4; descLaboral = `${meses} meses — Bajo` }
 
   const personas = r.adultos_habitantes ?? r.personas ?? 1
   let ptsHogar = 0; let descHogar = ""
@@ -71,7 +79,7 @@ function calcularScore(r: IntakeFormulario): ResultadoScore {
   else if (personas === 4) { ptsHogar = 10; descHogar = `${personas} personas — A evaluar` }
   else { ptsHogar = 5; descHogar = `${personas} personas — Riesgo` }
 
-  const mascotas = r.mascotas ?? 0
+  const mascotas = r.mascotas_cantidad ?? r.mascotas ?? 0
   let ptsMascotas = 0; let descMascotas = ""
   if (mascotas === 0) { ptsMascotas = 15; descMascotas = "Sin mascotas — Ideal" }
   else if (mascotas === 1) { ptsMascotas = 10; descMascotas = "1 mascota — A evaluar" }
@@ -192,7 +200,7 @@ function ModalComparacion({
     })
     .sort((a, b) => b.sortKey - a.sortKey)
 
-  const inmueble = registros[0]?.id_inmueble ?? "—"
+  const inmueble = registros[0]?.propiedad_id ?? registros[0]?.id_inmueble ?? "—"
   const canon = registros[0]?.valor_arriendo
 
   const fmtCurrency = (v: number | null | undefined) =>
@@ -329,6 +337,7 @@ function TablaIntake({
   puedeComparar,
   motivoInvalido,
   onComparar,
+  role,
 }: {
   lista: IntakeFormulario[]
   seleccionados: Set<string>
@@ -339,6 +348,7 @@ function TablaIntake({
   puedeComparar: boolean
   motivoInvalido: string
   onComparar: () => void
+  role: UserRole | null
 }) {
   const { t: tTbl } = useLang()
   if (lista.length === 0) return null
@@ -354,9 +364,11 @@ function TablaIntake({
     }
   }
 
+  const canCompare = role === "admin" || role === "propietario"
+
   return (
     <>
-      {algunoSeleccionado && (
+      {canCompare && algunoSeleccionado && (
         <div className="flex items-center justify-between mb-3 rounded-lg bg-muted/50 px-3 py-2 text-sm">
           <span className="text-muted-foreground">
             {seleccionados.size} {seleccionados.size !== 1 ? tTbl.mensajes.seleccionadosPlural : tTbl.mensajes.seleccionados}
@@ -384,15 +396,17 @@ function TablaIntake({
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b">
-              <th className="p-2 w-8">
-                <input
-                  type="checkbox"
-                  checked={todosSeleccionados}
-                  onChange={toggleTodos}
-                  className="rounded"
-                  title="Seleccionar todos"
-                />
-              </th>
+              {canCompare && (
+                <th className="p-2 w-8">
+                  <input
+                    type="checkbox"
+                    checked={todosSeleccionados}
+                    onChange={toggleTodos}
+                    className="rounded"
+                    title="Seleccionar todos"
+                  />
+                </th>
+              )}
               <th className="text-left p-2 font-medium">{tTbl.mensajes.columnas.nombre}</th>
               <th className="text-left p-2 font-medium">{tTbl.mensajes.columnas.email}</th>
               <th className="text-left p-2 font-medium">{tTbl.mensajes.columnas.telefono}</th>
@@ -407,17 +421,19 @@ function TablaIntake({
               <tr
                 key={r.id}
                 className={`border-b transition-colors ${
-                  seleccionados.has(r.id) ? "bg-primary/5" : "hover:bg-muted/30"
+                  canCompare && seleccionados.has(r.id) ? "bg-primary/5" : "hover:bg-muted/30"
                 }`}
               >
-                <td className="p-2">
-                  <input
-                    type="checkbox"
-                    checked={seleccionados.has(r.id)}
-                    onChange={() => onToggle(r.id)}
-                    className="rounded"
-                  />
-                </td>
+                {canCompare && (
+                  <td className="p-2">
+                    <input
+                      type="checkbox"
+                      checked={seleccionados.has(r.id)}
+                      onChange={() => onToggle(r.id)}
+                      className="rounded"
+                    />
+                  </td>
+                )}
                 <td className="p-2 font-medium">{r.nombre ?? "—"}</td>
                 <td className="p-2">{r.email ?? "—"}</td>
                 <td className="p-2">{r.telefono ?? "—"}</td>
@@ -459,6 +475,9 @@ export default function MensajesPage() {
   const [pasando, setPasando] = useState(false)
   const [pasadoOk, setPasadoOk] = useState<string | null>(null)
   const [pasadoError, setPasadoError] = useState<string | null>(null)
+  // Para propietarios: sus propiedades y la seleccionada para filtrar
+  const [propietarioPropiedades, setPropietarioPropiedades] = useState<Array<{ id: string; direccion?: string; ciudad?: string }>>([])
+  const [propiedadSeleccionada, setPropiedadSeleccionada] = useState<string | "all">("all")
 
   const fetchSolicitudes = useCallback(async () => {
     const res = await fetch("/api/solicitudes-visita")
@@ -490,7 +509,7 @@ export default function MensajesPage() {
   useEffect(() => {
     if (role === "admin" || role === "propietario") {
       const loads: Promise<void>[] = [fetchSolicitudes()]
-      if (role === "admin") loads.push(fetchIntake())
+      if (role === "admin" || role === "propietario") loads.push(fetchIntake())
       Promise.all(loads).finally(() => setLoading(false))
     } else if (role === "inquilino") {
       setLoading(false)
@@ -499,6 +518,21 @@ export default function MensajesPage() {
 
   // Limpiar selección al cambiar de sub-tab
   useEffect(() => { setSeleccionados(new Set()) }, [subTabIntake])
+
+  // Cargar propiedades del propietario
+  useEffect(() => {
+    if (role === "propietario") {
+      fetch("/api/propietario/propiedades")
+        .then((res) => (res.ok ? res.json() : []))
+        .then((data: Array<{ id: string; direccion?: string; ciudad?: string }>) => {
+          setPropietarioPropiedades(Array.isArray(data) ? data : [])
+        })
+        .catch(() => setPropietarioPropiedades([]))
+    }
+  }, [role])
+
+  // Limpiar selección al cambiar propiedad seleccionada
+  useEffect(() => { setSeleccionados(new Set()) }, [propiedadSeleccionada])
 
   const handleAbrirDetalle = useCallback(async (registro: IntakeFormulario) => {
     setIntakeSeleccionado(registro)
@@ -542,7 +576,7 @@ export default function MensajesPage() {
     if (lista.length < 2) {
       return { registrosParaComparar: lista, puedeComparar: false, motivoInvalido: t.mensajes.comparacion.sinPropiedad }
     }
-    const ids = [...new Set(lista.map((r) => r.id_inmueble ?? "__sin__"))]
+    const ids = [...new Set(lista.map((r) => r.propiedad_id ?? "__sin__"))]
     if (ids.length > 1) {
       return { registrosParaComparar: lista, puedeComparar: false, motivoInvalido: t.mensajes.comparacion.sinPropiedad }
     }
@@ -551,6 +585,14 @@ export default function MensajesPage() {
     }
     return { registrosParaComparar: lista, puedeComparar: true, motivoInvalido: "" }
   }, [seleccionados, intakeRegistros, t])
+
+  // Filtrar registros por propiedad seleccionada (solo para propietarios)
+  const intakeRegistrosFiltrados = useMemo(() => {
+    if (role === "propietario" && propiedadSeleccionada !== "all") {
+      return intakeRegistros.filter((r) => r.propiedad_id === propiedadSeleccionada)
+    }
+    return intakeRegistros
+  }, [intakeRegistros, role, propiedadSeleccionada])
 
   const filtered = solicitudes.filter((s) => s.status === tab)
 
@@ -595,7 +637,7 @@ export default function MensajesPage() {
       </div>
 
       {/* ── Modal comparación ── */}
-      {mostrarComparacion && puedeComparar && (
+      {(role === "admin" || role === "propietario") && mostrarComparacion && puedeComparar && (
         <ModalComparacion
           registros={registrosParaComparar}
           onCerrar={() => setMostrarComparacion(false)}
@@ -616,9 +658,9 @@ export default function MensajesPage() {
               <div>
                 <h2 className="text-xl font-bold">{intakeSeleccionado.nombre ?? t.comun.sinDatos}</h2>
                 <p className="text-sm text-muted-foreground">{t.mensajes.detalle.recibido} {formatDate(intakeSeleccionado.created_at)}</p>
-                {intakeSeleccionado.id_inmueble && (
+                {(intakeSeleccionado.propiedad_id || intakeSeleccionado.id_inmueble) && (
                   <p className="text-xs text-muted-foreground">
-                    {t.mensajes.comparacion.inmueble} {intakeSeleccionado.id_inmueble}
+                    {t.mensajes.comparacion.inmueble} {intakeSeleccionado.propiedad_id ?? intakeSeleccionado.id_inmueble}
                     {intakeSeleccionado.valor_arriendo ? ` — ${t.mensajes.comparacion.canon} ${formatCurrency(intakeSeleccionado.valor_arriendo)}` : ""}
                   </p>
                 )}
@@ -726,12 +768,12 @@ export default function MensajesPage() {
             <SeccionCalificacion registro={intakeSeleccionado} />
 
             <div className="mt-4 pt-4 border-t space-y-3">
-              {pasadoOk && (
+              {(role === "admin" || role === "propietario") && pasadoOk && (
                 <div className="rounded-lg bg-green-50 border border-green-200 px-4 py-3 text-sm text-green-800 dark:bg-green-950/30 dark:border-green-800 dark:text-green-300">
                   {t.mensajes.creadoOk} <strong>{pasadoOk}</strong>
                 </div>
               )}
-              {pasadoError && (
+              {(role === "admin" || role === "propietario") && pasadoError && (
                 <div className="rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-800 dark:bg-red-950/30 dark:border-red-800 dark:text-red-300">
                   {pasadoError}
                 </div>
@@ -740,45 +782,47 @@ export default function MensajesPage() {
                 <p className="text-xs text-muted-foreground">
                   {t.mensajes.detalle.autorizacion} {intakeSeleccionado.autorizacion ? intakeSeleccionado.autorizacion.slice(0, 60) + "…" : "—"}
                 </p>
-                <button
-                  disabled={pasando || !!pasadoOk}
-                  onClick={async () => {
-                    setPasando(true)
-                    setPasadoOk(null)
-                    setPasadoError(null)
-                    try {
-                      const res = await fetch("/api/mensajes/pasar-arrendatario", {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({ intakeId: intakeSeleccionado.id }),
-                      })
-                      const json = await res.json()
-                      if (!res.ok) {
-                        setPasadoError(json.error ?? t.mensajes.errorProceso)
-                      } else {
-                        setPasadoOk(json.email ?? "—")
-                        setIntakeRegistros((prev) =>
-                          prev.map((r) =>
-                            r.id === intakeSeleccionado.id ? { ...r, gestionado: true } : r
+                {(role === "admin" || role === "propietario") && (
+                  <button
+                    disabled={pasando || !!pasadoOk}
+                    onClick={async () => {
+                      setPasando(true)
+                      setPasadoOk(null)
+                      setPasadoError(null)
+                      try {
+                        const res = await fetch("/api/mensajes/pasar-arrendatario", {
+                          method: "POST",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({ intakeId: intakeSeleccionado.id }),
+                        })
+                        const json = await res.json()
+                        if (!res.ok) {
+                          setPasadoError(json.error ?? t.mensajes.errorProceso)
+                        } else {
+                          setPasadoOk(json.email ?? "—")
+                          setIntakeRegistros((prev) =>
+                            prev.map((r) =>
+                              r.id === intakeSeleccionado.id ? { ...r, gestionado: true } : r
+                            )
                           )
-                        )
+                        }
+                      } catch {
+                        setPasadoError(t.mensajes.errorConexion)
+                      } finally {
+                        setPasando(false)
                       }
-                    } catch {
-                      setPasadoError(t.mensajes.errorConexion)
-                    } finally {
-                      setPasando(false)
-                    }
-                  }}
-                  className={`rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
-                    pasadoOk
-                      ? "bg-green-600/40 text-green-900 dark:text-green-300 cursor-not-allowed opacity-60"
-                      : pasando
-                      ? "bg-primary/60 text-primary-foreground cursor-wait opacity-80"
-                      : "bg-primary text-primary-foreground hover:bg-primary/90 cursor-pointer"
-                  }`}
-                >
-                  {pasando ? t.mensajes.procesando : pasadoOk ? t.mensajes.creado : t.mensajes.pasarArrendatario}
-                </button>
+                    }}
+                    className={`rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
+                      pasadoOk
+                        ? "bg-green-600/40 text-green-900 dark:text-green-300 cursor-not-allowed opacity-60"
+                        : pasando
+                        ? "bg-primary/60 text-primary-foreground cursor-wait opacity-80"
+                        : "bg-primary text-primary-foreground hover:bg-primary/90 cursor-pointer"
+                    }`}
+                  >
+                    {pasando ? t.mensajes.procesando : pasadoOk ? t.mensajes.creado : t.mensajes.pasarArrendatario}
+                  </button>
+                )}
               </div>
             </div>
           </div>
@@ -790,9 +834,9 @@ export default function MensajesPage() {
           <TabsTrigger value="solicitudes">{t.mensajes.tabSolicitudes}</TabsTrigger>
           <TabsTrigger value="posibles-arrendatarios">
             {t.mensajes.tabArrendatarios}
-            {intakeRegistros.filter((r) => !r.gestionado).length > 0 && (
+            {intakeRegistrosFiltrados.filter((r) => !r.gestionado).length > 0 && (
               <span className="ml-2 rounded-full bg-amber-500/90 px-2 py-0.5 text-xs font-medium text-white">
-                {intakeRegistros.filter((r) => !r.gestionado).length}
+                {intakeRegistrosFiltrados.filter((r) => !r.gestionado).length}
               </span>
             )}
           </TabsTrigger>
@@ -881,10 +925,29 @@ export default function MensajesPage() {
             <CardContent>
               {loading ? (
                 <p className="text-muted-foreground">{t.comun.cargando}</p>
-              ) : role !== "admin" ? (
-                <p className="text-muted-foreground py-8">{t.mensajes.soloAdmin}</p>
+              ) : role !== "admin" && role !== "propietario" ? (
+                <p className="text-muted-foreground py-8">{t.mensajes.sinAcceso}</p>
               ) : (
                 <>
+                  {/* Selector de propiedad para propietarios */}
+                  {role === "propietario" && propietarioPropiedades.length > 0 && (
+                    <div className="mb-4 flex items-center gap-2">
+                      <label className="text-sm font-medium text-muted-foreground">Filtrar por propiedad:</label>
+                      <select
+                        value={propiedadSeleccionada}
+                        onChange={(e) => setPropiedadSeleccionada(e.target.value)}
+                        className="rounded border bg-background px-3 py-1.5 text-sm"
+                      >
+                        <option value="all">Todas mis propiedades</option>
+                        {propietarioPropiedades.map((p) => (
+                          <option key={p.id} value={p.id}>
+                            {p.direccion ? `${p.direccion}${p.ciudad ? `, ${p.ciudad}` : ''}` : p.id}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+
                   <div className="flex items-center justify-between mb-4 border-b pb-2">
                     <div className="flex gap-2">
                       <button
@@ -896,9 +959,9 @@ export default function MensajesPage() {
                         }`}
                       >
                         {t.mensajes.pendientes}
-                        {intakeRegistros.filter((r) => !r.gestionado).length > 0 && (
+                        {intakeRegistrosFiltrados.filter((r) => !r.gestionado).length > 0 && (
                           <span className="ml-1.5 rounded-full bg-amber-500/90 px-1.5 py-0.5 text-xs font-medium text-white">
-                            {intakeRegistros.filter((r) => !r.gestionado).length}
+                            {intakeRegistrosFiltrados.filter((r) => !r.gestionado).length}
                           </span>
                         )}
                       </button>
@@ -912,33 +975,35 @@ export default function MensajesPage() {
                       >
                         {t.mensajes.gestionados}
                         <span className="ml-1.5 text-xs text-muted-foreground">
-                          ({intakeRegistros.filter((r) => r.gestionado).length})
+                          ({intakeRegistrosFiltrados.filter((r) => r.gestionado).length})
                         </span>
                       </button>
                     </div>
 
-                    <button
-                      onClick={() => puedeComparar && setMostrarComparacion(true)}
-                      disabled={!puedeComparar}
-                      title={!puedeComparar ? motivoInvalido : t.mensajes.comparar}
-                      className={`rounded-lg px-4 py-1.5 text-sm font-medium transition-colors ${
-                        puedeComparar
-                          ? "bg-primary text-primary-foreground hover:bg-primary/90"
-                          : "bg-muted text-muted-foreground cursor-not-allowed opacity-50"
-                      }`}
-                    >
-                      {t.mensajes.comparar}
-                      {seleccionados.size >= 2 && (
-                        <span className="ml-1.5 rounded-full bg-white/20 px-1.5 py-0.5 text-xs">
-                          {seleccionados.size}
-                        </span>
-                      )}
-                    </button>
+                    {(role === "admin" || role === "propietario") && (
+                      <button
+                        onClick={() => puedeComparar && setMostrarComparacion(true)}
+                        disabled={!puedeComparar}
+                        title={!puedeComparar ? motivoInvalido : t.mensajes.comparar}
+                        className={`rounded-lg px-4 py-1.5 text-sm font-medium transition-colors ${
+                          puedeComparar
+                            ? "bg-primary text-primary-foreground hover:bg-primary/90"
+                            : "bg-muted text-muted-foreground cursor-not-allowed opacity-50"
+                        }`}
+                      >
+                        {t.mensajes.comparar}
+                        {seleccionados.size >= 2 && (
+                          <span className="ml-1.5 rounded-full bg-white/20 px-1.5 py-0.5 text-xs">
+                            {seleccionados.size}
+                          </span>
+                        )}
+                      </button>
+                    )}
                   </div>
 
                   {/* Tabla filtrada por sub-tab */}
                   {(() => {
-                    const lista = intakeRegistros
+                    const lista = intakeRegistrosFiltrados
                       .filter((r) => (subTabIntake === "pendientes" ? !r.gestionado : r.gestionado))
                       .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
 
@@ -962,6 +1027,7 @@ export default function MensajesPage() {
                         puedeComparar={puedeComparar}
                         motivoInvalido={motivoInvalido}
                         onComparar={() => setMostrarComparacion(true)}
+                        role={role}
                       />
                     )
                   })()}

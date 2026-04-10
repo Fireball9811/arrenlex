@@ -8,8 +8,10 @@ import { createAdminClient } from "@/lib/supabase/admin"
 //   2. Crea un contrato en estado "borrador" para que aparezca en inquilinos activos
 //   3. Marca el intake como gestionado = true
 //   4. NO envía correo (el usuario se crea después con el botón "Sin usuario")
+//
+// Admin: puede pasar cualquier registro
+// Propietario: solo puede pasar registros de sus propias propiedades
 export async function POST(request: Request) {
-  // Solo admins pueden hacer esto
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) {
@@ -18,15 +20,15 @@ export async function POST(request: Request) {
 
   const admin = createAdminClient()
 
-  // Verificar que el usuario autenticado sea admin
+  // Verificar el rol del usuario
   const { data: perfil } = await admin
     .from("perfiles")
     .select("role")
     .eq("id", user.id)
     .maybeSingle()
 
-  if (perfil?.role !== "admin") {
-    return NextResponse.json({ error: "Solo administradores pueden realizar esta acción" }, { status: 403 })
+  if (perfil?.role !== "admin" && perfil?.role !== "propietario") {
+    return NextResponse.json({ error: "Solo administradores y propietarios pueden realizar esta acción" }, { status: 403 })
   }
 
   let body: Record<string, unknown>
@@ -44,12 +46,26 @@ export async function POST(request: Request) {
   // ── 1. Leer el intake ───────────────────────────────────────────────────
   const { data: intake, error: intakeError } = await admin
     .from("arrenlex_form_intake")
-    .select("*, propiedades:propiedad_id(id, ciudad, area, valor_arriendo)")
+    .select("*, propiedades:propiedad_id(id, ciudad, area, valor_arriendo, user_id)")
     .eq("id", intakeId)
     .maybeSingle()
 
   if (intakeError || !intake) {
     return NextResponse.json({ error: "Registro no encontrado" }, { status: 404 })
+  }
+
+  // ── 1.1. Validar que el propietario tenga permiso sobre esta propiedad ─────
+  if (perfil?.role === "propietario") {
+    const propiedad = Array.isArray(intake.propiedades)
+      ? intake.propiedades[0] ?? null
+      : (intake.propiedades as { id?: string; user_id?: string } | null)
+
+    if (!propiedad || propiedad.user_id !== user.id) {
+      return NextResponse.json(
+        { error: "No tienes permiso para pasar este arrendatario. La propiedad no te pertenece." },
+        { status: 403 }
+      )
+    }
   }
 
   if (!intake.nombre || typeof intake.nombre !== "string") {
@@ -151,13 +167,27 @@ export async function POST(request: Request) {
     arrendatarioId = newArrendatario.id
   }
 
-  // ── 4. Crear contrato en estado borrador para que aparezca en inquilinos ─
+  // ── 4. Obtener user_id de la propiedad para el contrato ───────────────────
+  let propiedadUserId: string | null = null
+  if (perfil?.role === "propietario") {
+    propiedadUserId = user.id
+  } else {
+    // Admin: obtener el user_id de la propiedad
+    const { data: propData } = await admin
+      .from("propiedades")
+      .select("user_id")
+      .eq("id", propiedad?.id ?? "")
+      .maybeSingle()
+    propiedadUserId = propData?.user_id ?? null
+  }
+
+  // ── 5. Crear contrato en estado borrador para que aparezca en inquilinos ─
   const { error: contratoError } = await admin
     .from("contratos")
     .insert({
       arrendatario_id: arrendatarioId,
       propiedad_id: propiedad?.id ?? null,
-      user_id: (await admin.from("propiedades").select("user_id").eq("id", propiedad?.id ?? "").single())?.data?.user_id ?? null,
+      user_id: propiedadUserId,
       estado: "borrador",
       fecha_inicio: new Date().toISOString().split('T')[0], // Fecha actual por defecto
       duracion_meses: 12, // Por defecto 12 meses
@@ -170,7 +200,7 @@ export async function POST(request: Request) {
     // No fallamos si hay error con el contrato, el arrendatario ya está creado
   }
 
-  // ── 5. Marcar intake como gestionado ───────────────────────────────────
+  // ── 6. Marcar intake como gestionado ───────────────────────────────────
   await admin
     .from("arrenlex_form_intake")
     .update({ gestionado: true })
