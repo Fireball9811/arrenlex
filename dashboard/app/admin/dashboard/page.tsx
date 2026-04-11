@@ -280,7 +280,7 @@ export default function AdminDashboardPage() {
             <Button
               variant="outline"
               className="h-20 flex-col gap-2"
-              onClick={() => router.push("/mantenimiento")}
+              onClick={() => router.push("/admin/mantenimiento")}
             >
               <Wrench className="h-5 w-5" />
               <span className="text-sm">{t.dashboard.admin.mantenimientoBtn}</span>
@@ -289,7 +289,7 @@ export default function AdminDashboardPage() {
             <Button
               variant="outline"
               className="h-20 flex-col gap-2"
-              onClick={() => router.push("/mensajes")}
+              onClick={() => router.push("/admin/mensajes")}
             >
               <MessageSquare className="h-5 w-5" />
               <span className="text-sm">{t.dashboard.admin.mensajesBtn}</span>

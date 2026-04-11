@@ -15,71 +15,48 @@ import type { Propiedad } from "@/lib/types/database"
 import { useLang } from "@/lib/i18n/context"
 import { uploadImageToSupabase } from "@/lib/supabase-storage"
 import { createClient } from "@/lib/supabase/client"
-import { getUserRole } from "@/lib/auth/role"
 
 type PropiedadConPropietario = Propiedad & {
   propietario?: { id: string; nombre: string | null; email: string } | null
 }
 
-export default function PropiedadesPage() {
+export default function AdminPropiedadesPage() {
   const { t } = useLang()
   const [propiedades, setPropiedades] = useState<PropiedadConPropietario[]>([])
   const [loading, setLoading] = useState(true)
-  const [isAdmin, setIsAdmin] = useState(false)
   const [imagenPorPropiedadId, setImagenPorPropiedadId] = useState<Record<string, string | null>>({})
   const [subiendoPorId, setSubiendoPorId] = useState<Record<string, boolean>>({})
   const [dragOverPropiedadId, setDragOverPropiedadId] = useState<string | null>(null)
 
   useEffect(() => {
-    const supabase = createClient()
-    supabase.auth.getUser().then(async ({ data: { user } }) => {
-      if (user) {
-        const role = await getUserRole(supabase, user)
-        setIsAdmin(role === "admin")
-      }
-    })
     fetch("/api/propiedades")
       .then((res) => res.json())
       .then(setPropiedades)
       .finally(() => setLoading(false))
   }, [])
 
-  // Cargar primera imagen por propiedad cuando hay propiedades
   useEffect(() => {
     if (propiedades.length === 0) return
-
     Promise.all(
       propiedades.map((p) =>
         fetch(`/api/propiedades/imagenes?propiedad_id=${p.id}`)
           .then((res) => res.json())
-          .then((data: { url_publica?: string }[]) => ({
-            id: p.id,
-            url: data?.[0]?.url_publica ?? null,
-          }))
+          .then((data: { url_publica?: string }[]) => ({ id: p.id, url: data?.[0]?.url_publica ?? null }))
       )
     ).then((results) => {
       const next: Record<string, string | null> = {}
-      results.forEach(({ id, url }) => {
-        next[id] = url
-      })
+      results.forEach(({ id, url }) => { next[id] = url })
       setImagenPorPropiedadId((prev) => ({ ...prev, ...next }))
     })
   }, [propiedades])
 
   async function handleSubirFoto(propiedadId: string, file: File) {
     setSubiendoPorId((prev) => ({ ...prev, [propiedadId]: true }))
-
     try {
       const supabase = createClient()
       const { data: { user } } = await supabase.auth.getUser()
-      if (!user) {
-        alert("Debes iniciar sesión para subir imágenes.")
-        return
-      }
-
-      // Subir directamente a Supabase Storage
+      if (!user) { alert("Debes iniciar sesión para subir imágenes."); return }
       const { url } = await uploadImageToSupabase(file, propiedadId, "fachada", user.id)
-
       setImagenPorPropiedadId((prev) => ({ ...prev, [propiedadId]: url }))
     } catch (error) {
       alert(error instanceof Error ? error.message : "Error al subir la foto")
@@ -95,31 +72,21 @@ export default function PropiedadesPage() {
     e.target.value = ""
   }
 
-  // Drag & Drop handlers
   function handleDragOver(e: React.DragEvent, propiedadId: string) {
-    e.preventDefault()
-    e.stopPropagation()
+    e.preventDefault(); e.stopPropagation()
     setDragOverPropiedadId(propiedadId)
   }
 
-  function handleDragLeave(e: React.DragEvent, propiedadId: string) {
-    e.preventDefault()
-    e.stopPropagation()
-    // Solo limpiar si estamos saliendo del elemento, no de un hijo
-    if (e.currentTarget === e.target) {
-      setDragOverPropiedadId(null)
-    }
+  function handleDragLeave(e: React.DragEvent) {
+    e.preventDefault(); e.stopPropagation()
+    if (e.currentTarget === e.target) setDragOverPropiedadId(null)
   }
 
   function handleDrop(e: React.DragEvent, propiedadId: string) {
-    e.preventDefault()
-    e.stopPropagation()
+    e.preventDefault(); e.stopPropagation()
     setDragOverPropiedadId(null)
-
     const file = e.dataTransfer.files?.[0]
-    if (file && file.type.startsWith("image/")) {
-      handleSubirFoto(propiedadId, file)
-    }
+    if (file && file.type.startsWith("image/")) handleSubirFoto(propiedadId, file)
   }
 
   async function handleDelete(id: string) {
@@ -127,11 +94,7 @@ export default function PropiedadesPage() {
     const res = await fetch(`/api/propiedades/${id}`, { method: "DELETE" })
     if (res.ok) {
       setPropiedades((prev) => prev.filter((p) => p.id !== id))
-      setImagenPorPropiedadId((prev) => {
-        const next = { ...prev }
-        delete next[id]
-        return next
-      })
+      setImagenPorPropiedadId((prev) => { const next = { ...prev }; delete next[id]; return next })
     }
   }
 
@@ -149,7 +112,7 @@ export default function PropiedadesPage() {
       <div className="mb-6 flex items-center justify-between">
         <h1 className="text-3xl font-bold">{t.propiedades.titulo}</h1>
         <Button asChild>
-          <Link href={isAdmin ? "/admin/propiedades/nuevo" : "/propietario/propiedades/nuevo"}>{t.propiedades.nuevaPropiedad}</Link>
+          <Link href="/admin/propiedades/nuevo">{t.propiedades.nuevaPropiedad}</Link>
         </Button>
       </div>
 
@@ -159,13 +122,11 @@ export default function PropiedadesPage() {
         <Card>
           <CardHeader>
             <CardTitle>{t.propiedades.sinPropiedades}</CardTitle>
-            <CardDescription>
-              {t.propiedades.sinPropiedadesDesc}
-            </CardDescription>
+            <CardDescription>{t.propiedades.sinPropiedadesDesc}</CardDescription>
           </CardHeader>
           <CardContent>
             <Button asChild>
-              <Link href={isAdmin ? "/admin/propiedades/nuevo" : "/propietario/propiedades/nuevo"}>{t.propiedades.nuevaPropiedad}</Link>
+              <Link href="/admin/propiedades/nuevo">{t.propiedades.nuevaPropiedad}</Link>
             </Button>
           </CardContent>
         </Card>
@@ -173,43 +134,23 @@ export default function PropiedadesPage() {
         <div className="grid gap-4 md:grid-cols-1 lg:grid-cols-2">
           {propiedades.map((p) => (
             <Card key={p.id} className="flex flex-row overflow-hidden relative">
-              {/* Badge de estado en esquina superior derecha */}
-              <span
-                className={`absolute top-3 right-3 z-10 rounded px-3 py-1 text-xs font-semibold shadow-sm ${
-                  estadoColors[p.estado] ?? "bg-gray-100 text-gray-800"
-                }`}
-              >
+              <span className={`absolute top-3 right-3 z-10 rounded px-3 py-1 text-xs font-semibold shadow-sm ${estadoColors[p.estado] ?? "bg-gray-100 text-gray-800"}`}>
                 {p.estado}
               </span>
-
-              {/* Columna izquierda: foto más grande */}
               <div
-                className={`relative w-56 shrink-0 bg-muted sm:w-72 transition-all cursor-pointer ${
-                  dragOverPropiedadId === p.id ? "border-primary border-2 bg-primary/5" : ""
-                }`}
+                className={`relative w-56 shrink-0 bg-muted sm:w-72 transition-all cursor-pointer ${dragOverPropiedadId === p.id ? "border-primary border-2 bg-primary/5" : ""}`}
                 onDragOver={(e) => handleDragOver(e, p.id)}
-                onDragLeave={(e) => handleDragLeave(e, p.id)}
+                onDragLeave={(e) => handleDragLeave(e)}
                 onDrop={(e) => handleDrop(e, p.id)}
                 onClick={() => document.getElementById(`file-input-${p.id}`)?.click()}
               >
-                <input
-                  id={`file-input-${p.id}`}
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={(e) => handleFileInputChange(p.id, e)}
-                  disabled={subiendoPorId[p.id]}
-                />
+                <input id={`file-input-${p.id}`} type="file" accept="image/*" className="hidden" onChange={(e) => handleFileInputChange(p.id, e)} disabled={subiendoPorId[p.id]} />
                 {subiendoPorId[p.id] ? (
                   <div className="flex h-full min-h-[200px] items-center justify-center">
                     <span className="text-sm text-muted-foreground">{t.propiedades.subiendo}</span>
                   </div>
                 ) : imagenPorPropiedadId[p.id] ? (
-                  <img
-                    src={imagenPorPropiedadId[p.id]!}
-                    alt=""
-                    className="h-full w-full object-cover"
-                  />
+                  <img src={imagenPorPropiedadId[p.id]!} alt="" className="h-full w-full object-cover" />
                 ) : (
                   <span className="pointer-events-none flex h-full min-h-[200px] flex-col items-center justify-center gap-2 p-4 text-center text-muted-foreground hover:text-foreground transition hover:bg-muted/80">
                     <Camera className="h-12 w-12" />
@@ -218,13 +159,9 @@ export default function PropiedadesPage() {
                   </span>
                 )}
               </div>
-
-              {/* Columna derecha: texto */}
               <div className="flex min-w-0 flex-1 flex-col p-4">
                 <CardTitle className="text-xl pr-20">{p.direccion}</CardTitle>
-                <CardDescription className="mt-1">
-                  {p.barrio}, {p.ciudad} · {p.tipo}
-                </CardDescription>
+                <CardDescription className="mt-1">{p.barrio}, {p.ciudad} · {p.tipo}</CardDescription>
                 {p.propietario && (
                   <p className="mt-1 text-xs text-muted-foreground">
                     {t.propiedades.propietario} {p.propietario.nombre ?? p.propietario.email}
@@ -246,14 +183,9 @@ export default function PropiedadesPage() {
                 </CardContent>
                 <div className="flex gap-2 pt-3">
                   <Button variant="outline" size="sm" asChild>
-                    <Link href={isAdmin ? `/admin/propiedades/${p.id}/editar` : `/propietario/propiedades/${p.id}/editar`}>{t.comun.editar}</Link>
+                    <Link href={`/admin/propiedades/${p.id}/editar`}>{t.comun.editar}</Link>
                   </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="text-destructive hover:bg-destructive hover:text-destructive-foreground"
-                    onClick={() => handleDelete(p.id)}
-                  >
+                  <Button variant="outline" size="sm" className="text-destructive hover:bg-destructive hover:text-destructive-foreground" onClick={() => handleDelete(p.id)}>
                     {t.comun.eliminar}
                   </Button>
                 </div>

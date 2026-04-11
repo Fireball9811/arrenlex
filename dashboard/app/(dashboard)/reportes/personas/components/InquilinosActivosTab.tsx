@@ -25,7 +25,7 @@ type InquilinoActivo = Perfil & {
   } | null
 }
 
-export function InquilinosActivosTab() {
+export function InquilinosActivosTab({ isAdmin = false }: { isAdmin?: boolean }) {
   const [inquilinos, setInquilinos] = useState<InquilinoActivo[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState("")
@@ -155,10 +155,12 @@ export function InquilinosActivosTab() {
           <h2 className="text-2xl font-bold">Inquilinos Activos</h2>
           <p className="text-muted-foreground">Inquilinos con contratos activos</p>
         </div>
-        <Button onClick={() => window.location.href = "/admin/usuarios?create=true&role=inquilino"}>
-          <UserPlus className="mr-2 h-4 w-4" />
-          Nuevo Inquilino
-        </Button>
+        {isAdmin && (
+          <Button onClick={() => window.location.href = "/admin/usuarios?create=true&role=inquilino"}>
+            <UserPlus className="mr-2 h-4 w-4" />
+            Nuevo Inquilino
+          </Button>
+        )}
       </div>
 
       <div className="mb-4">
@@ -247,15 +249,17 @@ export function InquilinosActivosTab() {
                             <span className="rounded-full bg-red-100 px-2 py-1 text-xs text-red-800 font-semibold">
                               Sin usuario
                             </span>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="h-7 px-2 text-xs"
-                              onClick={() => crearUsuarioParaArrendatario(i)}
-                              disabled={creandoUsuario === i.email}
-                            >
-                              <Mail className="h-3 w-3" />
-                            </Button>
+                            {isAdmin && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="h-7 px-2 text-xs"
+                                onClick={() => crearUsuarioParaArrendatario(i)}
+                                disabled={creandoUsuario === i.email}
+                              >
+                                <Mail className="h-3 w-3" />
+                              </Button>
+                            )}
                           </div>
                         )}
                       </td>
@@ -276,8 +280,8 @@ export function InquilinosActivosTab() {
                               <Pencil className="h-3 w-3" />
                             </Button>
                           </Link>
-                          {/* Activo/Inactivar */}
-                          {i.tieneUsuario && (
+                          {/* Acciones exclusivas de admin */}
+                          {isAdmin && i.tieneUsuario && (
                             <Button
                               size="sm"
                               variant={i.activo ? "outline" : "default"}
@@ -287,8 +291,7 @@ export function InquilinosActivosTab() {
                               <Power className="h-3 w-3" />
                             </Button>
                           )}
-                          {/* Bloquear/Desbloquear */}
-                          {i.tieneUsuario && (
+                          {isAdmin && i.tieneUsuario && (
                             <Button
                               size="sm"
                               variant={i.bloqueado ? "outline" : "destructive"}
@@ -298,8 +301,7 @@ export function InquilinosActivosTab() {
                               {i.bloqueado ? <CheckCircle className="h-3 w-3" /> : <XCircle className="h-3 w-3" />}
                             </Button>
                           )}
-                          {/* Eliminar usuario */}
-                          {i.tieneUsuario && (
+                          {isAdmin && i.tieneUsuario && (
                             <Button
                               size="sm"
                               variant="destructive"

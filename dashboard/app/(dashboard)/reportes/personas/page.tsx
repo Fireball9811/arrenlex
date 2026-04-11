@@ -134,7 +134,7 @@ export default function PersonasPage() {
 
       {/* Contenido según la tab activa */}
       <div className="space-y-4">
-        {activeTab === "inquilinos-activos" && <InquilinosActivosTab />}
+        {activeTab === "inquilinos-activos" && <InquilinosActivosTab isAdmin={userRole === "admin"} />}
         {activeTab === "propietarios" && (
           userRole === "propietario" ? <MisDatosPersonalesTab /> : <PropietariosTab />
         )}

@@ -14,34 +14,15 @@ export function LandingHero() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    const DEBUG_LOG = (msg: string, data: Record<string, unknown>) => {
-      fetch('http://127.0.0.1:7242/ingest/6e4d7e72-632e-40c7-9284-d25bbdae67c2', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': 'b8dc72' }, body: JSON.stringify({ sessionId: 'b8dc72', location: 'landing-hero.tsx', message: msg, data, timestamp: Date.now(), hypothesisId: 'H4-H5' }) }).catch(() => {});
-    };
     fetch("/api/propiedades/banner")
-      .then((res) => {
-        // #region agent log
-        DEBUG_LOG('banner fetch response', { ok: res.ok, status: res.status });
-        console.log('[DEBUG-banner] fetch response:', res.ok, res.status);
-        // #endregion
-        return res.ok ? res.json() : []
-      })
+      .then((res) => res.ok ? res.json() : [])
       .then((data: unknown) => {
         const urls = Array.isArray(data)
           ? data.filter((u): u is string => typeof u === "string" && u.length > 0)
           : []
-        // #region agent log
-        DEBUG_LOG('banner data processed', { isArray: Array.isArray(data), dataLength: Array.isArray(data) ? data.length : 0, urlCount: urls.length });
-        console.log('[DEBUG-banner] data processed:', { isArray: Array.isArray(data), dataLength: Array.isArray(data) ? data.length : 0, urlCount: urls.length });
-        // #endregion
         setImagenes(urls)
       })
-      .catch((err) => {
-        // #region agent log
-        DEBUG_LOG('banner fetch catch', { error: String(err) });
-        console.log('[DEBUG-banner] fetch catch:', err);
-        // #endregion
-        setImagenes([])
-      })
+      .catch(() => setImagenes([]))
       .finally(() => setLoading(false))
   }, [])
 

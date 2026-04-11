@@ -106,7 +106,7 @@ export default function MisPagosPage() {
           <div className="flex items-center justify-between">
             <CardTitle>Mis Pagos</CardTitle>
             <Button asChild size="sm">
-              <Link href="/reportes/financiero/consignar">
+              <Link href="/inquilino/pagos">
                 💳 Realizar Nuevo Pago
               </Link>
             </Button>

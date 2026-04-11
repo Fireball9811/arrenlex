@@ -26,6 +26,10 @@ export async function GET() {
   const role = await getUserRole(supabase, user)
   console.log("✓ Rol:", role)
 
+  if (role !== "admin" && role !== "propietario") {
+    return NextResponse.json({ error: "No autorizado" }, { status: 403 })
+  }
+
   try {
     // Construir query según el rol
     let query = admin

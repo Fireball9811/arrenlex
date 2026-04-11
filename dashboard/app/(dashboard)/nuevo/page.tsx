@@ -822,7 +822,7 @@ export default function NuevoArrendatarioPage() {
               {loading ? "Guardando..." : "Guardar"}
             </Button>
             <Button variant="outline" asChild>
-              <Link href={isInquilino ? "/nuevo" : "/dashboard"}>Volver</Link>
+              <Link href={isInquilino ? "/inquilino/dashboard" : "/dashboard"}>Volver</Link>
             </Button>
           </CardFooter>
         </div>

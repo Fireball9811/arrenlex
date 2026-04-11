@@ -55,7 +55,7 @@ export function AdminSidebar() {
           <UserPlus className="h-4 w-4" />
           {t.sidebar.nuevoArrendatario}
         </Link>
-        <Link href="/propiedades" className="flex items-center gap-3 rounded p-2 transition hover:bg-indigo-800">
+        <Link href="/admin/propiedades" className="flex items-center gap-3 rounded p-2 transition hover:bg-indigo-800">
           <Building className="h-4 w-4" />
           {t.sidebar.propiedades}
         </Link>
@@ -67,7 +67,7 @@ export function AdminSidebar() {
           <Mail className="h-4 w-4" />
           {t.sidebar.invitaciones}
         </Link>
-        <Link href="/mensajes" className="flex items-center justify-between rounded p-2 transition hover:bg-indigo-800">
+        <Link href="/admin/mensajes" className="flex items-center justify-between rounded p-2 transition hover:bg-indigo-800">
           <div className="flex items-center gap-3">
             <MessageSquare className="h-4 w-4" />
             {t.sidebar.mensajes}
@@ -82,7 +82,7 @@ export function AdminSidebar() {
           <DollarSign className="h-4 w-4" />
           {t.sidebar.gestionPagos}
         </Link>
-        <Link href="/mantenimiento" className="flex items-center justify-between rounded p-2 transition hover:bg-indigo-800">
+        <Link href="/admin/mantenimiento" className="flex items-center justify-between rounded p-2 transition hover:bg-indigo-800">
           <div className="flex items-center gap-3">
             <Wrench className="h-4 w-4" />
             {t.sidebar.mantenimiento}

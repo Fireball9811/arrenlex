@@ -3,7 +3,6 @@
 import Image from "next/image"
 import Link from "next/link"
 import { SignOutButton } from "@/components/auth/sign-out-button"
-import { UserEmail } from "@/components/auth/user-email"
 import { useLang } from "@/lib/i18n/context"
 
 export function InquilinoSidebar() {
@@ -26,19 +25,13 @@ export function InquilinoSidebar() {
         <Link href="/inquilino/mis-datos" className="block rounded p-2 transition hover:bg-indigo-800">
           {t.sidebar.misDatos}
         </Link>
-        <Link href="/inquilino/mis-contratos" className="block rounded p-2 transition hover:bg-indigo-800">
-          {t.sidebar.misContratos}
-        </Link>
         <Link href="/inquilino/documentos" className="block rounded p-2 transition hover:bg-indigo-800">
           Mis Documentos
-        </Link>
-        <Link href="/catalogo" className="block rounded p-2 transition hover:bg-indigo-800">
-          {t.sidebar.verPropiedades}
         </Link>
         <Link href="/inquilino/pagos" className="block rounded p-2 transition hover:bg-indigo-800">
           {t.sidebar.misPagos}
         </Link>
-        <Link href="/mantenimiento" className="block rounded p-2 transition hover:bg-indigo-800">
+        <Link href="/inquilino/mantenimiento" className="block rounded p-2 transition hover:bg-indigo-800">
           {t.sidebar.mantenimiento}
         </Link>
       </nav>

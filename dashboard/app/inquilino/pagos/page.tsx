@@ -70,9 +70,6 @@ export default function InquilinoPagosPage() {
         <CardHeader>
           <div className="flex items-center justify-between">
             <CardTitle>Mis Pagos</CardTitle>
-            <Button asChild size="sm">
-              <Link href="/reportes/financiero/consignar">Realizar Nuevo Pago</Link>
-            </Button>
           </div>
         </CardHeader>
         <CardContent>

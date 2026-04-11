@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react"
 import Link from "next/link"
-import { BarChart3, User, FileText, Home, Building2, FileCheck, Mail, CreditCard, MessageSquare, Wrench } from "lucide-react"
+import { BarChart3, User, Building2, FileCheck, Mail, CreditCard, MessageSquare, Wrench } from "lucide-react"
 import type { UserRole } from "@/lib/auth/role"
 import { getDashboardPathByRole } from "@/lib/auth/redirect-by-role"
 import { useLang } from "@/lib/i18n/context"
@@ -100,20 +100,6 @@ export function DashboardNav() {
         {isInquilino ? t.sidebar.misDatos : t.sidebar.nuevoArrendatario}
       </Link>
 
-      {isInquilino && (
-        <Link href="/mis-contratos" className={linkClass}>
-          <FileText />
-          {t.sidebar.misContratos}
-        </Link>
-      )}
-
-      {isInquilino && (
-        <Link href="/catalogo" className={linkClass}>
-          <Home />
-          {t.sidebar.verPropiedades}
-        </Link>
-      )}
-
       {(isAdmin || isPropietario) && (
         <Link href="/propiedades" className={linkClass}>
           <Building2 />
@@ -136,7 +122,7 @@ export function DashboardNav() {
       )}
 
       {(isAdmin || isPropietario) && (
-        <Link href="/mensajes" className={linkClass}>
+        <Link href={isAdmin ? "/admin/mensajes" : "/propietario/mensajes"} className={linkClass}>
           <MessageSquare />
           {t.sidebar.mensajes}
           {(pendientesCount + intakeCount) > 0 && (
@@ -147,18 +133,28 @@ export function DashboardNav() {
         </Link>
       )}
 
-      <Link href="/mantenimiento" className={linkClass}>
-        <Wrench />
-        {t.sidebar.mantenimiento}
-        {(isAdmin || isPropietario) && mantenimientoPendientesCount > 0 && (
-          <span className="ml-auto rounded-full bg-amber-500/90 px-2 py-0.5 text-xs font-medium text-white">
-            {mantenimientoPendientesCount}
-          </span>
-        )}
-      </Link>
+      {(isAdmin || isPropietario || isInquilino || role === "maintenance_special") && (
+        <Link
+          href={
+            isAdmin ? "/admin/mantenimiento"
+            : isPropietario ? "/propietario/mantenimiento"
+            : isInquilino ? "/inquilino/mantenimiento"
+            : "/dashboard/maintenance"
+          }
+          className={linkClass}
+        >
+          <Wrench />
+          {t.sidebar.mantenimiento}
+          {(isAdmin || isPropietario) && mantenimientoPendientesCount > 0 && (
+            <span className="ml-auto rounded-full bg-amber-500/90 px-2 py-0.5 text-xs font-medium text-white">
+              {mantenimientoPendientesCount}
+            </span>
+          )}
+        </Link>
+      )}
 
       {isAdmin && (
-        <Link href="/reportes/gestion-pagos" className={linkClass}>
+        <Link href="/admin/reportes/gestion-pagos" className={linkClass}>
           <CreditCard />
           {t.sidebar.gestionPagos}
         </Link>

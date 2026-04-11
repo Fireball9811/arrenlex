@@ -6,6 +6,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { Pencil, Home, Building2, DollarSign, MapPin } from "lucide-react"
 import { useLang } from "@/lib/i18n/context"
+import { createClient } from "@/lib/supabase/client"
+import { getUserRole } from "@/lib/auth/role"
 
 type Counts = {
   disponibles: number
@@ -37,8 +39,16 @@ export default function ReportesPropiedadesPage() {
   const [loading, setLoading] = useState(true)
   const [vista, setVista] = useState<"dashboard" | "inventario">("dashboard")
   const [filtro, setFiltro] = useState<"todos" | "disponibles" | "arrendadas" | "mantenimiento">("todos")
+  const [isAdmin, setIsAdmin] = useState(false)
 
   useEffect(() => {
+    const supabase = createClient()
+    supabase.auth.getUser().then(async ({ data: { user } }) => {
+      if (user) {
+        const role = await getUserRole(supabase, user)
+        setIsAdmin(role === "admin")
+      }
+    })
     fetch("/api/reportes/propiedades/counts")
       .then((r) => r.json())
       .then((data) => {
@@ -222,6 +232,7 @@ export default function ReportesPropiedadesPage() {
             filtro={filtro}
             getEstadoBadge={getEstadoBadge}
             formatCurrency={formatCurrency}
+            isAdmin={isAdmin}
           />
         </>
       )}
@@ -234,10 +245,12 @@ function InventarioTable({
   filtro,
   getEstadoBadge,
   formatCurrency,
+  isAdmin,
 }: {
   filtro: string
   getEstadoBadge: (estado: string) => React.ReactNode
   formatCurrency: (value: number) => string
+  isAdmin: boolean
 }) {
   const [propiedades, setPropiedades] = useState<PropiedadConPropietario[]>([])
   const [loading, setLoading] = useState(true)
@@ -337,7 +350,7 @@ function InventarioTable({
                     </td>
                     <td className="p-3 text-center">{getEstadoBadge(p.estado)}</td>
                     <td className="p-3 text-center">
-                      <Link href={`/propietario/propiedades/${p.id}/editar`}>
+                      <Link href={isAdmin ? `/admin/propiedades/${p.id}/editar` : `/propietario/propiedades/${p.id}/editar`}>
                         <Button
                           size="sm"
                           variant="outline"

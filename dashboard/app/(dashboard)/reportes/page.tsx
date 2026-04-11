@@ -1,19 +1,68 @@
 "use client"
 
+import { useEffect, useState } from "react"
 import Link from "next/link"
 import {
   Card,
-  CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
 import { useLang } from "@/lib/i18n/context"
 
+interface ReporteCard {
+  title: string
+  description: string
+  href: string
+  icon: string
+  color: string
+}
+
 export default function ReportesPage() {
   const { t } = useLang()
+  const [role, setRole] = useState<string | null>(null)
 
-  const reportes = [
+  useEffect(() => {
+    fetch("/api/auth/me")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data: { role?: string } | null) => {
+        setRole(data?.role ?? "unknown")
+      })
+      .catch(() => setRole("unknown"))
+  }, [])
+
+  const reportesPropietario: ReporteCard[] = [
+    {
+      title: "Gestión de Pagos",
+      description: "Pagos recibidos en los últimos 12 meses",
+      href: "/propietario/reportes/gestion-pagos",
+      icon: "💳",
+      color: "bg-green-50 border-green-200 hover:bg-green-100",
+    },
+    {
+      title: "Historial de Pagos",
+      description: "Recibos emitidos agrupados por arrendatario",
+      href: "/propietario/reportes/historial",
+      icon: "📋",
+      color: "bg-blue-50 border-blue-200 hover:bg-blue-100",
+    },
+    {
+      title: "Pendientes por pagar",
+      description: "Propiedades sin recibo registrado este mes",
+      href: "/propietario/reportes/pendientes",
+      icon: "⏳",
+      color: "bg-amber-50 border-amber-200 hover:bg-amber-100",
+    },
+    {
+      title: t.reportes.propiedadesCard,
+      description: t.reportes.descPropiedades,
+      href: "/reportes/propiedades",
+      icon: "🏠",
+      color: "bg-slate-50 border-slate-200 hover:bg-slate-100",
+    },
+  ]
+
+  const reportesGeneral: ReporteCard[] = [
     {
       title: t.reportes.financiero,
       description: t.reportes.descFinanciero,
@@ -50,6 +99,12 @@ export default function ReportesPage() {
       color: "bg-slate-50 border-slate-200 hover:bg-slate-100",
     },
   ]
+
+  const reportes = role === "propietario" ? reportesPropietario : reportesGeneral
+
+  if (role === null) {
+    return <p className="text-muted-foreground">Cargando...</p>
+  }
 
   return (
     <div>

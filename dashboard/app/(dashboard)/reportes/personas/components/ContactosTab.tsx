@@ -239,20 +239,12 @@ export function ContactosTab() {
                       </td>
                       <td className="p-3 text-center">
                         <div className="flex items-center justify-center gap-1">
-                          {/* Editar - ruta según el rol */}
-                          {contacto.role === "inquilino" ? (
-                            <Link href={`/reportes/personas/usuarios/${contacto.id}`}>
-                              <Button size="sm" variant="outline" title="Editar">
-                                <Pencil className="h-3 w-3" />
-                              </Button>
-                            </Link>
-                          ) : (
-                            <Link href={`/reportes/personas/usuarios/${contacto.id}`}>
-                              <Button size="sm" variant="outline" title="Editar">
-                                <Pencil className="h-3 w-3" />
-                              </Button>
-                            </Link>
-                          )}
+                          {/* Editar */}
+                          <Link href={`/reportes/personas/usuarios/${contacto.id}`}>
+                            <Button size="sm" variant="outline" title="Editar">
+                              <Pencil className="h-3 w-3" />
+                            </Button>
+                          </Link>
                           {/* Activo/Inactivar */}
                           <Button
                             size="sm"

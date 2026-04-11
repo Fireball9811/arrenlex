@@ -333,7 +333,7 @@ function InventarioTable({
                     </td>
                     <td className="p-3 text-center">{getEstadoBadge(p.estado)}</td>
                     <td className="p-3 text-center">
-                      <Link href={`/propietario/propiedades/${p.id}/editar`}>
+                      <Link href={`/admin/propiedades/${p.id}/editar`}>
                         <Button
                           size="sm"
                           variant="outline"

@@ -83,7 +83,7 @@ export function PropietarioSidebar() {
         <Link href="/nuevo" className="block rounded p-2 transition hover:bg-indigo-800">
           {t.sidebar.nuevoArrendatario}
         </Link>
-        <Link href="/mensajes" className="flex items-center justify-between rounded p-2 transition hover:bg-indigo-800">
+        <Link href="/propietario/mensajes" className="flex items-center justify-between rounded p-2 transition hover:bg-indigo-800">
           {t.sidebar.mensajes}
           {(pendientesCount + intakeCount) > 0 && (
             <span className="rounded-full bg-amber-500/90 px-2 py-0.5 text-xs font-medium text-white">
@@ -91,7 +91,7 @@ export function PropietarioSidebar() {
             </span>
           )}
         </Link>
-        <Link href="/mantenimiento" className="flex items-center justify-between rounded p-2 transition hover:bg-indigo-800">
+        <Link href="/propietario/mantenimiento" className="flex items-center justify-between rounded p-2 transition hover:bg-indigo-800">
           {t.sidebar.mantenimiento}
           {mantenimientoPendientesCount > 0 && (
             <span className="rounded-full bg-amber-500/90 px-2 py-0.5 text-xs font-medium text-white">

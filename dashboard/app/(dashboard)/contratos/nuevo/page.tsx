@@ -12,6 +12,8 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import { ArrowLeft, Save } from "lucide-react"
+import { createClient } from "@/lib/supabase/client"
+import { getUserRole } from "@/lib/auth/role"
 
 type Propiedad = {
   id: string
@@ -33,6 +35,7 @@ export default function NuevoContratoPage() {
   const [arrendatarios, setArrendatarios] = useState<Arrendatario[]>([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [isAdmin, setIsAdmin] = useState(false)
 
   const [formData, setFormData] = useState({
     propiedad_id: "",
@@ -44,6 +47,13 @@ export default function NuevoContratoPage() {
   })
 
   useEffect(() => {
+    const supabase = createClient()
+    supabase.auth.getUser().then(async ({ data: { user } }) => {
+      if (user) {
+        const role = await getUserRole(supabase, user)
+        setIsAdmin(role === "admin")
+      }
+    })
     Promise.all([
       fetch("/api/propiedades/disponibles").then((res) => res.json()),
       fetch("/api/arrendatarios/disponibles").then((res) => res.json()),
@@ -107,7 +117,7 @@ export default function NuevoContratoPage() {
         </CardHeader>
         <CardContent>
           <Button asChild>
-            <Link href="/propietario/propiedades/nuevo">Nueva propiedad</Link>
+            <Link href={isAdmin ? "/admin/propiedades/nuevo" : "/propietario/propiedades/nuevo"}>Nueva propiedad</Link>
           </Button>
         </CardContent>
       </Card>

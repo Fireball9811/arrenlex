@@ -86,7 +86,7 @@ export default function PropietarioContratosPage() {
       <div className="mb-6 flex items-center justify-between gap-4">
         <h1 className="text-3xl font-bold">Contratos</h1>
         <Button asChild>
-          <Link href="/contratos/nuevo">Nuevo Contrato</Link>
+          <Link href="/propietario/contratos/nuevo">Nuevo Contrato</Link>
         </Button>
       </div>
 
@@ -148,7 +148,7 @@ export default function PropietarioContratosPage() {
               </Button>
             ) : (
               <Button asChild>
-                <Link href="/contratos/nuevo">Nuevo Contrato</Link>
+                <Link href="/propietario/contratos/nuevo">Nuevo Contrato</Link>
               </Button>
             )}
           </CardContent>
@@ -224,7 +224,7 @@ export default function PropietarioContratosPage() {
                           <Link href={`/propietario/contratos/${c.id}`}>Ver</Link>
                         </Button>
                         <Button variant="outline" size="sm" asChild>
-                          <Link href={`/contratos/${c.id}/editar`}>
+                          <Link href={`/propietario/contratos/${c.id}/editar`}>
                             <FileEdit className="h-4 w-4 mr-1" />
                             Editar
                           </Link>

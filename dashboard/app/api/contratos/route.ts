@@ -138,6 +138,10 @@ export async function POST(request: Request) {
     console.error("⚠️ Error obteniendo rol:", err?.message)
   }
 
+  if (role !== "admin" && role !== "propietario") {
+    return NextResponse.json({ error: "No autorizado para crear contratos" }, { status: 403 })
+  }
+
   // Obtener valor de arriendo de la propiedad usando admin client
   const admin = createAdminClient()
   console.log("✓ Buscando propiedad:", body.propiedad_id, "para usuario:", user.id, "con rol:", role)

@@ -16,7 +16,6 @@ import {
   DollarSign,
   Loader2,
 } from "lucide-react"
-import { usePathname } from "next/navigation"
 
 type Recibo = {
   id: string
@@ -42,13 +41,11 @@ type RecibosContratoProps = {
 }
 
 export function RecibosContrato({ contratoId, puedeEditar }: RecibosContratoProps) {
-  const pathname = usePathname()
   const [recibos, setRecibos] = useState<Recibo[]>([])
   const [contrato, setContrato] = useState<Contrato | null>(null)
   const [loading, setLoading] = useState(true)
 
-  // Determinar la ruta base según si estamos en propietario o dashboard
-  const basePath = pathname.includes("/propietario/") ? "/propietario/recibos" : "/propietario/recibos"
+  const basePath = "/propietario/recibos"
 
   useEffect(() => {
     cargarDatos()

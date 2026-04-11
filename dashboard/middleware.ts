@@ -98,9 +98,14 @@ export async function middleware(request: NextRequest) {
     }
   }
 
-  // 5. Rutas de inquilino — "inquilino", "propietario", "admin" y roles especiales
-  // Los roles especiales solo tienen acceso a /inquilino y /dashboard, no a /admin ni /propietario
-  // (ya bloqueados arriba)
+  // 5. Rutas de inquilino — solo "inquilino", "admin" y roles especiales
+  // (propietario NO accede a vistas privadas del inquilino)
+  if (path.startsWith("/inquilino")) {
+    const INQUILINO_ALLOWED_ROLES = ["inquilino", "admin", "maintenance_special", "insurance_special", "lawyer_special"]
+    if (!INQUILINO_ALLOWED_ROLES.includes(role)) {
+      return NextResponse.redirect(new URL("/propietario/dashboard", request.url), 302)
+    }
+  }
 
   // 6. Agregar headers de seguridad
   const response = NextResponse.next()
