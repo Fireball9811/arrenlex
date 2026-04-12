@@ -32,8 +32,8 @@ export async function GET() {
 
   const propiosIds = new Set((propios ?? []).map((a: Record<string, unknown>) => a.id))
   const deContratos = (contratoRows ?? [])
-    .map((row: Record<string, unknown>) => row.arrendatarios)
-    .filter((a): a is Record<string, unknown> => !!a && !propiosIds.has(a.id))
+    .map((row: Record<string, unknown>) => row.arrendatarios as Record<string, unknown> | null)
+    .filter((a): a is Record<string, unknown> => !!a && !propiosIds.has((a as Record<string, unknown>).id as string))
 
   return NextResponse.json([...(propios ?? []), ...deContratos])
 }
