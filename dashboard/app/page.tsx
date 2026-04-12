@@ -1,8 +1,6 @@
 "use client"
 
 import { useState } from "react"
-import Image from "next/image"
-import Link from "next/link"
 import { MessageCircle, Mail, Clock } from "lucide-react"
 import { LandingHero } from "@/components/landing/landing-hero"
 import { ContactModal } from "@/components/landing/contact-modal"
@@ -17,64 +15,36 @@ export default function HomePage() {
   return (
     <div className="min-h-screen bg-teal-50">
 
-      {/* ── Header ── */}
-      <header className="sticky top-0 z-50 flex h-56 items-center justify-between border-b border-teal-200/80 bg-white/95 px-4 backdrop-blur-sm md:h-80 md:px-8">
+      {/* ── Hero: sin header separado, todo va en el tapiz ── */}
+      <LandingHero onContact={() => setModalOpen(true)} />
 
-        {/* Logo */}
-        <Link href="/" className="shrink-0">
-          <Image
-            src="/Logo.png"
-            alt="Arrenlex · Gestión de Arriendos"
-            width={1120}
-            height={384}
-            priority
-            className="h-52 w-auto object-contain md:h-72"
-          />
-        </Link>
-
-        {/* Acciones */}
-        <div className="flex items-center gap-2 md:gap-3">
-          {/* Selector de idioma */}
-          <button
-            onClick={() => setLang(lang === "es" ? "en" : "es")}
-            className="flex items-center gap-1 rounded-lg border border-teal-200 px-2.5 py-1.5 text-xs font-semibold text-teal-700 transition hover:border-teal-400 hover:bg-teal-50 md:px-3 md:py-2"
-          >
-            <span className={lang === "es" ? "font-bold text-teal-900" : "text-teal-400"}>ES</span>
-            <span className="text-teal-300">|</span>
-            <span className={lang === "en" ? "font-bold text-teal-900" : "text-teal-400"}>EN</span>
-          </button>
-
-          {/* Botón Contáctenos */}
-          <button
-            onClick={() => setModalOpen(true)}
-            className="rounded-lg bg-teal-600 px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-white transition hover:bg-teal-700 md:px-4 md:py-2 md:text-sm"
-          >
-            <span className="hidden sm:inline">{c.boton}</span>
-            <span className="sm:hidden">Contacto</span>
-          </button>
-
-          {/* Log In */}
-          <Link
-            href="/login"
-            className="rounded-lg border border-teal-300 px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-teal-700 transition hover:bg-teal-50 md:px-4 md:py-2 md:text-sm"
-          >
-            LOG IN
-          </Link>
+      {/* ── Hub con tapiz de marca de agua ── */}
+      <section
+        className="relative overflow-hidden px-6 py-16 text-center md:px-12 md:py-24"
+        style={{
+          background: "linear-gradient(135deg, #1e40af 0%, #0d9488 35%, #059669 65%, #0284c7 100%)",
+        }}
+      >
+        {/* Mosaico de logos como marca de agua */}
+        <div
+          className="pointer-events-none select-none absolute inset-0 opacity-[0.10]"
+          style={{
+            backgroundImage: "url(/Logo2.png)",
+            backgroundRepeat: "repeat",
+            backgroundSize: "420px",
+          }}
+          aria-hidden
+        />
+        {/* Contenido centrado sobre el tapiz */}
+        <div className="relative z-10">
+          <p className="mb-3 text-sm font-semibold uppercase tracking-[0.3em] text-teal-200 md:text-base">
+            {t.landing.hub}
+          </p>
+          <h1 className="text-3xl font-bold tracking-tight text-white drop-shadow-md md:text-4xl lg:text-5xl">
+            {t.landing.titulo}{" "}
+            <span className="text-teal-300">{t.landing.futuro}</span>
+          </h1>
         </div>
-      </header>
-
-      {/* ── Hero con banner de fotos (botón Echar un vistazo arriba del banner) ── */}
-      <LandingHero />
-
-      {/* ── Hub ── */}
-      <section className="px-6 py-12 text-center md:px-12 md:py-16">
-        <p className="mb-2 text-sm font-semibold uppercase tracking-[0.3em] text-teal-600 md:text-base">
-          {t.landing.hub}
-        </p>
-        <h1 className="text-3xl font-bold tracking-tight text-slate-800 md:text-4xl lg:text-5xl">
-          {t.landing.titulo}{" "}
-          <span className="text-teal-600">{t.landing.futuro}</span>
-        </h1>
       </section>
 
       {/* ── Sección Contáctanos (info directa) ── */}

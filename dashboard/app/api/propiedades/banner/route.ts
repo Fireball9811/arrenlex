@@ -5,13 +5,15 @@ const BUCKET = "propiedades"
 const IMAGE_EXT = /\.(jpg|jpeg|png|webp)$/i
 
 /**
- * Lista recursivamente todos los archivos de imagen en una ruta del bucket.
+ * Lista recursivamente archivos de imagen en una ruta del bucket.
  * Estructura: user_id/propiedad_id/categoria/archivo.jpg
+ * Solo incluye imágenes de la carpeta "principal" (Foto Principal).
  */
 async function listImagesRecursive(
   admin: ReturnType<typeof createAdminClient>,
   path: string,
-  urls: string[]
+  urls: string[],
+  depth: number = 0
 ): Promise<void> {
   const { data: items, error } = await admin.storage.from(BUCKET).list(path, { limit: 500 })
   if (error) return
@@ -20,12 +22,15 @@ async function listImagesRecursive(
     const fullPath = path ? `${path}/${item.name}` : item.name
 
     if (IMAGE_EXT.test(item.name)) {
-      // Es un archivo de imagen
-      const { data } = admin.storage.from(BUCKET).getPublicUrl(fullPath)
-      urls.push(data.publicUrl)
+      // Es un archivo de imagen — solo incluir si estamos en carpeta "principal"
+      if (path.endsWith("/principal") || path === "principal") {
+        const { data } = admin.storage.from(BUCKET).getPublicUrl(fullPath)
+        urls.push(data.publicUrl)
+      }
     } else {
-      // Es una carpeta (user_id, propiedad_id o categoria)
-      await listImagesRecursive(admin, fullPath, urls)
+      // Es una carpeta: si estamos en nivel de categoria (depth=2), solo entrar a "principal"
+      if (depth === 2 && item.name !== "principal") continue
+      await listImagesRecursive(admin, fullPath, urls, depth + 1)
     }
   }
 }
@@ -51,6 +56,7 @@ async function getUrlsFromTable(
   const { data } = await admin
     .from("propiedades_imagenes")
     .select("url_publica")
+    .eq("categoria", "principal")
     .order("created_at", { ascending: false })
     .limit(80)
   return (data ?? [])
