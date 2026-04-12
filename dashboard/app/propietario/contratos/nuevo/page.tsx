@@ -40,6 +40,7 @@ export default function PropietarioNuevoContratoPage() {
     fecha_inicio: new Date().toISOString().split("T")[0],
     duracion_meses: 12,
     canon_mensual: 0,
+    porcentaje_garantia: 0.5,
     ciudad_firma: "",
   })
 
@@ -56,6 +57,7 @@ export default function PropietarioNuevoContratoPage() {
             ...prev,
             propiedad_id: props[0].id,
             canon_mensual: props[0].valor_arriendo || 0,
+            porcentaje_garantia: 0.5,
             ciudad_firma: props[0].ciudad || "",
           }))
         }
@@ -176,6 +178,14 @@ export default function PropietarioNuevoContratoPage() {
                 <input type="number" required min="0" step="0.01" className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm" value={formData.canon_mensual} onChange={(e) => setFormData({ ...formData, canon_mensual: parseFloat(e.target.value) || 0 })} />
                 <p className="text-xs text-muted-foreground mt-1">{formatPeso(formData.canon_mensual)}</p>
               </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Porcentaje de garantía *</label>
+                <input type="number" required min="0" step="0.01" className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm" value={formData.porcentaje_garantia} onChange={(e) => setFormData({ ...formData, porcentaje_garantia: parseFloat(e.target.value) || 0 })} />
+                <p className="text-xs text-muted-foreground mt-1">{(formData.porcentaje_garantia * 100).toFixed(0)}% → Garantía: <strong>{formatPeso(formData.canon_mensual * formData.porcentaje_garantia)}</strong></p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium mb-1">Ciudad de firma *</label>
                 <input type="text" required className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm" value={formData.ciudad_firma} onChange={(e) => setFormData({ ...formData, ciudad_firma: e.target.value })} placeholder="Ej: Bogotá D.C." />

@@ -144,6 +144,7 @@ export async function PATCH(
     if (body.fecha_inicio !== undefined) updates.fecha_inicio = body.fecha_inicio
     if (body.duracion_meses !== undefined) updates.duracion_meses = Number(body.duracion_meses)
     if (body.canon_mensual !== undefined) updates.canon_mensual = Number(body.canon_mensual)
+    if (body.porcentaje_garantia !== undefined) updates.porcentaje_garantia = Number(body.porcentaje_garantia)
     if (body.ciudad_firma !== undefined) updates.ciudad_firma = body.ciudad_firma
     if (body.estado !== undefined) updates.estado = body.estado
 

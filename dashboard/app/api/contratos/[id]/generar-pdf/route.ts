@@ -2,6 +2,10 @@ import { NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 import jsPDF from "jspdf"
 import { llenarPlantillaContrato } from "@/lib/utils/contrato-template"
+import fs from "fs"
+import path from "path"
+
+const LOGO_PATH = path.join(process.cwd(), "public", "Logo.png")
 
 interface RouteContext {
   params: Promise<{ id: string }>
@@ -38,6 +42,17 @@ export async function GET(request: Request, context: RouteContext) {
   // Llenar la plantilla con los datos
   const contratoTexto = llenarPlantillaContrato(datos)
 
+  // Cargar logo como base64
+  let logoBase64 = ""
+  try {
+    if (fs.existsSync(LOGO_PATH)) {
+      const logoBuffer = fs.readFileSync(LOGO_PATH)
+      logoBase64 = logoBuffer.toString('base64')
+    }
+  } catch (e) {
+    console.warn("[generar-pdf] No se pudo cargar logo:", e)
+  }
+
   try {
     // Crear PDF
     const doc = new jsPDF({
@@ -55,6 +70,17 @@ export async function GET(request: Request, context: RouteContext) {
 
     doc.setFontSize(fontSize)
     doc.setFont("helvetica", "normal")
+
+    // Agregar logo en la esquina superior izquierda
+    if (logoBase64) {
+      try {
+        doc.addImage(logoBase64, 'PNG', 20, 10, 35, 35)
+        yPosition += 40 // Espacio extra para el logo
+      } catch (e) {
+        console.warn("[generar-pdf] Error al agregar logo al PDF:", e)
+        yPosition = margin // Continuar sin logo si hay error
+      }
+    }
 
     // Título del contrato centrado
     doc.setFontSize(14)

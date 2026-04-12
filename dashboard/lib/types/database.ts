@@ -124,6 +124,7 @@ export type Contrato = {
   duracion_meses: number
   fecha_fin: string // Date (calculated)
   canon_mensual: number
+  porcentaje_garantia: number
   ciudad_firma: string
   estado: "borrador" | "activo" | "terminado" | "vencido"
   created_at: string
@@ -149,6 +150,7 @@ export type ContratoConRelaciones = Contrato & {
     nombre: string | null
     email: string
   }
+  porcentaje_garantia?: number
 }
 
 // Tipo para crear un nuevo contrato
@@ -158,6 +160,7 @@ export type ContratoCrear = {
   fecha_inicio: string // YYYY-MM-DD
   duracion_meses: number
   canon_mensual: number
+  porcentaje_garantia?: number
   ciudad_firma: string
 }
 
@@ -203,6 +206,7 @@ export type DatosContrato = {
   contrato_duracion_meses: number
   contrato_fecha_fin: string
   contrato_canon_mensual: number
+  contrato_porcentaje_garantia: number
   contrato_ciudad_firma: string
 }
 

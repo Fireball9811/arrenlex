@@ -210,6 +210,7 @@ export async function POST(request: Request) {
       fecha_inicio: body.fecha_inicio,
       duracion_meses: Number(body.duracion_meses) || 12,
       canon_mensual: Number(body.canon_mensual) || Number(prop.valor_arriendo) || 0,
+      porcentaje_garantia: body.porcentaje_garantia !== undefined ? Number(body.porcentaje_garantia) : 0.5,
       ciudad_firma: body.ciudad_firma,
       estado: body.estado || "borrador",
     })

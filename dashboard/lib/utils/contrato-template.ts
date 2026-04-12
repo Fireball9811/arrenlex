@@ -117,6 +117,21 @@ EL ARRENDATARIO recibira notificaciones en la direccion {{ARRENDATARIO_DIRECCION
 EL ARRENDADOR recibira notificaciones en el correo electronico {{ARRENDADOR_EMAIL}} y celular {{ARRENDADOR_CELULAR}}.
 EL DEUDOR SOLIDARIO recibira notificaciones en la direccion {{DEUDOR_SOLIDARIO_DIRECCION}}, en el correo electronico {{DEUDOR_SOLIDARIO_EMAIL}} y celular {{DEUDOR_SOLIDARIO_CELULAR}}.
 
+CLAUSULA XXIV. – GARANTÍA.
+
+El ARRENDATARIO entrega al ARRENDADOR la suma de $\{\{CONTRATO_GARANTIA_MONTO\}\} ({\{CONTRATO_GARANTIA_LETRAS\}\}), equivalente al {\{CONTRATO_PORCENTAJE_GARANTIA\}\}% del canon mensual de arrendamiento, como garantía para respaldar el cumplimiento de las obligaciones derivadas del presente contrato.
+
+Esta suma podrá ser aplicada por el ARRENDADOR al pago de:
+
+1. Servicios públicos domiciliarios pendientes a la fecha de restitución del inmueble.
+2. Cánones de arrendamiento adeudados.
+3. Cuotas de administración si fueren a cargo del arrendatario.
+4. Daños imputables al ARRENDATARIO distintos del deterioro natural por el uso legítimo.
+
+Al momento de la entrega del inmueble se realizará la verificación del estado general y de las obligaciones pendientes. El saldo que resultare a favor del ARRENDATARIO será devuelto dentro de los treinta (30) días calendario siguientes a la restitución del inmueble, previa compensación de las sumas debidamente soportadas.
+
+En caso de que las obligaciones superen el valor de la garantía entregada, el ARRENDATARIO continuará obligado al pago del saldo correspondiente.
+
 En constancia de lo anterior, se firma el presente contrato en tres (3) ejemplares del mismo tenor, en la ciudad de {{CONTRATO_CIUDAD_FIRMA}}, a los {{CONTRATO_FECHA_INICIO_DIA}} dias del mes de {{CONTRATO_FECHA_INICIO_MES}} del ano {{CONTRATO_FECHA_INICIO_ANIO}}.
 
 ______________________________________________________________________________________
@@ -180,6 +195,44 @@ export function llenarPlantillaContrato(datos: DatosContrato): string {
     return num.toString()
   }
 
+  // Función auxiliar para convertir número a letras extendida (para garantía)
+  const convertirNumeroALetras = (num: number): string => {
+    if (num === 0) return 'cero'
+
+    const unidades = ['cero', 'uno', 'dos', 'tres', 'cuatro', 'cinco', 'seis', 'siete', 'ocho', 'nueve']
+    const especiales = ['diez', 'once', 'doce', 'trece', 'catorce', 'quince', 'dieciséis', 'diecisiete', 'dieciocho', 'diecinueve']
+    const decenas = ['veinte', 'treinta', 'cuarenta', 'cincuenta', 'sesenta', 'setenta', 'ochenta', 'noventa']
+
+    if (num < 10) return unidades[num]
+    if (num <= 19) return especiales[num - 10]
+    if (num < 100) {
+      const decena = Math.floor(num / 10)
+      const unidad = num % 10
+      return decenas[decena - 2] + (unidad > 0 ? ' y ' + unidades[unidad] : '')
+    }
+    if (num < 1000) {
+      const centenas = Math.floor(num / 100)
+      const resto = num % 100
+      if (resto === 0) {
+        return unidades[centenas] + 'cientos'
+      }
+      return unidades[centenas] + 'ientos ' + convertirNumeroALetras(resto)
+    }
+    // Para millones (caso común en arriendos)
+    if (num >= 1000000) {
+      const millones = Math.floor(num / 1000000)
+      const resto = num % 1000000
+      const millonesTexto = millones === 1 ? 'un millón' : convertirNumeroALetras(millones) + ' millones'
+      return millonesTexto + (resto > 0 ? ' ' + convertirNumeroALetras(resto) : '')
+    }
+    if (num >= 1000) {
+      const miles = Math.floor(num / 1000)
+      const resto = num % 1000
+      return (miles === 1 ? 'mil' : convertirNumeroALetras(miles) + ' mil') + (resto > 0 ? ' ' + convertirNumeroALetras(resto) : '')
+    }
+    return num.toString()
+  }
+
   // Funcion para formatear fecha
   const formatearFecha = (fecha: string): { dia: string, mes: string, anio: string } => {
     const date = new Date(fecha)
@@ -237,8 +290,18 @@ export function llenarPlantillaContrato(datos: DatosContrato): string {
   // Datos del contrato
   contrato = contrato.replace(/\{\{CONTRATO_NUMERO\}\}/g, valorODefecto(datos.contrato_numero as any as string, '________________________'))
   contrato = contrato.replace(/\{\{CONTRATO_CANON_COP\}\}/g, "$" + formatearMoneda(datos.contrato_canon_mensual))
+
+  // Calcular garantía (porcentaje dinámico del canon mensual)
+  const porcentaje = datos.contrato_porcentaje_garantia ?? 0.5
+  const garantiaMonto = datos.contrato_canon_mensual * porcentaje
+
   contrato = contrato.replace(/\{\{CONTRATO_DURACION_MESES\}\}/g, datos.contrato_duracion_meses.toString())
   contrato = contrato.replace(/\{\{CONTRATO_DURACION_MESES_EN_LETRAS\}\}/g, numeroALetras(datos.contrato_duracion_meses))
+
+  // Reemplazar marcadores de garantía
+  contrato = contrato.replace(/\{\{CONTRATO_GARANTIA_MONTO\}\}/g, formatearMoneda(garantiaMonto))
+  contrato = contrato.replace(/\{\{CONTRATO_GARANTIA_LETRAS\}\}/g, convertirNumeroALetras(Math.floor(garantiaMonto)))
+  contrato = contrato.replace(/\{\{CONTRATO_PORCENTAJE_GARANTIA\}\}/g, (porcentaje * 100).toFixed(0).replace('.', ','))
   contrato = contrato.replace(/\{\{CONTRATO_FECHA_INICIO_DIA\}\}/g, fechaInicio.dia)
   contrato = contrato.replace(/\{\{CONTRATO_FECHA_INICIO_MES\}\}/g, fechaInicio.mes)
   contrato = contrato.replace(/\{\{CONTRATO_FECHA_INICIO_ANIO\}\}/g, fechaInicio.anio)
