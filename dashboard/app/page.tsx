@@ -18,17 +18,17 @@ export default function HomePage() {
     <div className="min-h-screen bg-teal-50">
 
       {/* ── Header ── */}
-      <header className="sticky top-0 z-50 flex h-20 items-center justify-between border-b border-teal-200/80 bg-white/95 px-4 backdrop-blur-sm md:h-24 md:px-8">
+      <header className="sticky top-0 z-50 flex h-56 items-center justify-between border-b border-teal-200/80 bg-white/95 px-4 backdrop-blur-sm md:h-80 md:px-8">
 
         {/* Logo */}
         <Link href="/" className="shrink-0">
           <Image
             src="/Logo.png"
             alt="Arrenlex · Gestión de Arriendos"
-            width={280}
-            height={96}
+            width={1120}
+            height={384}
             priority
-            className="h-14 w-auto object-contain md:h-20"
+            className="h-52 w-auto object-contain md:h-72"
           />
         </Link>
 

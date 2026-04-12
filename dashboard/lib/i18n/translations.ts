@@ -81,7 +81,7 @@ export const translations = {
       },
     },
     auth: {
-      titulo: "Arrenlex Inmobiliaria",
+      titulo: "Sistema de Gestión de Arrendamientos",
       descripcionLogin: "Ingrese sus credenciales para acceder",
       usuarioOCorreo: "Usuario o correo",
       contrasena: "Contraseña",
@@ -898,7 +898,7 @@ export const translations = {
       },
     },
     auth: {
-      titulo: "Arrenlex Inmobiliaria",
+      titulo: "Sistema de Gestión de Arrendamientos",
       descripcionLogin: "Enter your credentials to access",
       usuarioOCorreo: "Username or email",
       contrasena: "Password",

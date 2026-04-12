@@ -35,11 +35,11 @@ export function SpecialSidebar({ role }: SpecialSidebarProps) {
     <aside className="relative flex w-64 flex-col bg-indigo-900 text-white overflow-hidden">
       {/* Marca de agua */}
       <div className="pointer-events-none select-none absolute inset-0 flex items-center justify-center opacity-[0.06]">
-        <Image src="/Logo.png" alt="" width={220} height={220} className="w-48 object-contain" />
+        <Image src="/Logo2.png" alt="" width={220} height={220} className="w-48 object-contain" />
       </div>
 
-      <Link href={config.path} className="relative flex items-center gap-2 border-b border-indigo-700 p-6">
-        <Image src="/Logo.png" alt="Arrenlex" width={180} height={60} className="h-16 w-auto" />
+      <Link href={config.path} className="relative flex justify-center border-b border-indigo-700 py-4">
+        <Image src="/Logo2.png" alt="Arrenlex" width={720} height={240} className="h-64 w-auto" />
       </Link>
 
       <nav className="relative flex-1 space-y-2 p-4">
