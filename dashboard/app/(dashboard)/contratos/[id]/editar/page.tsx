@@ -60,10 +60,25 @@ export default function EditarContratoPage() {
       .then(([cont, props, arrend, userData]) => {
         setContrato(cont)
         setPropiedades(props)
-        setArrendatarios(arrend)
         const role = userData?.role
         setIsAdmin(role === "admin")
         setIsPropietario(role === "propietario")
+
+        // Si el arrendatario del contrato no está en la lista (ej: creado con otro user_id),
+        // lo añadimos usando los datos que ya vienen en el contrato
+        const lista: Arrendatario[] = Array.isArray(arrend) ? arrend : []
+        if (cont.arrendatario_id && cont.arrendatario) {
+          const yaEsta = lista.some((a: Arrendatario) => a.id === cont.arrendatario_id)
+          if (!yaEsta) {
+            lista.unshift({
+              id: cont.arrendatario_id,
+              nombre: cont.arrendatario.nombre ?? "Arrendatario actual",
+              cedula: cont.arrendatario.cedula ?? "",
+            })
+          }
+        }
+        setArrendatarios(lista)
+
         setFormData({
           propiedad_id: cont.propiedad_id || "",
           arrendatario_id: cont.arrendatario_id || "",
@@ -177,12 +192,18 @@ export default function EditarContratoPage() {
                       setFormData({ ...formData, arrendatario_id: e.target.value })
                     }
                   >
+                    <option value="">-- Selecciona un arrendatario --</option>
                     {arrendatarios.map((a) => (
                       <option key={a.id} value={a.id}>
                         {a.nombre} · {a.cedula}
                       </option>
                     ))}
                   </select>
+                  {arrendatarios.length === 0 && (
+                    <p className="text-xs text-muted-foreground mt-1">
+                      No hay arrendatarios disponibles. Ve a <strong>Mensajes → Posibles arrendatarios</strong> y usa &ldquo;Pasar a arrendatario&rdquo; para añadir uno.
+                    </p>
+                  )}
                 </div>
               </div>
 

@@ -11,7 +11,8 @@ export async function GET() {
     return NextResponse.json({ error: "No autorizado" }, { status: 401 })
   }
 
-  const { data, error } = await supabase
+  // Arrendatarios creados directamente por el usuario
+  const { data: propios, error } = await supabase
     .from("arrendatarios")
     .select("*")
     .eq("user_id", user.id)
@@ -21,7 +22,20 @@ export async function GET() {
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 
-  return NextResponse.json(data ?? [])
+  // Arrendatarios vinculados a contratos del usuario (ej: creados por pasar-arrendatario
+  // con user_id null, o con user_id de otra cuenta)
+  const { data: contratoRows } = await supabase
+    .from("contratos")
+    .select("arrendatarios(*)")
+    .eq("user_id", user.id)
+    .not("arrendatario_id", "is", null)
+
+  const propiosIds = new Set((propios ?? []).map((a: Record<string, unknown>) => a.id))
+  const deContratos = (contratoRows ?? [])
+    .map((row: Record<string, unknown>) => row.arrendatarios)
+    .filter((a): a is Record<string, unknown> => !!a && !propiosIds.has(a.id))
+
+  return NextResponse.json([...(propios ?? []), ...deContratos])
 }
 
 /** Convierte errores de Supabase/Postgres en mensajes que entienda el usuario. */

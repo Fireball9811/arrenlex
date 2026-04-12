@@ -47,7 +47,22 @@ export default function PropietarioEditarContratoPage() {
       .then(([cont, props, arrend]) => {
         setContrato(cont)
         setPropiedades(props)
-        setArrendatarios(arrend)
+
+        // Si el arrendatario del contrato no está en la lista (ej: creado con otro user_id),
+        // lo añadimos usando los datos que ya vienen en el contrato
+        const lista: Arrendatario[] = Array.isArray(arrend) ? arrend : []
+        if (cont.arrendatario_id && cont.arrendatario) {
+          const yaEsta = lista.some((a) => a.id === cont.arrendatario_id)
+          if (!yaEsta) {
+            lista.unshift({
+              id: cont.arrendatario_id,
+              nombre: cont.arrendatario.nombre ?? "Arrendatario actual",
+              cedula: cont.arrendatario.cedula ?? "",
+            })
+          }
+        }
+        setArrendatarios(lista)
+
         setFormData({
           propiedad_id: cont.propiedad_id || "",
           arrendatario_id: cont.arrendatario_id || "",
@@ -128,8 +143,14 @@ export default function PropietarioEditarContratoPage() {
                 <div>
                   <label className="block text-sm font-medium mb-1">Arrendatario *</label>
                   <select required className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm" value={formData.arrendatario_id} onChange={(e) => setFormData({ ...formData, arrendatario_id: e.target.value })}>
+                    <option value="">-- Selecciona un arrendatario --</option>
                     {arrendatarios.map((a) => <option key={a.id} value={a.id}>{a.nombre} · {a.cedula}</option>)}
                   </select>
+                  {arrendatarios.length === 0 && (
+                    <p className="text-xs text-muted-foreground mt-1">
+                      No hay arrendatarios disponibles. Ve a <strong>Mensajes → Posibles arrendatarios</strong> y usa &quot;Pasar a arrendatario&quot; para añadir uno.
+                    </p>
+                  )}
                 </div>
               </div>
 
