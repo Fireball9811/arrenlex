@@ -36,3 +36,15 @@ export async function getUserRole(
 
   return "inquilino"
 }
+
+export async function isAdminRole(
+  supabase: SupabaseClient,
+  userId: string
+): Promise<boolean> {
+  const { data: perfil } = await supabase
+    .from("perfiles")
+    .select("role")
+    .eq("id", userId)
+    .maybeSingle()
+  return perfil?.role === "admin"
+}

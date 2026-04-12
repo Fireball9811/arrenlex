@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { createClient } from "@/lib/supabase/server"
-import { isAdmin } from "@/lib/supabase/admin"
+import { isAdminRole } from "@/lib/auth/role"
 
 /**
  * API para obtener listado de propiedades con información de propietario
@@ -17,7 +17,7 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "No autorizado" }, { status: 401 })
   }
 
-  if (!isAdmin(user.email)) {
+  if (!(await isAdminRole(supabaseServer, user.id))) {
     return NextResponse.json({ error: "Solo administradores pueden ver el listado" }, { status: 403 })
   }
 

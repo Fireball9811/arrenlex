@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
-import { createAdminClient, isAdmin } from "@/lib/supabase/admin"
+import { createAdminClient } from "@/lib/supabase/admin"
+import { isAdminRole } from "@/lib/auth/role"
 
 /**
  * POST - Crea un usuario de sistema para un arrendatario que tiene contrato activo
@@ -16,7 +17,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "No autorizado" }, { status: 401 })
   }
 
-  if (!isAdmin(user.email)) {
+  if (!(await isAdminRole(supabase, user.id))) {
     return NextResponse.json({ error: "Solo administradores pueden realizar esta acción" }, { status: 403 })
   }
 

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
-import { createAdminClient, isAdmin } from "@/lib/supabase/admin"
+import { createAdminClient } from "@/lib/supabase/admin"
+import { isAdminRole } from "@/lib/auth/role"
 import { generateTempPassword } from "@/lib/auth/temp-password"
 import { sendInvitationEmail } from "@/lib/email/send-invitation"
 
@@ -21,7 +22,7 @@ export async function GET(
     return NextResponse.json({ error: "No autorizado" }, { status: 401 })
   }
 
-  if (!isAdmin(user.email)) {
+  if (!(await isAdminRole(supabaseServer, user.id))) {
     return NextResponse.json({ error: "Solo administradores pueden ver usuarios" }, { status: 403 })
   }
 
@@ -60,7 +61,7 @@ export async function PATCH(
     return NextResponse.json({ error: "No autorizado" }, { status: 401 })
   }
 
-  if (!isAdmin(user.email)) {
+  if (!(await isAdminRole(supabaseServer, user.id))) {
     return NextResponse.json({ error: "Solo administradores pueden modificar usuarios" }, { status: 403 })
   }
 
@@ -292,7 +293,7 @@ export async function PUT(
     return NextResponse.json({ error: "No autorizado" }, { status: 401 })
   }
 
-  if (!isAdmin(user.email)) {
+  if (!(await isAdminRole(supabaseServer, user.id))) {
     return NextResponse.json({ error: "Solo administradores pueden modificar usuarios" }, { status: 403 })
   }
 
@@ -355,7 +356,7 @@ export async function DELETE(
     return NextResponse.json({ error: "No autorizado" }, { status: 401 })
   }
 
-  if (!isAdmin(user.email)) {
+  if (!(await isAdminRole(supabaseServer, user.id))) {
     return NextResponse.json({ error: "Solo administradores pueden eliminar usuarios" }, { status: 403 })
   }
 

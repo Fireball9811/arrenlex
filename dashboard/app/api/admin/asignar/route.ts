@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
-import { isAdmin } from "@/lib/supabase/admin"
+import { isAdminRole } from "@/lib/auth/role"
 
 interface AsignacionRequest {
   tipo: "mantenimiento" | "seguro" | "legal"
@@ -12,7 +12,11 @@ export async function POST(request: Request) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
-  if (!user || !isAdmin(user.email)) {
+  if (!user) {
+    return NextResponse.json({ error: "No autorizado" }, { status: 403 })
+  }
+
+  if (!(await isAdminRole(supabase, user.id))) {
     return NextResponse.json({ error: "No autorizado" }, { status: 403 })
   }
 
@@ -120,7 +124,11 @@ export async function GET() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
-  if (!user || !isAdmin(user.email)) {
+  if (!user) {
+    return NextResponse.json({ error: "No autorizado" }, { status: 403 })
+  }
+
+  if (!(await isAdminRole(supabase, user.id))) {
     return NextResponse.json({ error: "No autorizado" }, { status: 403 })
   }
 

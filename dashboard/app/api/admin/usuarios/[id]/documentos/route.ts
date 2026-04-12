@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
-import { createAdminClient, isAdmin } from "@/lib/supabase/admin"
+import { createAdminClient } from "@/lib/supabase/admin"
+import { isAdminRole } from "@/lib/auth/role"
 
 const BUCKET = "documentos"
 const SIGNED_URL_EXPIRY_SEC = 3600 // 1 hora
@@ -22,7 +23,7 @@ export async function GET(
     return NextResponse.json({ error: "No autorizado" }, { status: 401 })
   }
 
-  if (!isAdmin(user.email)) {
+  if (!(await isAdminRole(supabase, user.id))) {
     return NextResponse.json(
       { error: "Solo el administrador puede ver los documentos por usuario" },
       { status: 403 }

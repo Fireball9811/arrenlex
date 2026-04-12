@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
-import { createAdminClient, isAdmin } from "@/lib/supabase/admin"
+import { createAdminClient } from "@/lib/supabase/admin"
+import { isAdminRole } from "@/lib/auth/role"
 
 // GET - Contar propiedades de un usuario
 export async function GET(
@@ -16,7 +17,7 @@ export async function GET(
     return NextResponse.json({ error: "No autorizado" }, { status: 401 })
   }
 
-  if (!isAdmin(user.email)) {
+  if (!(await isAdminRole(supabaseServer, user.id))) {
     return NextResponse.json({ error: "Acceso denegado" }, { status: 403 })
   }
 

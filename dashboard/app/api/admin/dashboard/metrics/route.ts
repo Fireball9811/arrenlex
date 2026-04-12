@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
-import { createAdminClient, isAdmin } from "@/lib/supabase/admin"
+import { createAdminClient } from "@/lib/supabase/admin"
+import { isAdminRole } from "@/lib/auth/role"
 
 /**
  * GET /api/admin/dashboard/metrics
@@ -10,7 +11,11 @@ export async function GET() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
-  if (!user || !isAdmin(user.email)) {
+  if (!user) {
+    return NextResponse.json({ error: "No autorizado" }, { status: 403 })
+  }
+
+  if (!(await isAdminRole(supabase, user.id))) {
     return NextResponse.json({ error: "No autorizado" }, { status: 403 })
   }
 

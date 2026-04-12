@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin"
-import { isAdmin } from "@/lib/supabase/admin"
+import { isAdminRole } from "@/lib/auth/role"
 
 /**
  * POST - Activa todos los contratos que están en estado "borrador"
@@ -12,8 +12,12 @@ export async function POST() {
     data: { user },
   } = await supabase.auth.getUser()
 
-  if (!user || !isAdmin(user.email)) {
+  if (!user) {
     return NextResponse.json({ error: "No autorizado" }, { status: 401 })
+  }
+
+  if (!(await isAdminRole(supabase, user.id))) {
+    return NextResponse.json({ error: "No autorizado" }, { status: 403 })
   }
 
   const admin = createAdminClient()

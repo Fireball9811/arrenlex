@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
-import { createAdminClient, isAdmin } from "@/lib/supabase/admin"
+import { createAdminClient } from "@/lib/supabase/admin"
+import { isAdminRole } from "@/lib/auth/role"
 
 // GET - Listar todos los usuarios (solo admin)
 export async function GET() {
@@ -13,7 +14,7 @@ export async function GET() {
     return NextResponse.json({ error: "No autorizado" }, { status: 401 })
   }
 
-  if (!isAdmin(user.email)) {
+  if (!(await isAdminRole(supabase, user.id))) {
     return NextResponse.json({ error: "Acceso denegado" }, { status: 403 })
   }
 
@@ -43,7 +44,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "No autorizado" }, { status: 401 })
   }
 
-  if (!isAdmin(user.email)) {
+  if (!(await isAdminRole(supabase, user.id))) {
     return NextResponse.json({ error: "Solo administradores pueden crear usuarios" }, { status: 403 })
   }
 
