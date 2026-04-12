@@ -44,7 +44,7 @@ export function AdminSidebar() {
       </div>
 
       <Link href="/admin/dashboard" className="relative flex justify-center border-b border-sky-300 p-6">
-        <Image src="/Logo2.png" alt="Arrenlex" width={180} height={60} className="h-16 w-auto" />
+        <Image src="/Logo2.png" alt="Arrenlex" width={360} height={120} className="h-32 w-auto" />
       </Link>
       <nav className="relative flex-1 space-y-2 p-4">
         <Link href="/admin/dashboard" className="flex items-center gap-3 rounded p-2 transition hover:bg-sky-200">

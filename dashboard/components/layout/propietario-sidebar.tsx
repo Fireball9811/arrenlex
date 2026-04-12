@@ -58,8 +58,8 @@ export function PropietarioSidebar() {
         <Image src="/Logo2.png" alt="" width={220} height={220} className="w-48 object-contain" />
       </div>
 
-      <Link href="/propietario/dashboard" className="relative flex items-center gap-2 border-b border-green-300 p-6">
-        <Image src="/Logo2.png" alt="Arrenlex" width={180} height={60} className="h-16 w-auto" />
+      <Link href="/propietario/dashboard" className="relative flex justify-center border-b border-green-300 p-6">
+        <Image src="/Logo2.png" alt="Arrenlex" width={360} height={120} className="h-32 w-auto" />
       </Link>
       <nav className="relative flex-1 space-y-2 p-4">
         <Link href="/propietario/dashboard" className="block rounded p-2 transition hover:bg-green-200">
