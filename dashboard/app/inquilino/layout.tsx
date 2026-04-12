@@ -5,7 +5,7 @@ import { UserEmail } from "@/components/auth/user-email"
 
 export default function InquilinoLayout({ children }: { children: ReactNode }) {
   return (
-    <div className="flex h-screen bg-gray-100">
+    <div className="flex h-screen bg-green-50">
       <InquilinoSidebar />
       <div className="flex flex-1 flex-col overflow-hidden">
         <header className="flex h-24 items-center justify-between bg-white px-6 shadow">
