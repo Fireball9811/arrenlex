@@ -260,8 +260,8 @@ export default function AdminDashboardPage() {
         <CardContent>
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
             <Button
-              variant="default"
-              className="h-20 flex-col gap-2"
+              variant="outline"
+              className="h-20 flex-col gap-2 bg-white text-black border border-gray-300 hover:bg-gray-100 hover:text-black"
               onClick={() => router.push("/admin/usuarios?create=true")}
             >
               <UserPlus className="h-5 w-5" />
@@ -270,7 +270,7 @@ export default function AdminDashboardPage() {
 
             <Button
               variant="outline"
-              className="h-20 flex-col gap-2"
+              className="h-20 flex-col gap-2 bg-white text-black border border-gray-300 hover:bg-gray-100 hover:text-black"
               onClick={() => router.push("/admin/usuarios")}
             >
               <Users className="h-5 w-5" />
@@ -279,7 +279,7 @@ export default function AdminDashboardPage() {
 
             <Button
               variant="outline"
-              className="h-20 flex-col gap-2"
+              className="h-20 flex-col gap-2 bg-white text-black border border-gray-300 hover:bg-gray-100 hover:text-black"
               onClick={() => router.push("/admin/mantenimiento")}
             >
               <Wrench className="h-5 w-5" />
@@ -288,7 +288,7 @@ export default function AdminDashboardPage() {
 
             <Button
               variant="outline"
-              className="h-20 flex-col gap-2"
+              className="h-20 flex-col gap-2 bg-white text-black border border-gray-300 hover:bg-gray-100 hover:text-black"
               onClick={() => router.push("/admin/mensajes")}
             >
               <MessageSquare className="h-5 w-5" />
