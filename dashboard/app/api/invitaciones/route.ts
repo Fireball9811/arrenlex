@@ -27,6 +27,7 @@ export async function POST(request: Request) {
       cedula: bodyCedula,
       cedula_lugar_expedicion: bodyCedulaLugar,
       direccion: bodyDireccion,
+      role: bodyRole,
     } = body
 
     if (!email || typeof email !== "string") {
@@ -147,13 +148,17 @@ export async function POST(request: Request) {
         ? bodyNombre.trim()
         : newUser.user.email?.split("@")[0] || "Inquilino"
 
+    // Validar el rol si se proporciona, por defecto "inquilino"
+    const VALID_ROLES = ["admin", "propietario", "inquilino", "maintenance_special", "insurance_special", "lawyer_special"]
+    const roleFinal = bodyRole && VALID_ROLES.includes(bodyRole) ? bodyRole : "inquilino"
+
     const { error: perfilError } = await admin
       .from("perfiles")
       .insert({
         id: newUser.user.id,
         email: newUser.user.email!,
         nombre: nombreFinal,
-        role: "inquilino",
+        role: roleFinal,
         activo: true,
         bloqueado: false,
         celular: typeof bodyCelular === "string" ? bodyCelular.trim() || null : null,

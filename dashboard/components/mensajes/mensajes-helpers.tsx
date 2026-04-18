@@ -356,10 +356,13 @@ export function TablaIntake({
                 <input type="checkbox" checked={todosSeleccionados} onChange={toggleTodos} className="rounded" title="Seleccionar todos" />
               </th>
               <th className="text-left p-2 font-medium">Nombre</th>
+              <th className="text-left p-2 font-medium">Cédula</th>
               <th className="text-left p-2 font-medium">Email</th>
               <th className="text-left p-2 font-medium">Ingresos</th>
               <th className="text-left p-2 font-medium">Personas</th>
               <th className="text-left p-2 font-medium">Mascotas</th>
+              <th className="text-left p-2 font-medium">Empresa</th>
+              <th className="text-left p-2 font-medium">Estado</th>
               <th className="text-left p-2 font-medium">Fecha (Bogotá)</th>
               <th className="text-left p-2 font-medium">{t.mensajes.columnas.acciones}</th>
             </tr>
@@ -371,6 +374,7 @@ export function TablaIntake({
               const ingresosTotales = salarioPrincipal + salarioSecundario
               const personas = r.adultos_habitantes ?? r.personas ?? 0
               const mascotas = r.mascotas_cantidad ?? r.mascotas ?? 0
+              const empresa = r.empresa_principal ?? r.empresa_arrendatario ?? r.empresas ?? "—"
 
               return (
                 <tr
@@ -381,10 +385,19 @@ export function TablaIntake({
                     <input type="checkbox" checked={seleccionados.has(r.id)} onChange={() => onToggle(r.id)} className="rounded" />
                   </td>
                   <td className="p-2 font-medium">{r.nombre ?? "—"}</td>
+                  <td className="p-2">{r.cedula ?? "—"}</td>
                   <td className="p-2">{r.email ?? "—"}</td>
                   <td className="p-2">{ingresosTotales > 0 ? formatCurrency(ingresosTotales) : "—"}</td>
                   <td className="p-2">{personas > 0 ? personas : "—"}</td>
                   <td className="p-2">{mascotas > 0 ? mascotas : "—"}</td>
+                  <td className="p-2 max-w-[150px] truncate" title={empresa}>{empresa}</td>
+                  <td className="p-2">
+                    {r.gestionado ? (
+                      <span className="rounded-full bg-green-100 text-green-800 px-2 py-0.5 text-xs font-medium">Gestionado</span>
+                    ) : (
+                      <span className="rounded-full bg-amber-100 text-amber-800 px-2 py-0.5 text-xs font-medium">Pendiente</span>
+                    )}
+                  </td>
                   <td className="p-2">{formatDate(r.created_at)}</td>
                   <td className="p-2">
                     <button
@@ -438,9 +451,14 @@ export function ModalDetalleIntake({
     return new Intl.NumberFormat("es-CO", { style: "currency", currency: "COP", maximumFractionDigits: 0 }).format(value)
   }
 
+  // Calcular ingresos totales sumando ambos salarios
+  const salarioPrincipal = registro.salario_principal ?? registro.salario ?? 0
+  const salarioSecundario = registro.salario_secundario ?? registro.salario_2 ?? 0
+  const ingresosTotales = salarioPrincipal + salarioSecundario
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={onCerrar}>
-      <div className="bg-background rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto p-6" onClick={(e) => e.stopPropagation()}>
+      <div className="bg-background rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto p-6" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-start justify-between mb-4">
           <div>
             <h2 className="text-xl font-bold">{registro.nombre ?? t.comun.sinDatos}</h2>
@@ -451,44 +469,91 @@ export function ModalDetalleIntake({
                 {registro.valor_arriendo ? ` — ${t.mensajes.comparacion.canon} ${formatCurrency(registro.valor_arriendo)}` : ""}
               </p>
             )}
+            <div className="mt-2">
+              {registro.gestionado ? (
+                <span className="rounded-full bg-green-100 text-green-800 px-2 py-0.5 text-xs font-medium">Gestionado</span>
+              ) : (
+                <span className="rounded-full bg-amber-100 text-amber-800 px-2 py-0.5 text-xs font-medium">Pendiente de gestión</span>
+              )}
+            </div>
           </div>
           <button onClick={onCerrar} className="text-muted-foreground hover:text-foreground text-2xl leading-none" aria-label="Cerrar">×</button>
         </div>
 
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 text-sm">
-          <div className="space-y-1">
-            <p className="font-semibold text-muted-foreground uppercase text-xs tracking-wide">{t.mensajes.detalle.contacto}</p>
-            <p><span className="font-medium">{t.mensajes.detalle.email}</span> {registro.email ?? "—"}</p>
-            <p><span className="font-medium">{t.mensajes.detalle.telefono}</span> {registro.telefono ?? "—"}</p>
-            <p><span className="font-medium">{t.mensajes.detalle.cedula}</span> {registro.cedula ?? "—"}</p>
-            <p><span className="font-medium">{t.mensajes.detalle.fechaExpCedula}</span> {registro.cedula_ciudad_expedicion ?? registro.fecha_expedicion_cedula ?? "—"}</p>
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3 text-sm">
+          {/* Información de contacto */}
+          <div className="space-y-2 p-4 bg-muted/30 rounded-lg">
+            <p className="font-semibold text-muted-foreground uppercase text-xs tracking-wide border-b pb-1">Información de Contacto</p>
+            <p><span className="font-medium">Email:</span> {registro.email ?? "—"}</p>
+            <p><span className="font-medium">Teléfono:</span> {registro.telefono ?? "—"}</p>
+            <p><span className="font-medium">Cédula:</span> {registro.cedula ?? "—"}</p>
+            <p><span className="font-medium">Ciudad Expedición:</span> {registro.cedula_ciudad_expedicion ?? registro.fecha_expedicion_cedula ?? "—"}</p>
           </div>
-          <div className="space-y-1">
-            <p className="font-semibold text-muted-foreground uppercase text-xs tracking-wide">{t.mensajes.detalle.infoFinanciera}</p>
-            <p><span className="font-medium">{t.mensajes.detalle.ingresos}</span> {formatCurrency(registro.ingresos)}</p>
-            <p><span className="font-medium">{t.mensajes.detalle.salarioPrincipal}</span> {formatCurrency(registro.salario_principal ?? registro.salario)}</p>
-            <p><span className="font-medium">{t.mensajes.detalle.salarioSecundario}</span> {formatCurrency(registro.salario_secundario ?? registro.salario_2)}</p>
-            <p><span className="font-medium">{t.mensajes.detalle.empresa}</span> {registro.empresa_principal ?? registro.empresa_arrendatario ?? registro.empresas ?? "—"}</p>
-            <p><span className="font-medium">{t.mensajes.detalle.antiguedad}</span> {registro.tiempo_servicio_principal_meses ?? registro.antiguedad_meses ?? "—"}</p>
+
+          {/* Información financiera */}
+          <div className="space-y-2 p-4 bg-muted/30 rounded-lg">
+            <p className="font-semibold text-muted-foreground uppercase text-xs tracking-wide border-b pb-1">Información Financiera</p>
+            <p><span className="font-medium">Ingresos totales:</span> <strong className="text-green-600 dark:text-green-400">{formatCurrency(ingresosTotales)}</strong></p>
+            <p><span className="font-medium">Salario principal:</span> {formatCurrency(salarioPrincipal)}</p>
+            <p><span className="font-medium">Salario secundario:</span> {formatCurrency(salarioSecundario)}</p>
+            <p><span className="font-medium">Empresa principal:</span> {registro.empresa_principal ?? registro.empresa_arrendatario ?? "—"}</p>
+            <p><span className="font-medium">Antigüedad (meses):</span> {registro.tiempo_servicio_principal_meses ?? registro.antiguedad_meses ?? "—"}</p>
+            <p><span className="font-medium">Personas que trabajan:</span> {registro.personas_trabajan ?? "—"}</p>
           </div>
-          <div className="space-y-1">
-            <p className="font-semibold text-muted-foreground uppercase text-xs tracking-wide">{t.mensajes.detalle.grupoFamiliar}</p>
-            <p><span className="font-medium">{t.mensajes.detalle.personasTotales}</span> {registro.adultos_habitantes ?? registro.personas ?? "—"}</p>
-            <p><span className="font-medium">{t.mensajes.detalle.personasTrabajan}</span> {registro.personas_trabajan ?? "—"}</p>
-            <p><span className="font-medium">{t.mensajes.detalle.ninos}</span> {registro.ninos_habitantes ?? registro.ninos ?? "—"}</p>
-            <p><span className="font-medium">{t.mensajes.detalle.mascotasLabel}</span> {registro.mascotas_cantidad ?? registro.mascotas ?? "—"}</p>
-            <p><span className="font-medium">{t.mensajes.detalle.negocio}</span> {registro.negocio ?? "—"}</p>
+
+          {/* Grupo familiar */}
+          <div className="space-y-2 p-4 bg-muted/30 rounded-lg">
+            <p className="font-semibold text-muted-foreground uppercase text-xs tracking-wide border-b pb-1">Grupo Familiar</p>
+            <p><span className="font-medium">Adultos habitantes:</span> {registro.adultos_habitantes ?? registro.personas ?? "—"}</p>
+            <p><span className="font-medium">Niños habitantes:</span> {registro.ninos_habitantes ?? registro.ninos ?? "—"}</p>
+            <p><span className="font-medium">Total personas:</span> {(registro.adultos_habitantes ?? registro.personas ?? 0) + (registro.ninos_habitantes ?? registro.ninos ?? 0)}</p>
+            <p><span className="font-medium">Mascotas:</span> {registro.mascotas_cantidad ?? registro.mascotas ?? "—"}</p>
+            <p><span className="font-medium">Negocio en propiedad:</span> {registro.negocio ?? "—"}</p>
           </div>
+
+          {/* Coarrendatario */}
           {(registro.coarrendatario_nombre || registro.nombre_coarrendatario || registro.coarrendatario_cedula || registro.cedula_coarrendatario) && (
-            <div className="space-y-1">
-              <p className="font-semibold text-muted-foreground uppercase text-xs tracking-wide">{t.mensajes.detalle.coarrendatario}</p>
-              <p><span className="font-medium">{t.mensajes.columnas.nombre}:</span> {registro.coarrendatario_nombre ?? registro.nombre_coarrendatario ?? "—"}</p>
-              <p><span className="font-medium">{t.mensajes.detalle.cedula}</span> {registro.coarrendatario_cedula ?? registro.cedula_coarrendatario ?? "—"}</p>
-              <p><span className="font-medium">{t.mensajes.detalle.telefono}</span> {registro.coarrendatario_telefono ?? registro.telefono_coarrendatario ?? "—"}</p>
+            <div className="space-y-2 p-4 bg-blue-50/50 dark:bg-blue-950/30 rounded-lg border border-blue-200 dark:border-blue-800">
+              <p className="font-semibold text-blue-700 dark:text-blue-300 uppercase text-xs tracking-wide border-b border-blue-200 dark:border-blue-800 pb-1">Coarrendatario</p>
+              <p><span className="font-medium">Nombre completo:</span> {registro.coarrendatario_nombre ?? registro.nombre_coarrendatario ?? "—"}</p>
+              <p><span className="font-medium">Cédula:</span> {registro.coarrendatario_cedula ?? registro.cedula_coarrendatario ?? "—"}</p>
+              <p><span className="font-medium">Ciudad expedición:</span> {registro.coarrendatario_cedula_expedicion ?? registro.fecha_expedicion_cedula_coarrendatario ?? "—"}</p>
+              <p><span className="font-medium">Email:</span> {registro.coarrendatario_email ?? "—"}</p>
+              <p><span className="font-medium">Teléfono:</span> {registro.coarrendatario_telefono ?? registro.telefono_coarrendatario ?? "—"}</p>
               <p><span className="font-medium">Empresa:</span> {registro.empresa_secundaria ?? registro.empresa_coarrendatario ?? "—"}</p>
+              <p><span className="font-medium">Antigüedad (meses):</span> {registro.tiempo_servicio_secundario_meses ?? registro.antiguedad_meses_2 ?? "—"}</p>
             </div>
           )}
+
+          {/* Datos adicionales */}
+          <div className="space-y-2 p-4 bg-muted/30 rounded-lg">
+            <p className="font-semibold text-muted-foreground uppercase text-xs tracking-wide border-b pb-1">Datos Adicionales</p>
+            <p><span className="font-medium">ID Inmueble:</span> {registro.id_inmueble ?? "—"}</p>
+            <p><span className="font-medium">ID Propiedad:</span> {registro.propiedad_id ?? "—"}</p>
+            <p><span className="font-medium">Fecha de envío:</span> {registro.fecha_envio ? formatDate(registro.fecha_envio) : "—"}</p>
+            <p><span className="font-medium">Empresas:</span> {registro.empresas ?? "—"}</p>
+          </div>
+
+          {/* Autorización */}
+          <div className="space-y-2 p-4 bg-amber-50/50 dark:bg-amber-950/30 rounded-lg border border-amber-200 dark:border-amber-800">
+            <p className="font-semibold text-amber-700 dark:text-amber-300 uppercase text-xs tracking-wide border-b border-amber-200 dark:border-amber-800 pb-1">Autorización de Datos</p>
+            <p className="text-xs text-amber-900 dark:text-amber-100 leading-relaxed">
+              {registro.autorizacion || "No registrada"}
+            </p>
+          </div>
         </div>
+
+        {/* Raw data (para debug) */}
+        {(registro.raw_data || registro.data) && (
+          <details className="mt-4">
+            <summary className="cursor-pointer text-xs font-medium text-muted-foreground hover:text-foreground">
+              Ver datos adicionales del formulario
+            </summary>
+            <div className="mt-2 p-3 bg-muted/50 rounded text-xs font-mono overflow-x-auto">
+              <pre>{JSON.stringify(registro.raw_data || registro.data, null, 2)}</pre>
+            </div>
+          </details>
+        )}
 
         <SeccionCalificacion registro={registro} />
 
