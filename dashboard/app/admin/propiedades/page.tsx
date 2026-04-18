@@ -10,7 +10,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
-import { Camera } from "lucide-react"
+import { Camera, Link2, Copy, Check } from "lucide-react"
 import type { Propiedad } from "@/lib/types/database"
 import { useLang } from "@/lib/i18n/context"
 import { uploadImageToSupabase } from "@/lib/supabase-storage"
@@ -27,6 +27,9 @@ export default function AdminPropiedadesPage() {
   const [imagenPorPropiedadId, setImagenPorPropiedadId] = useState<Record<string, string | null>>({})
   const [subiendoPorId, setSubiendoPorId] = useState<Record<string, boolean>>({})
   const [dragOverPropiedadId, setDragOverPropiedadId] = useState<string | null>(null)
+  const [generandoTokenId, setGenerandoTokenId] = useState<string | null>(null)
+  const [enlaceGenerado, setEnlaceGenerado] = useState<Record<string, string>>({})
+  const [copiadoId, setCopiadoId] = useState<string | null>(null)
 
   useEffect(() => {
     fetch("/api/propiedades")
@@ -87,6 +90,34 @@ export default function AdminPropiedadesPage() {
     setDragOverPropiedadId(null)
     const file = e.dataTransfer.files?.[0]
     if (file && file.type.startsWith("image/")) handleSubirFoto(propiedadId, file)
+  }
+
+  async function handleGenerarEnlace(propiedadId: string) {
+    setGenerandoTokenId(propiedadId)
+    try {
+      const res = await fetch("/api/intake/tokens", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ propiedad_id: propiedadId }),
+      })
+      const data = await res.json()
+      if (!res.ok) { alert(data.error ?? "Error al generar el enlace"); return }
+      setEnlaceGenerado((prev) => ({ ...prev, [propiedadId]: data.url }))
+    } catch {
+      alert("Error al generar el enlace de aplicación")
+    } finally {
+      setGenerandoTokenId(null)
+    }
+  }
+
+  async function handleCopiarEnlace(propiedadId: string, url: string) {
+    try {
+      await navigator.clipboard.writeText(url)
+      setCopiadoId(propiedadId)
+      setTimeout(() => setCopiadoId((prev) => (prev === propiedadId ? null : prev)), 2000)
+    } catch {
+      alert("No se pudo copiar. Copia manualmente: " + url)
+    }
   }
 
   async function handleDelete(id: string) {
@@ -181,14 +212,38 @@ export default function AdminPropiedadesPage() {
                     <p className="text-sm text-muted-foreground line-clamp-3">{p.descripcion}</p>
                   )}
                 </CardContent>
-                <div className="flex gap-2 pt-3">
+                <div className="flex flex-wrap gap-2 pt-3">
                   <Button variant="outline" size="sm" asChild>
                     <Link href={`/admin/propiedades/${p.id}/editar`}>{t.comun.editar}</Link>
                   </Button>
                   <Button variant="outline" size="sm" className="text-destructive hover:bg-destructive hover:text-destructive-foreground" onClick={() => handleDelete(p.id)}>
                     {t.comun.eliminar}
                   </Button>
+                  {p.estado === "disponible" && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="text-cyan-700 border-cyan-200 hover:bg-cyan-50"
+                      onClick={() => handleGenerarEnlace(p.id)}
+                      disabled={generandoTokenId === p.id}
+                    >
+                      <Link2 className="h-3.5 w-3.5 mr-1" />
+                      {generandoTokenId === p.id ? "Generando…" : "Enlace aplicación"}
+                    </Button>
+                  )}
                 </div>
+                {enlaceGenerado[p.id] && (
+                  <div className="mt-2 flex items-center gap-2 rounded-md bg-cyan-50 border border-cyan-100 px-3 py-2">
+                    <p className="text-xs text-cyan-800 truncate flex-1 font-mono">{enlaceGenerado[p.id]}</p>
+                    <button
+                      onClick={() => handleCopiarEnlace(p.id, enlaceGenerado[p.id])}
+                      className="shrink-0 text-cyan-600 hover:text-cyan-800"
+                      title="Copiar enlace"
+                    >
+                      {copiadoId === p.id ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                    </button>
+                  </div>
+                )}
               </div>
             </Card>
           ))}

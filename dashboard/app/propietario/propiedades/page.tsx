@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Plus, MapPin, Home, Edit2, Trash2, Receipt } from "lucide-react"
+import { Plus, MapPin, Home, Edit2, Trash2, Receipt, Link2, Copy, Check } from "lucide-react"
 import { useLang } from "@/lib/i18n/context"
 
 interface Propiedad {
@@ -17,6 +17,7 @@ interface Propiedad {
   banos: number
   area: number
   valor_arriendo: number
+  estado: string
   descripcion?: string
   numero_matricula?: string
   ascensor?: number
@@ -32,6 +33,9 @@ export default function PropietarioPropiedadesPage() {
   const [error, setError] = useState<string | null>(null)
   const [ciudadFiltro, setCiudadFiltro] = useState("")
   const [ciudades, setCiudades] = useState<string[]>([])
+  const [generandoTokenId, setGenerandoTokenId] = useState<string | null>(null)
+  const [enlaceGenerado, setEnlaceGenerado] = useState<Record<string, string>>({})
+  const [copiadoId, setCopiadoId] = useState<string | null>(null)
 
   useEffect(() => {
     fetch("/api/auth/me")
@@ -78,6 +82,34 @@ export default function PropietarioPropiedadesPage() {
     
     return matchCiudad
   })
+
+  async function handleGenerarEnlace(propiedadId: string) {
+    setGenerandoTokenId(propiedadId)
+    try {
+      const res = await fetch("/api/intake/tokens", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ propiedad_id: propiedadId }),
+      })
+      const data = await res.json()
+      if (!res.ok) { alert(data.error ?? "Error al generar el enlace"); return }
+      setEnlaceGenerado((prev) => ({ ...prev, [propiedadId]: data.url }))
+    } catch {
+      alert("Error al generar el enlace de aplicación")
+    } finally {
+      setGenerandoTokenId(null)
+    }
+  }
+
+  async function handleCopiarEnlace(propiedadId: string, url: string) {
+    try {
+      await navigator.clipboard.writeText(url)
+      setCopiadoId(propiedadId)
+      setTimeout(() => setCopiadoId((prev) => (prev === propiedadId ? null : prev)), 2000)
+    } catch {
+      alert("No se pudo copiar. Copia manualmente: " + url)
+    }
+  }
 
   if (loading) return <p className="text-muted-foreground">{t.comun.cargando}</p>
 
@@ -182,18 +214,29 @@ export default function PropietarioPropiedadesPage() {
             {propiedadesFiltradas.map((propiedad) => (
               <Card key={propiedad.id}>
                 <CardHeader className="pb-3">
-                  <div className="flex items-start justify-between">
+                  <div className="flex items-start justify-between gap-2">
                     <CardDescription>
                       <div className="mt-1 flex items-start gap-1">
                         <MapPin className="mt-0.5 h-4 w-4 flex-shrink-0 text-muted-foreground" />
                         <span>{propiedad.direccion || "Sin dirección"}, {propiedad.ciudad || "Sin ciudad"}</span>
                       </div>
                     </CardDescription>
-                    {propiedad.numero_matricula && (
-                      <div className="bg-blue-50 border border-blue-200 px-3 py-1 rounded">
-                        <p className="text-xs text-blue-600 font-semibold">{propiedad.numero_matricula}</p>
-                      </div>
-                    )}
+                    <div className="flex flex-col items-end gap-1 shrink-0">
+                      <span className={`rounded px-2.5 py-0.5 text-xs font-semibold ${
+                        propiedad.estado === "disponible"
+                          ? "bg-green-100 text-green-800"
+                          : propiedad.estado === "arrendado"
+                          ? "bg-blue-100 text-blue-800"
+                          : "bg-amber-100 text-amber-800"
+                      }`}>
+                        {propiedad.estado ?? "sin estado"}
+                      </span>
+                      {propiedad.numero_matricula && (
+                        <div className="bg-blue-50 border border-blue-200 px-2 py-0.5 rounded">
+                          <p className="text-xs text-blue-600 font-semibold">{propiedad.numero_matricula}</p>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </CardHeader>
                 <CardContent>
@@ -254,11 +297,7 @@ export default function PropietarioPropiedadesPage() {
                         size="sm"
                         className="text-destructive hover:text-destructive"
                         onClick={() => {
-                          if (
-                            window.confirm(
-                              `¿Eliminar propiedad?`
-                            )
-                          ) {
+                          if (window.confirm(`¿Eliminar propiedad?`)) {
                             // Implementar eliminación
                           }
                         }}
@@ -266,6 +305,46 @@ export default function PropietarioPropiedadesPage() {
                         <Trash2 className="h-4 w-4" />
                       </Button>
                     </div>
+
+                    {propiedad.estado === "disponible" && (
+                      <>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="w-full text-cyan-700 border-cyan-200 hover:bg-cyan-50 mt-2"
+                          onClick={() => handleGenerarEnlace(propiedad.id)}
+                          disabled={generandoTokenId === propiedad.id}
+                        >
+                          <Link2 className="h-3.5 w-3.5 mr-1.5" />
+                          {generandoTokenId === propiedad.id ? "Generando…" : "Generar enlace de aplicación"}
+                        </Button>
+
+                        {enlaceGenerado[propiedad.id] && (
+                          <div className="mt-2 rounded-lg border border-cyan-200 bg-cyan-50 p-3 space-y-1.5">
+                            <p className="text-xs font-medium text-cyan-800">
+                              Enlace listo — válido 24 h, un solo uso
+                            </p>
+                            <div className="flex items-center gap-2">
+                              <p className="text-xs text-cyan-700 font-mono truncate flex-1 bg-white border border-cyan-100 rounded px-2 py-1">
+                                {enlaceGenerado[propiedad.id]}
+                              </p>
+                              <button
+                                onClick={() => handleCopiarEnlace(propiedad.id, enlaceGenerado[propiedad.id])}
+                                className="shrink-0 text-cyan-600 hover:text-cyan-900 transition"
+                                title="Copiar enlace"
+                              >
+                                {copiadoId === propiedad.id
+                                  ? <Check className="h-4 w-4 text-green-600" />
+                                  : <Copy className="h-4 w-4" />}
+                              </button>
+                            </div>
+                            <p className="text-xs text-cyan-600">
+                              Envía este enlace al interesado por WhatsApp o correo.
+                            </p>
+                          </div>
+                        )}
+                      </>
+                    )}
                   </div>
                 </CardContent>
               </Card>

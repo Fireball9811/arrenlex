@@ -24,6 +24,7 @@ export async function POST(request: Request) {
 
   const {
     propiedad_id,
+    token,
     // Paso 1 — Arrendatario
     nombre,
     email,
@@ -110,6 +111,42 @@ export async function POST(request: Request) {
     )
   }
 
+  // Validar token de un solo uso — requerido y debe estar vigente
+  if (typeof token !== "string" || !token.trim()) {
+    return NextResponse.json(
+      { error: "Se requiere un enlace de invitación válido." },
+      { status: 400 }
+    )
+  }
+
+  const { data: tokenData, error: errToken } = await admin
+    .from("aplicacion_tokens")
+    .select("id, usado, expira_en, propiedad_id")
+    .eq("token", token.trim())
+    .single()
+
+  if (errToken || !tokenData) {
+    return NextResponse.json({ error: "Enlace no válido." }, { status: 400 })
+  }
+
+  if (tokenData.propiedad_id !== propiedadIdTrim) {
+    return NextResponse.json({ error: "El enlace no corresponde a esta propiedad." }, { status: 400 })
+  }
+
+  if (tokenData.usado) {
+    return NextResponse.json(
+      { error: "Este enlace ya fue utilizado. La aplicación ya fue enviada." },
+      { status: 400 }
+    )
+  }
+
+  if (new Date(tokenData.expira_en) < new Date()) {
+    return NextResponse.json(
+      { error: "Este enlace ha expirado. Solicita un nuevo enlace al arrendador." },
+      { status: 400 }
+    )
+  }
+
   const toNullableText = (v: unknown) =>
     typeof v === "string" && v.trim() !== "" ? v.trim() : null
   const toNullableInt = (v: unknown) => {
@@ -166,6 +203,12 @@ export async function POST(request: Request) {
     console.error("[intake/aplicacion POST]", errInsert)
     return NextResponse.json({ error: "Error al guardar la solicitud" }, { status: 500 })
   }
+
+  // Marcar token como usado
+  await admin
+    .from("aplicacion_tokens")
+    .update({ usado: true, usado_en: new Date().toISOString(), intake_id: inserted?.id ?? null })
+    .eq("id", tokenData.id)
 
   // ── Notificaciones post-INSERT (no bloquean la respuesta) ─────────────────
 

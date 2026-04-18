@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { useParams, useRouter } from "next/navigation"
+import { useParams, useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -626,11 +626,14 @@ function PantallaExito({ propiedadId }: { propiedadId: string }) {
 export default function AplicacionPage() {
   const params = useParams()
   const router = useRouter()
+  const searchParams = useSearchParams()
   const propiedadId = params.id as string
+  const token = searchParams.get("token") ?? ""
 
   const [propiedadInfo, setPropiedadInfo] = useState<PropiedadInfo | null>(null)
   const [loadingInfo, setLoadingInfo] = useState(true)
   const [propiedadError, setPropiedadError] = useState(false)
+  const [tokenErrorMsg, setTokenErrorMsg] = useState<string | null>(null)
 
   const [step, setStep] = useState(1)
   const [form, setForm] = useState<FormData>(INITIAL_FORM)
@@ -638,17 +641,31 @@ export default function AplicacionPage() {
   const [submitError, setSubmitError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
 
-  // Cargar info de la propiedad al montar
+  // Cargar info de la propiedad al montar — el token se pasa al API
   useEffect(() => {
-    fetch(`/api/propiedades/${propiedadId}/aplicacion-info`)
-      .then((res) => {
+    const url = token
+      ? `/api/propiedades/${propiedadId}/aplicacion-info?token=${encodeURIComponent(token)}`
+      : `/api/propiedades/${propiedadId}/aplicacion-info`
+
+    fetch(url)
+      .then(async (res) => {
+        if (res.status === 410) {
+          const json = await res.json().catch(() => ({}))
+          setTokenErrorMsg(
+            (json as { error?: string }).error ??
+              "Este enlace no es válido, ya fue utilizado o ha expirado."
+          )
+          throw new Error("token-invalid")
+        }
         if (!res.ok) throw new Error("not-found")
         return res.json()
       })
       .then((data: PropiedadInfo) => setPropiedadInfo(data))
-      .catch(() => setPropiedadError(true))
+      .catch((err) => {
+        if ((err as Error).message !== "token-invalid") setPropiedadError(true)
+      })
       .finally(() => setLoadingInfo(false))
-  }, [propiedadId])
+  }, [propiedadId, token])
 
   const handleChange = (field: keyof FormData, value: string) => {
     setForm((prev) => ({ ...prev, [field]: value }))
@@ -719,7 +736,7 @@ export default function AplicacionPage() {
       const res = await fetch("/api/intake/aplicacion", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...form, propiedad_id: propiedadId }),
+        body: JSON.stringify({ ...form, propiedad_id: propiedadId, token }),
       })
       const data = await res.json().catch(() => ({}))
       if (!res.ok) {
@@ -738,6 +755,25 @@ export default function AplicacionPage() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <p className="text-gray-500">Cargando información de la propiedad…</p>
+      </div>
+    )
+  }
+
+  if (tokenErrorMsg) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 p-6 text-center">
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 w-full max-w-md p-8">
+          <div className="flex flex-col items-center gap-4">
+            <div className="h-14 w-14 rounded-full bg-amber-100 flex items-center justify-center">
+              <ClipboardList className="h-7 w-7 text-amber-500" />
+            </div>
+            <h2 className="text-lg font-semibold text-gray-800">Enlace no disponible</h2>
+            <p className="text-gray-500 text-sm">{tokenErrorMsg}</p>
+            <Button asChild variant="outline" className="mt-2">
+              <Link href="/catalogo">Volver al catálogo</Link>
+            </Button>
+          </div>
+        </div>
       </div>
     )
   }

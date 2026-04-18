@@ -85,6 +85,10 @@ export default function PropiedadDetallePage() {
   const [submitting, setSubmitting] = useState(false)
   const [submitMessage, setSubmitMessage] = useState<{ type: "success" | "error"; text: string } | null>(null)
 
+  // Estado para generación de token de aplicación
+  const [generandoToken, setGenerandoToken] = useState(false)
+  const [errorToken, setErrorToken] = useState<string | null>(null)
+
   useEffect(() => {
     fetch(`/api/propiedades/${params.id}/public`)
       .then((res) => {
@@ -97,6 +101,29 @@ export default function PropiedadDetallePage() {
       .catch(() => setPropiedad(null))
       .finally(() => setLoading(false))
   }, [params.id])
+
+  async function handleDiligenciarAplicacion() {
+    setGenerandoToken(true)
+    setErrorToken(null)
+    try {
+      const res = await fetch("/api/intake/tokens/publico", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ propiedad_id: params.id }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        setErrorToken(data.error ?? "No se pudo iniciar la aplicación. Intenta de nuevo.")
+        return
+      }
+      // Redirigir directo al formulario con el token
+      window.location.href = `/catalogo/propiedades/${params.id}/aplicacion?token=${data.token}`
+    } catch {
+      setErrorToken("Error de conexión. Verifica tu internet e intenta de nuevo.")
+    } finally {
+      setGenerandoToken(false)
+    }
+  }
 
   if (loading) {
     return <p className="text-muted-foreground">Cargando propiedad...</p>
@@ -231,17 +258,23 @@ export default function PropiedadDetallePage() {
                   <Calendar className="mr-2 h-4 w-4" />
                   Solicitar visita
                 </Button>
+
                 <Button
                   size="lg"
                   variant="outline"
                   className="w-full border-cyan-500 text-cyan-700 hover:bg-cyan-50"
-                  asChild
+                  onClick={handleDiligenciarAplicacion}
+                  disabled={generandoToken}
                 >
-                  <Link href={`/catalogo/propiedades/${params.id}/aplicacion`}>
-                    <ClipboardList className="mr-2 h-4 w-4" />
-                    Diligenciar Aplicación
-                  </Link>
+                  <ClipboardList className="mr-2 h-4 w-4" />
+                  {generandoToken ? "Preparando formulario…" : "Diligenciar Aplicación"}
                 </Button>
+
+                {errorToken && (
+                  <p className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-md px-3 py-2">
+                    {errorToken}
+                  </p>
+                )}
               </div>
             </div>
           </div>

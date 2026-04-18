@@ -20,6 +20,7 @@ const PUBLIC_PATHS = [
   "/api/propiedades/public",
   "/api/propiedades/banner",
   "/api/intake/aplicacion",
+  "/api/intake/tokens/publico",
   "/api/solicitudes-visita",
   "/api/contacto",
 ]
