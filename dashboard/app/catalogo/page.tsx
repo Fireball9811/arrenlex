@@ -33,7 +33,9 @@ function CatalogoContent() {
   const [ciudades, setCiudades] = useState<string[]>([])
   const [ciudadSeleccionada, setCiudadSeleccionada] = useState<string>("")
   const [propiedades, setPropiedades] = useState<PropiedadPublica[]>([])
+  const [nextCursor, setNextCursor] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
+  const [cargandoMas, setCargandoMas] = useState(false)
 
   // Cargar ciudades disponibles y preseleccionar desde ?ciudad= si viene de la landing
   useEffect(() => {
@@ -52,18 +54,36 @@ function CatalogoContent() {
       .finally(() => setLoading(false))
   }, [searchParams])
 
-  // Cargar propiedades cuando se selecciona ciudad (API pública: solo descripcion, area, imagen)
+  // Cargar propiedades cuando cambia la ciudad — reinicia la paginación
   useEffect(() => {
     if (!ciudadSeleccionada) return
 
     setLoading(true)
+    setPropiedades([])
+    setNextCursor(null)
     fetch(`/api/propiedades/public?ciudad=${encodeURIComponent(ciudadSeleccionada)}`)
       .then((res) => res.json())
-      .then((data: PropiedadPublica[]) => {
-        setPropiedades(Array.isArray(data) ? data : [])
+      .then((data: { propiedades: PropiedadPublica[]; nextCursor: string | null }) => {
+        setPropiedades(Array.isArray(data.propiedades) ? data.propiedades : [])
+        setNextCursor(data.nextCursor ?? null)
       })
       .finally(() => setLoading(false))
   }, [ciudadSeleccionada])
+
+  async function cargarMas() {
+    if (!nextCursor || !ciudadSeleccionada) return
+    setCargandoMas(true)
+    try {
+      const res = await fetch(
+        `/api/propiedades/public?ciudad=${encodeURIComponent(ciudadSeleccionada)}&cursor=${encodeURIComponent(nextCursor)}`
+      )
+      const data: { propiedades: PropiedadPublica[]; nextCursor: string | null } = await res.json()
+      setPropiedades((prev) => [...prev, ...(data.propiedades ?? [])])
+      setNextCursor(data.nextCursor ?? null)
+    } finally {
+      setCargandoMas(false)
+    }
+  }
 
   return (
     <div>
@@ -116,61 +136,76 @@ function CatalogoContent() {
           </CardHeader>
         </Card>
       ) : (
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {propiedades.map((propiedad) => (
-            <Card
-              key={propiedad.id}
-              className="overflow-hidden cursor-pointer hover:shadow-lg transition"
-              onClick={() => router.push(`/catalogo/propiedades/${propiedad.id}`)}
-            >
-              {/* Foto de portada */}
-              <div className="aspect-video w-full bg-muted relative">
-                {propiedad.imagen_principal ? (
-                  <img
-                    src={propiedad.imagen_principal}
-                    alt="Imagen de propiedad"
-                    className="h-full w-full object-cover"
-                  />
-                ) : (
-                  <div className="flex h-full w-full items-center justify-center text-muted-foreground">
-                    🏠
-                  </div>
-                )}
-              </div>
-
-              <CardHeader className="pb-2">
-                {propiedad.numero_matricula && (
-                  <div className="bg-blue-50 border border-blue-200 px-3 py-1 rounded inline-block mb-2">
-                    <p className="text-xs text-blue-600 font-semibold">{propiedad.numero_matricula}</p>
-                  </div>
-                )}
-                <CardTitle className="text-lg">{t.catalogo.tamano}: {propiedad.area} m²</CardTitle>
-                <div className="flex flex-wrap gap-x-3 gap-y-1 text-sm text-muted-foreground mt-2">
-                  <span>🛏 {propiedad.habitaciones || 0} hab</span>
-                  <span>🚿 {propiedad.banos || 0} baños</span>
-                  <span>🛗 {propiedad.ascensor || 0} asc</span>
-                  <span>📦 {propiedad.depositos || 0} dep</span>
-                  <span>🚗 {propiedad.parqueaderos || 0} parq</span>
+        <>
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+            {propiedades.map((propiedad) => (
+              <Card
+                key={propiedad.id}
+                className="overflow-hidden cursor-pointer hover:shadow-lg transition"
+                onClick={() => router.push(`/catalogo/propiedades/${propiedad.id}`)}
+              >
+                {/* Foto de portada */}
+                <div className="aspect-video w-full bg-muted relative">
+                  {propiedad.imagen_principal ? (
+                    <img
+                      src={propiedad.imagen_principal}
+                      alt="Imagen de propiedad"
+                      className="h-full w-full object-cover"
+                    />
+                  ) : (
+                    <div className="flex h-full w-full items-center justify-center text-muted-foreground">
+                      🏠
+                    </div>
+                  )}
                 </div>
-                {propiedad.descripcion ? (
-                  <CardDescription className="line-clamp-3">
-                    {propiedad.descripcion}
-                  </CardDescription>
-                ) : (
-                  <CardDescription>{t.catalogo.sinDescripcion}</CardDescription>
-                )}
-              </CardHeader>
 
-              <CardContent>
-                <Button variant="outline" className="w-full" asChild>
-                  <Link href={`/catalogo/propiedades/${propiedad.id}`} onClick={(e) => e.stopPropagation()}>
-                    {t.catalogo.verDetalle}
-                  </Link>
-                </Button>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+                <CardHeader className="pb-2">
+                  {propiedad.numero_matricula && (
+                    <div className="bg-blue-50 border border-blue-200 px-3 py-1 rounded inline-block mb-2">
+                      <p className="text-xs text-blue-600 font-semibold">{propiedad.numero_matricula}</p>
+                    </div>
+                  )}
+                  <CardTitle className="text-lg">{t.catalogo.tamano}: {propiedad.area} m²</CardTitle>
+                  <div className="flex flex-wrap gap-x-3 gap-y-1 text-sm text-muted-foreground mt-2">
+                    <span>🛏 {propiedad.habitaciones || 0} hab</span>
+                    <span>🚿 {propiedad.banos || 0} baños</span>
+                    <span>🛗 {propiedad.ascensor || 0} asc</span>
+                    <span>📦 {propiedad.depositos || 0} dep</span>
+                    <span>🚗 {propiedad.parqueaderos || 0} parq</span>
+                  </div>
+                  {propiedad.descripcion ? (
+                    <CardDescription className="line-clamp-3">
+                      {propiedad.descripcion}
+                    </CardDescription>
+                  ) : (
+                    <CardDescription>{t.catalogo.sinDescripcion}</CardDescription>
+                  )}
+                </CardHeader>
+
+                <CardContent>
+                  <Button variant="outline" className="w-full" asChild>
+                    <Link href={`/catalogo/propiedades/${propiedad.id}`} onClick={(e) => e.stopPropagation()}>
+                      {t.catalogo.verDetalle}
+                    </Link>
+                  </Button>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+
+          {nextCursor && (
+            <div className="mt-8 flex justify-center">
+              <Button
+                variant="outline"
+                onClick={cargarMas}
+                disabled={cargandoMas}
+                className="min-w-[200px]"
+              >
+                {cargandoMas ? "Cargando..." : "Ver más propiedades"}
+              </Button>
+            </div>
+          )}
+        </>
       )}
     </div>
   )

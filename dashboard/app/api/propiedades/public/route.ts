@@ -1,34 +1,49 @@
 import { NextResponse } from "next/server"
 import { createAdminClient } from "@/lib/supabase/admin"
 
+const PAGE_SIZE = 20
+
 /**
  * GET - Listado público de propiedades disponibles (sin auth).
- * Query: ciudad (opcional). Solo expone id, area, descripcion e imagen_principal (sin dirección, precio ni propietario).
+ * Query params:
+ *   ciudad  (opcional) — filtra por ciudad
+ *   cursor  (opcional) — created_at del último registro recibido (paginación por cursor)
+ * Respuesta: { propiedades, nextCursor }
  */
 export async function GET(request: Request) {
   const admin = createAdminClient()
   const { searchParams } = new URL(request.url)
   const ciudad = searchParams.get("ciudad")
+  const cursor = searchParams.get("cursor")
 
   let query = admin
     .from("propiedades")
-    .select("id, area, descripcion, habitaciones, banos, ascensor, depositos, parqueaderos")
+    .select("id, area, descripcion, habitaciones, banos, ascensor, depositos, parqueaderos, created_at")
     .eq("estado", "disponible")
     .order("created_at", { ascending: false })
+    .limit(PAGE_SIZE + 1)
 
   if (ciudad) {
     query = query.eq("ciudad", ciudad)
   }
 
-  const { data: propiedades, error } = await query
+  if (cursor) {
+    query = query.lt("created_at", cursor)
+  }
+
+  const { data, error } = await query
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 
-  const list = propiedades ?? []
+  const rows = data ?? []
+  const hayMas = rows.length > PAGE_SIZE
+  const list = hayMas ? rows.slice(0, PAGE_SIZE) : rows
+  const nextCursor = hayMas ? list[list.length - 1].created_at : null
+
   if (list.length === 0) {
-    return NextResponse.json(list)
+    return NextResponse.json({ propiedades: [], nextCursor: null })
   }
 
   const ids = list.map((p) => p.id)
@@ -46,10 +61,10 @@ export async function GET(request: Request) {
     }
   }
 
-  const result = list.map((p) => ({
+  const propiedades = list.map((p) => ({
     ...p,
     imagen_principal: firstByPropiedad.get(p.id) ?? null,
   }))
 
-  return NextResponse.json(result)
+  return NextResponse.json({ propiedades, nextCursor })
 }

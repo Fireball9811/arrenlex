@@ -30,6 +30,9 @@ export default function PropietarioPropiedadesPage() {
   const { t } = useLang()
   const [loading, setLoading] = useState(true)
   const [propiedades, setPropiedades] = useState<Propiedad[]>([])
+  const [nextCursor, setNextCursor] = useState<string | null>(null)
+  const [cargandoMas, setCargandoMas] = useState(false)
+  const [totalSinFiltro, setTotalSinFiltro] = useState(0)
   const [error, setError] = useState<string | null>(null)
   const [ciudadFiltro, setCiudadFiltro] = useState("")
   const [ciudades, setCiudades] = useState<string[]>([])
@@ -37,51 +40,70 @@ export default function PropietarioPropiedadesPage() {
   const [enlaceGenerado, setEnlaceGenerado] = useState<Record<string, string>>({})
   const [copiadoId, setCopiadoId] = useState<string | null>(null)
 
+  function buildUrl(ciudad: string, cursor?: string) {
+    const params = new URLSearchParams()
+    if (ciudad) params.set("ciudad", ciudad)
+    if (cursor) params.set("cursor", cursor)
+    return `/api/propiedades?${params.toString()}`
+  }
+
+  // Carga inicial — redirige según rol y trae primera página
   useEffect(() => {
     fetch("/api/auth/me")
       .then((res) => (res.ok ? res.json() : null))
       .then((data: { role?: string } | null) => {
-        if (data?.role === "admin") {
-          router.replace("/admin/dashboard")
-          return
-        }
-        if (data?.role === "inquilino") {
-          router.replace("/inquilino/dashboard")
-          return
-        }
-        
+        if (data?.role === "admin") { router.replace("/admin/dashboard"); return }
+        if (data?.role === "inquilino") { router.replace("/inquilino/dashboard"); return }
+
         return fetch("/api/propiedades")
           .then((res) => {
-            if (!res.ok) {
-              throw new Error(`HTTP ${res.status}`)
-            }
+            if (!res.ok) throw new Error(`HTTP ${res.status}`)
             return res.json()
           })
-          .then((data: Propiedad[]) => {
-            setPropiedades(data)
-            const uniqueCities = [...new Set(data.map((p) => p.ciudad))].sort()
+          .then((data: { propiedades: Propiedad[]; nextCursor: string | null }) => {
+            const lista = data.propiedades ?? []
+            setPropiedades(lista)
+            setNextCursor(data.nextCursor ?? null)
+            setTotalSinFiltro(lista.length)
+            const uniqueCities = [...new Set(lista.map((p) => p.ciudad).filter(Boolean))].sort()
             setCiudades(uniqueCities)
             setLoading(false)
           })
-          .catch((err) => {
-            setError(`Error: ${err.message}`)
-            setLoading(false)
-          })
+          .catch((err) => { setError(`Error: ${err.message}`); setLoading(false) })
       })
-      .catch(() => {
-        setError("Error de autenticación")
-        setLoading(false)
-      })
+      .catch(() => { setError("Error de autenticación"); setLoading(false) })
   }, [router])
 
-  const propiedadesFiltradas = propiedades.filter((p) => {
-    if (!p || !p.ciudad) return false
-    
-    // Filtro de ciudad (si está vacío, se muestran todas)
-    const matchCiudad = !ciudadFiltro || (p.ciudad || "").toLowerCase() === ciudadFiltro.toLowerCase()
-    
-    return matchCiudad
-  })
+  // Cuando cambia el filtro de ciudad — recarga desde cero con filtro server-side
+  useEffect(() => {
+    if (loading) return
+    setLoading(true)
+    setPropiedades([])
+    setNextCursor(null)
+    fetch(buildUrl(ciudadFiltro))
+      .then((res) => res.json())
+      .then((data: { propiedades: Propiedad[]; nextCursor: string | null }) => {
+        setPropiedades(data.propiedades ?? [])
+        setNextCursor(data.nextCursor ?? null)
+      })
+      .finally(() => setLoading(false))
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ciudadFiltro])
+
+  async function cargarMas() {
+    if (!nextCursor) return
+    setCargandoMas(true)
+    try {
+      const res = await fetch(buildUrl(ciudadFiltro, nextCursor))
+      const data: { propiedades: Propiedad[]; nextCursor: string | null } = await res.json()
+      setPropiedades((prev) => [...prev, ...(data.propiedades ?? [])])
+      setNextCursor(data.nextCursor ?? null)
+    } finally {
+      setCargandoMas(false)
+    }
+  }
+
+  const propiedadesFiltradas = propiedades
 
   async function handleGenerarEnlace(propiedadId: string) {
     setGenerandoTokenId(propiedadId)
@@ -148,15 +170,12 @@ export default function PropietarioPropiedadesPage() {
               onChange={(e) => setCiudadFiltro(e.target.value)}
               className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
             >
-              <option value="">Todas las ciudades ({propiedades.length})</option>
-              {ciudades.map((ciudad) => {
-                const countInCity = propiedades.filter((p) => (p.ciudad || "").toLowerCase() === ciudad.toLowerCase()).length
-                return (
-                  <option key={ciudad} value={ciudad}>
-                    {ciudad} ({countInCity})
-                  </option>
-                )
-              })}
+              <option value="">Todas las ciudades</option>
+              {ciudades.map((ciudad) => (
+                <option key={ciudad} value={ciudad}>
+                  {ciudad}
+                </option>
+              ))}
             </select>
           </div>
         </CardContent>
@@ -196,9 +215,9 @@ export default function PropietarioPropiedadesPage() {
           <div className="mb-4 flex items-center justify-between">
             <div className="text-sm text-muted-foreground">
               {ciudadFiltro ? (
-                <span>Propiedades en <strong>{ciudadFiltro}</strong>: <strong className="text-green-600">{propiedadesFiltradas.length}</strong> de <strong>{propiedades.length}</strong></span>
+                <span>Propiedades en <strong>{ciudadFiltro}</strong>: <strong className="text-green-600">{propiedadesFiltradas.length}</strong></span>
               ) : (
-                <span>Total de propiedades: <strong className="text-green-600">{propiedades.length}</strong></span>
+                <span>Propiedades cargadas: <strong className="text-green-600">{propiedades.length}</strong>{nextCursor ? " (hay más)" : ""}</span>
               )}
             </div>
             {ciudadFiltro && (
@@ -350,6 +369,19 @@ export default function PropietarioPropiedadesPage() {
               </Card>
             ))}
           </div>
+
+          {nextCursor && (
+            <div className="mt-6 flex justify-center">
+              <Button
+                variant="outline"
+                onClick={cargarMas}
+                disabled={cargandoMas}
+                className="min-w-[200px]"
+              >
+                {cargandoMas ? "Cargando..." : "Ver más propiedades"}
+              </Button>
+            </div>
+          )}
         </>
       )}
     </div>

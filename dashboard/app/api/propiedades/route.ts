@@ -60,6 +60,11 @@ export async function GET(request: Request) {
     const admin = createAdminClient()
     console.log("✓ Admin client creado")
 
+    const { searchParams } = new URL(request.url)
+    const ciudad = searchParams.get("ciudad")
+    const cursor = searchParams.get("cursor")
+    const PAGE_SIZE = 20
+
     let query = admin.from("propiedades").select("*")
 
     if (role === "propietario") {
@@ -69,10 +74,17 @@ export async function GET(request: Request) {
       console.log("✓ Query: todas las propiedades (admin)")
     }
 
-    // NO filtrar por estado - el propietario debe ver TODAS sus propiedades
-    // query = query.eq("estado", "disponible")
+    if (ciudad) {
+      query = query.eq("ciudad", ciudad)
+      console.log("✓ Filtro ciudad:", ciudad)
+    }
 
-    query = query.order("created_at", { ascending: false })
+    if (cursor) {
+      query = query.lt("created_at", cursor)
+      console.log("✓ Cursor:", cursor)
+    }
+
+    query = query.order("created_at", { ascending: false }).limit(PAGE_SIZE + 1)
 
     const { data, error } = await query
 
@@ -84,8 +96,13 @@ export async function GET(request: Request) {
       )
     }
 
-    console.log("✓ SUCCESS! Retornando", data?.length || 0, "propiedades")
-    return NextResponse.json(data ?? [])
+    const rows = data ?? []
+    const hayMas = rows.length > PAGE_SIZE
+    const propiedades = hayMas ? rows.slice(0, PAGE_SIZE) : rows
+    const nextCursor = hayMas ? propiedades[propiedades.length - 1].created_at : null
+
+    console.log("✓ SUCCESS! Retornando", propiedades.length, "propiedades, hayMas:", hayMas)
+    return NextResponse.json({ propiedades, nextCursor })
     
   } catch (err: any) {
     console.error("❌ ERROR GENERAL:", err?.message || err)

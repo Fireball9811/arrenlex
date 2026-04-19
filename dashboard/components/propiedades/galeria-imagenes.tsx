@@ -11,7 +11,7 @@ import type { PropiedadImagen, PropiedadVideo } from "@/lib/types/database"
 // ─── Constantes ────────────────────────────────────────────────────────────
 const FORMATOS_FOTO = "image/jpeg,image/jpg,image/png,image/webp"
 const FORMATOS_VIDEO_ACCEPT = "video/mp4,video/webm,video/quicktime,video/x-msvideo"
-const FOTO_MAX_MB = 50
+const FOTO_MAX_MB = 20
 const FOTO_MAX_BYTES = FOTO_MAX_MB * 1024 * 1024
 const VIDEO_MAX_MB = 50
 const VIDEO_MAX_BYTES = VIDEO_MAX_MB * 1024 * 1024
