@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, type ReactNode } from "react"
 import type { IntakeFormulario } from "@/lib/types/database"
 import type { UserRole } from "@/lib/auth/role"
 import { useLang } from "@/lib/i18n/context"
@@ -9,11 +9,22 @@ import { useLang } from "@/lib/i18n/context"
 
 type FiltroExcluyente = { aplica: true; motivo: string }
 
+type ScoreFlags = {
+  empresaPrincipalIndependiente: boolean
+  empresaSecundariaIndependiente: boolean
+  camposVacios: Set<string>
+  hayCoarrendatario: boolean
+  ninosEnHogar: boolean
+  negocioEnPropiedad: boolean
+}
+
 type ScoreDetalle = {
   capacidadPago: { puntos: number; descripcion: string }
   estabilidadLaboral: { puntos: number; descripcion: string }
   composicionHogar: { puntos: number; descripcion: string }
   mascotas: { puntos: number; descripcion: string }
+  otrosAspectos: { puntos: number; descripcion: string }
+  flags: ScoreFlags
   total: number
   etiqueta: string
   nivel: "verde" | "amarillo" | "rojo"
@@ -23,6 +34,20 @@ export type ResultadoScore =
   | { excluido: true; filtro: FiltroExcluyente; sinCanon?: false }
   | { excluido: false; sinCanon: true }
   | { excluido: false; sinCanon: false; score: ScoreDetalle }
+
+// ── Helpers ────────────────────────────────────────────────────────────────
+
+function esIndependiente(v: string | null | undefined): boolean {
+  if (!v) return false
+  const s = v.toString().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim()
+  return s.includes("independiente")
+}
+
+function esVacio(v: unknown): boolean {
+  if (v == null) return true
+  if (typeof v === "string") return v.trim() === "" || v.trim() === "—"
+  return false
+}
 
 // ── Función pura de scoring ────────────────────────────────────────────────
 
@@ -40,9 +65,6 @@ export function calcularScore(r: IntakeFormulario): ResultadoScore {
   const autorizacion = (r.autorizacion ?? "").toLowerCase()
   if (!autorizacion || (!autorizacion.includes("sí") && !autorizacion.includes("si"))) {
     return { excluido: true, filtro: { aplica: true, motivo: "No autorizó tratamiento de datos personales" } }
-  }
-  if (r.negocio && r.negocio.trim() !== "" && r.negocio.trim().toLowerCase() !== "no") {
-    return { excluido: true, filtro: { aplica: true, motivo: `Uso no residencial indicado: "${r.negocio}"` } }
   }
 
   if (canon > 0 && ingresoTotal < canon * 1.2) {
@@ -66,19 +88,93 @@ export function calcularScore(r: IntakeFormulario): ResultadoScore {
   else if (meses >= 6) { ptsLaboral = 8; descLaboral = `${meses} meses — Moderado` }
   else { ptsLaboral = 4; descLaboral = `${meses} meses — Bajo` }
 
-  const personas = r.adultos_habitantes ?? r.personas ?? 1
+  const adultos = r.adultos_habitantes ?? r.personas ?? 1
+  const ninos = r.ninos_habitantes ?? r.ninos ?? 0
+  const ninosEnHogar = ninos > 0
+  const ocupantes = adultos + ninos
   let ptsHogar = 0; let descHogar = ""
-  if (personas <= 3) { ptsHogar = 15; descHogar = `${personas} personas — Ideal` }
-  else if (personas === 4) { ptsHogar = 10; descHogar = `${personas} personas — A evaluar` }
-  else { ptsHogar = 5; descHogar = `${personas} personas — Riesgo` }
+  if (ocupantes <= 2) { ptsHogar = 15; descHogar = `${ocupantes} personas — Ideal` }
+  else if (ocupantes === 3) { ptsHogar = 12; descHogar = `${ocupantes} personas — Adecuado` }
+  else if (ocupantes === 4) { ptsHogar = 9; descHogar = `${ocupantes} personas — A evaluar` }
+  else if (ocupantes === 5) { ptsHogar = 6; descHogar = `${ocupantes} personas — A evaluar` }
+  else { ptsHogar = 3; descHogar = `${ocupantes} personas — Riesgo` }
 
   const mascotas = r.mascotas_cantidad ?? r.mascotas ?? 0
   let ptsMascotas = 0; let descMascotas = ""
-  if (mascotas === 0) { ptsMascotas = 15; descMascotas = "Sin mascotas — Ideal" }
-  else if (mascotas === 1) { ptsMascotas = 10; descMascotas = "1 mascota — A evaluar" }
-  else { ptsMascotas = 5; descMascotas = `${mascotas} mascotas — Riesgo` }
+  if (mascotas === 0) { ptsMascotas = 5; descMascotas = "Sin mascotas — Ideal" }
+  else if (mascotas === 1) { ptsMascotas = 3; descMascotas = "1 mascota — A evaluar" }
+  else { ptsMascotas = 1; descMascotas = `${mascotas} mascotas — Riesgo` }
 
-  const total = ptsPago + ptsLaboral + ptsHogar + ptsMascotas
+  // ── Penalizaciones ──
+
+  const hayCoarrendatario = !!(
+    r.coarrendatario_nombre || r.nombre_coarrendatario ||
+    r.coarrendatario_cedula || r.cedula_coarrendatario
+  )
+
+  const camposPrincipal: { key: string; valor: unknown }[] = [
+    { key: "email", valor: r.email },
+    { key: "telefono", valor: r.telefono },
+    { key: "cedula", valor: r.cedula },
+    { key: "cedula_ciudad_expedicion", valor: r.cedula_ciudad_expedicion ?? r.fecha_expedicion_cedula },
+    { key: "salario_principal", valor: r.salario_principal ?? r.salario },
+    { key: "empresa_principal", valor: r.empresa_principal ?? r.empresa_arrendatario },
+    { key: "tiempo_servicio_principal_meses", valor: r.tiempo_servicio_principal_meses ?? r.antiguedad_meses },
+    { key: "personas_trabajan", valor: r.personas_trabajan },
+    { key: "adultos_habitantes", valor: r.adultos_habitantes ?? r.personas },
+    { key: "ninos_habitantes", valor: r.ninos_habitantes ?? r.ninos },
+    { key: "mascotas_cantidad", valor: r.mascotas_cantidad ?? r.mascotas },
+  ]
+  const camposCoarrendatario: { key: string; valor: unknown }[] = hayCoarrendatario
+    ? [
+        { key: "coarrendatario_email", valor: r.coarrendatario_email },
+        { key: "coarrendatario_telefono", valor: r.coarrendatario_telefono ?? r.telefono_coarrendatario },
+        { key: "empresa_secundaria", valor: r.empresa_secundaria ?? r.empresa_coarrendatario },
+        { key: "tiempo_servicio_secundario_meses", valor: r.tiempo_servicio_secundario_meses ?? r.antiguedad_meses_2 },
+        { key: "salario_secundario", valor: r.salario_secundario ?? r.salario_2 },
+      ]
+    : []
+
+  const camposVacios = new Set<string>()
+  let descuentoOtros = 0
+  camposPrincipal.forEach(({ key, valor }) => {
+    if (esVacio(valor)) { camposVacios.add(key); descuentoOtros += 2 }
+  })
+  camposCoarrendatario.forEach(({ key, valor }) => {
+    if (esVacio(valor)) { camposVacios.add(key); descuentoOtros += 1 }
+  })
+
+  const desbalanceLaboral = hayCoarrendatario && r.personas_trabajan === 1
+  if (desbalanceLaboral) {
+    ptsLaboral = Math.max(0, ptsLaboral - 8)
+  }
+
+  const empresaPrincipalIndependiente = esIndependiente(r.empresa_principal ?? r.empresa_arrendatario)
+  const empresaSecundariaIndependiente = esIndependiente(r.empresa_secundaria ?? r.empresa_coarrendatario)
+  if (empresaPrincipalIndependiente) descuentoOtros += 3
+  if (empresaSecundariaIndependiente) descuentoOtros += 2
+
+  let ptsOtros = Math.max(0, 10 - descuentoOtros)
+  let descOtros = ""
+  if (ptsOtros >= 9) descOtros = "Información completa"
+  else if (ptsOtros >= 7) descOtros = "Información mayormente completa"
+  else if (ptsOtros >= 4) descOtros = "Requiere revisión"
+  else descOtros = "Información muy incompleta"
+
+  // Negocio en propiedad — ya no excluye; aplica x0.5 al total
+  const negocioEnPropiedad = !!(
+    r.negocio && r.negocio.trim() !== "" && r.negocio.trim().toLowerCase() !== "no"
+  )
+  if (negocioEnPropiedad) {
+    ptsPago = Math.round(ptsPago * 0.5)
+    ptsLaboral = Math.round(ptsLaboral * 0.5)
+    ptsHogar = Math.round(ptsHogar * 0.5)
+    ptsMascotas = Math.round(ptsMascotas * 0.5)
+    ptsOtros = Math.round(ptsOtros * 0.5)
+  }
+
+  const total = ptsPago + ptsLaboral + ptsHogar + ptsMascotas + ptsOtros
+
   let etiqueta = ""; let nivel: "verde" | "amarillo" | "rojo" = "rojo"
   if (total >= 80) { etiqueta = "Aprobación recomendada"; nivel = "verde" }
   else if (total >= 60) { etiqueta = "Aprobación con revisión"; nivel = "amarillo" }
@@ -91,6 +187,15 @@ export function calcularScore(r: IntakeFormulario): ResultadoScore {
       estabilidadLaboral: { puntos: ptsLaboral, descripcion: descLaboral },
       composicionHogar: { puntos: ptsHogar, descripcion: descHogar },
       mascotas: { puntos: ptsMascotas, descripcion: descMascotas },
+      otrosAspectos: { puntos: ptsOtros, descripcion: descOtros },
+      flags: {
+        empresaPrincipalIndependiente,
+        empresaSecundariaIndependiente,
+        camposVacios,
+        hayCoarrendatario,
+        ninosEnHogar,
+        negocioEnPropiedad,
+      },
       total, etiqueta, nivel,
     },
   }
@@ -132,7 +237,8 @@ export function SeccionCalificacion({ registro }: { registro: IntakeFormulario }
     { label: t.mensajes.calificacion.capacidadPago, max: 50, ...score.capacidadPago },
     { label: t.mensajes.calificacion.estabilidadLaboral, max: 20, ...score.estabilidadLaboral },
     { label: t.mensajes.calificacion.composicionHogar, max: 15, ...score.composicionHogar },
-    { label: t.mensajes.calificacion.mascotas, max: 15, ...score.mascotas },
+    { label: t.mensajes.calificacion.mascotas, max: 5, ...score.mascotas },
+    { label: t.mensajes.calificacion.otrosAspectos, max: 10, ...score.otrosAspectos },
   ]
 
   return (
@@ -218,7 +324,8 @@ export function ModalComparacion({
                 <th className="text-right p-2 font-medium">{t.mensajes.calificacion.capacidadPago}<br /><span className="font-normal text-muted-foreground text-xs">/50</span></th>
                 <th className="text-right p-2 font-medium">{t.mensajes.calificacion.estabilidadLaboral}<br /><span className="font-normal text-muted-foreground text-xs">/20</span></th>
                 <th className="text-right p-2 font-medium">{t.mensajes.calificacion.composicionHogar}<br /><span className="font-normal text-muted-foreground text-xs">/15</span></th>
-                <th className="text-right p-2 font-medium">{t.mensajes.calificacion.mascotas}<br /><span className="font-normal text-muted-foreground text-xs">/15</span></th>
+                <th className="text-right p-2 font-medium">{t.mensajes.calificacion.mascotas}<br /><span className="font-normal text-muted-foreground text-xs">/5</span></th>
+                <th className="text-right p-2 font-medium">{t.mensajes.calificacion.otrosAspectos}<br /><span className="font-normal text-muted-foreground text-xs">/10</span></th>
                 <th className="text-right p-2 font-medium">Total<br /><span className="font-normal text-muted-foreground text-xs">/100</span></th>
                 <th className="text-left p-2 font-medium">{t.mensajes.calificacion.titulo}</th>
               </tr>
@@ -235,7 +342,7 @@ export function ModalComparacion({
                     <tr key={r.id} className={rowClass}>
                       <td className="p-2 text-muted-foreground">{idx + 1}</td>
                       <td className="p-2 font-medium">{r.nombre ?? "—"}</td>
-                      <td colSpan={5} className="p-2 text-center text-muted-foreground text-xs">{t.mensajes.comparacion.sinPropiedad}</td>
+                      <td colSpan={6} className="p-2 text-center text-muted-foreground text-xs">{t.mensajes.comparacion.sinPropiedad}</td>
                       <td className="p-2"><span className="rounded-full bg-muted px-2 py-0.5 text-xs font-medium">{t.mensajes.comparacion.sinDatos}</span></td>
                     </tr>
                   )
@@ -245,7 +352,7 @@ export function ModalComparacion({
                     <tr key={r.id} className={rowClass}>
                       <td className="p-2 text-muted-foreground">{idx + 1}</td>
                       <td className="p-2 font-medium">{r.nombre ?? "—"}</td>
-                      <td colSpan={5} className="p-2 text-xs text-red-600 dark:text-red-400 truncate max-w-[200px]" title={resultado.filtro.motivo}>{resultado.filtro.motivo}</td>
+                      <td colSpan={6} className="p-2 text-xs text-red-600 dark:text-red-400 truncate max-w-[200px]" title={resultado.filtro.motivo}>{resultado.filtro.motivo}</td>
                       <td className="p-2"><span className="rounded-full bg-red-500/15 text-red-600 dark:text-red-400 px-2 py-0.5 text-xs font-medium">{t.mensajes.comparacion.excluido}</span></td>
                     </tr>
                   )
@@ -268,6 +375,7 @@ export function ModalComparacion({
                     <td className={`p-2 text-right ${colorScore}`}>{score.estabilidadLaboral.puntos}</td>
                     <td className={`p-2 text-right ${colorScore}`}>{score.composicionHogar.puntos}</td>
                     <td className={`p-2 text-right ${colorScore}`}>{score.mascotas.puntos}</td>
+                    <td className={`p-2 text-right ${colorScore}`}>{score.otrosAspectos.puntos}</td>
                     <td className={`p-2 text-right text-lg ${colorScore}`}>{score.total}</td>
                     <td className="p-2"><span className={`rounded-full px-2 py-0.5 text-xs font-medium ${badgeClass}`}>{score.etiqueta}</span></td>
                   </tr>
@@ -456,6 +564,45 @@ export function ModalDetalleIntake({
   const salarioSecundario = registro.salario_secundario ?? registro.salario_2 ?? 0
   const ingresosTotales = salarioPrincipal + salarioSecundario
 
+  // Resultado del score para resaltar campos vacíos, "Independiente" y aviso RUT
+  const resultadoScore = calcularScore(registro)
+  const camposVaciosSet: Set<string> =
+    !resultadoScore.sinCanon && !resultadoScore.excluido
+      ? resultadoScore.score.flags.camposVacios
+      : new Set<string>()
+  const empresaPrincipalIndependiente =
+    !resultadoScore.sinCanon && !resultadoScore.excluido
+      ? resultadoScore.score.flags.empresaPrincipalIndependiente
+      : false
+  const empresaSecundariaIndependiente =
+    !resultadoScore.sinCanon && !resultadoScore.excluido
+      ? resultadoScore.score.flags.empresaSecundariaIndependiente
+      : false
+  const negocioEnPropiedad =
+    !resultadoScore.sinCanon && !resultadoScore.excluido
+      ? resultadoScore.score.flags.negocioEnPropiedad
+      : false
+  const mostrarAvisoIndependiente = empresaPrincipalIndependiente || empresaSecundariaIndependiente
+
+  const faltaClass = "inline-block bg-amber-100/70 dark:bg-amber-900/40 border-l-2 border-amber-500 px-1.5 py-0.5 rounded text-amber-900 dark:text-amber-200"
+  const renderValor = (key: string, valor: ReactNode, raw: unknown) => {
+    const falta = camposVaciosSet.has(key) || esVacio(raw)
+    if (falta) {
+      return (
+        <span className={faltaClass} title={t.mensajes.calificacion.campoFaltante}>
+          {t.mensajes.calificacion.campoFaltante}
+        </span>
+      )
+    }
+    return <>{valor ?? "—"}</>
+  }
+
+  const badgeIndependiente = (
+    <span className="ml-2 inline-block rounded bg-amber-500/20 text-amber-800 dark:text-amber-300 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide">
+      {t.mensajes.calificacion.badgeIndependiente}
+    </span>
+  )
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={onCerrar}>
       <div className="bg-background rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto p-6" onClick={(e) => e.stopPropagation()}>
@@ -484,31 +631,43 @@ export function ModalDetalleIntake({
           {/* Información de contacto */}
           <div className="space-y-2 p-4 bg-muted/30 rounded-lg">
             <p className="font-semibold text-muted-foreground uppercase text-xs tracking-wide border-b pb-1">Información de Contacto</p>
-            <p><span className="font-medium">Email:</span> {registro.email ?? "—"}</p>
-            <p><span className="font-medium">Teléfono:</span> {registro.telefono ?? "—"}</p>
-            <p><span className="font-medium">Cédula:</span> {registro.cedula ?? "—"}</p>
-            <p><span className="font-medium">Ciudad Expedición:</span> {registro.cedula_ciudad_expedicion ?? registro.fecha_expedicion_cedula ?? "—"}</p>
+            <p><span className="font-medium">Email:</span> {renderValor("email", registro.email, registro.email)}</p>
+            <p><span className="font-medium">Teléfono:</span> {renderValor("telefono", registro.telefono, registro.telefono)}</p>
+            <p><span className="font-medium">Cédula:</span> {renderValor("cedula", registro.cedula, registro.cedula)}</p>
+            <p><span className="font-medium">Ciudad Expedición:</span> {renderValor("cedula_ciudad_expedicion", registro.cedula_ciudad_expedicion ?? registro.fecha_expedicion_cedula, registro.cedula_ciudad_expedicion ?? registro.fecha_expedicion_cedula)}</p>
           </div>
 
           {/* Información financiera */}
           <div className="space-y-2 p-4 bg-muted/30 rounded-lg">
             <p className="font-semibold text-muted-foreground uppercase text-xs tracking-wide border-b pb-1">Información Financiera</p>
             <p><span className="font-medium">Ingresos totales:</span> <strong className="text-green-600 dark:text-green-400">{formatCurrency(ingresosTotales)}</strong></p>
-            <p><span className="font-medium">Salario principal:</span> {formatCurrency(salarioPrincipal)}</p>
-            <p><span className="font-medium">Salario secundario:</span> {formatCurrency(salarioSecundario)}</p>
-            <p><span className="font-medium">Empresa principal:</span> {registro.empresa_principal ?? registro.empresa_arrendatario ?? "—"}</p>
-            <p><span className="font-medium">Antigüedad (meses):</span> {registro.tiempo_servicio_principal_meses ?? registro.antiguedad_meses ?? "—"}</p>
-            <p><span className="font-medium">Personas que trabajan:</span> {registro.personas_trabajan ?? "—"}</p>
+            <p><span className="font-medium">Salario principal:</span> {renderValor("salario_principal", formatCurrency(salarioPrincipal), registro.salario_principal ?? registro.salario)}</p>
+            <p><span className="font-medium">Salario secundario:</span> {salarioSecundario > 0 ? formatCurrency(salarioSecundario) : (registro.coarrendatario_nombre || registro.nombre_coarrendatario ? renderValor("salario_secundario", formatCurrency(salarioSecundario), registro.salario_secundario ?? registro.salario_2) : "—")}</p>
+            <p>
+              <span className="font-medium">Empresa principal:</span>{" "}
+              {renderValor("empresa_principal", registro.empresa_principal ?? registro.empresa_arrendatario, registro.empresa_principal ?? registro.empresa_arrendatario)}
+              {empresaPrincipalIndependiente && badgeIndependiente}
+            </p>
+            <p><span className="font-medium">Antigüedad (meses):</span> {renderValor("tiempo_servicio_principal_meses", registro.tiempo_servicio_principal_meses ?? registro.antiguedad_meses, registro.tiempo_servicio_principal_meses ?? registro.antiguedad_meses)}</p>
+            <p><span className="font-medium">Personas que trabajan:</span> {renderValor("personas_trabajan", registro.personas_trabajan, registro.personas_trabajan)}</p>
           </div>
 
           {/* Grupo familiar */}
           <div className="space-y-2 p-4 bg-muted/30 rounded-lg">
             <p className="font-semibold text-muted-foreground uppercase text-xs tracking-wide border-b pb-1">Grupo Familiar</p>
-            <p><span className="font-medium">Adultos habitantes:</span> {registro.adultos_habitantes ?? registro.personas ?? "—"}</p>
-            <p><span className="font-medium">Niños habitantes:</span> {registro.ninos_habitantes ?? registro.ninos ?? "—"}</p>
+            <p><span className="font-medium">Adultos habitantes:</span> {renderValor("adultos_habitantes", registro.adultos_habitantes ?? registro.personas, registro.adultos_habitantes ?? registro.personas)}</p>
+            <p><span className="font-medium">Niños habitantes:</span> {renderValor("ninos_habitantes", registro.ninos_habitantes ?? registro.ninos, registro.ninos_habitantes ?? registro.ninos)}</p>
             <p><span className="font-medium">Total personas:</span> {(registro.adultos_habitantes ?? registro.personas ?? 0) + (registro.ninos_habitantes ?? registro.ninos ?? 0)}</p>
-            <p><span className="font-medium">Mascotas:</span> {registro.mascotas_cantidad ?? registro.mascotas ?? "—"}</p>
-            <p><span className="font-medium">Negocio en propiedad:</span> {registro.negocio ?? "—"}</p>
+            <p><span className="font-medium">Mascotas:</span> {renderValor("mascotas_cantidad", registro.mascotas_cantidad ?? registro.mascotas, registro.mascotas_cantidad ?? registro.mascotas)}</p>
+            <p
+              className={
+                negocioEnPropiedad
+                  ? "rounded border-l-4 border-red-500 bg-red-100/70 dark:bg-red-900/40 px-2 py-1 font-semibold text-red-800 dark:text-red-200"
+                  : ""
+              }
+            >
+              <span className="font-medium">Negocio en propiedad:</span> {registro.negocio ?? "—"}
+            </p>
           </div>
 
           {/* Coarrendatario */}
@@ -518,10 +677,14 @@ export function ModalDetalleIntake({
               <p><span className="font-medium">Nombre completo:</span> {registro.coarrendatario_nombre ?? registro.nombre_coarrendatario ?? "—"}</p>
               <p><span className="font-medium">Cédula:</span> {registro.coarrendatario_cedula ?? registro.cedula_coarrendatario ?? "—"}</p>
               <p><span className="font-medium">Ciudad expedición:</span> {registro.coarrendatario_cedula_expedicion ?? registro.fecha_expedicion_cedula_coarrendatario ?? "—"}</p>
-              <p><span className="font-medium">Email:</span> {registro.coarrendatario_email ?? "—"}</p>
-              <p><span className="font-medium">Teléfono:</span> {registro.coarrendatario_telefono ?? registro.telefono_coarrendatario ?? "—"}</p>
-              <p><span className="font-medium">Empresa:</span> {registro.empresa_secundaria ?? registro.empresa_coarrendatario ?? "—"}</p>
-              <p><span className="font-medium">Antigüedad (meses):</span> {registro.tiempo_servicio_secundario_meses ?? registro.antiguedad_meses_2 ?? "—"}</p>
+              <p><span className="font-medium">Email:</span> {renderValor("coarrendatario_email", registro.coarrendatario_email, registro.coarrendatario_email)}</p>
+              <p><span className="font-medium">Teléfono:</span> {renderValor("coarrendatario_telefono", registro.coarrendatario_telefono ?? registro.telefono_coarrendatario, registro.coarrendatario_telefono ?? registro.telefono_coarrendatario)}</p>
+              <p>
+                <span className="font-medium">Empresa:</span>{" "}
+                {renderValor("empresa_secundaria", registro.empresa_secundaria ?? registro.empresa_coarrendatario, registro.empresa_secundaria ?? registro.empresa_coarrendatario)}
+                {empresaSecundariaIndependiente && badgeIndependiente}
+              </p>
+              <p><span className="font-medium">Antigüedad (meses):</span> {renderValor("tiempo_servicio_secundario_meses", registro.tiempo_servicio_secundario_meses ?? registro.antiguedad_meses_2, registro.tiempo_servicio_secundario_meses ?? registro.antiguedad_meses_2)}</p>
             </div>
           )}
 
@@ -540,6 +703,11 @@ export function ModalDetalleIntake({
             <p className="text-xs text-amber-900 dark:text-amber-100 leading-relaxed">
               {registro.autorizacion || "No registrada"}
             </p>
+            {mostrarAvisoIndependiente && (
+              <div className="mt-2 rounded border border-amber-500 bg-amber-100/70 dark:bg-amber-900/40 p-2 text-xs font-semibold text-amber-900 dark:text-amber-100">
+                {t.mensajes.calificacion.avisoIndependiente}
+              </div>
+            )}
           </div>
         </div>
 
