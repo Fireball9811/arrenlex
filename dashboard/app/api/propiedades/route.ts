@@ -60,9 +60,17 @@ export async function GET(request: Request) {
     const admin = createAdminClient()
     console.log("✓ Admin client creado")
 
+    /**
+     * GET /api/propiedades
+     *   Sin params                    → Propiedad[]                    (array plano, retrocompat)
+     *   ?paginated=1                  → { propiedades, nextCursor }    (paginado, 20 por página)
+     *   ?paginated=1&cursor=<iso>     → { propiedades, nextCursor }    (siguiente página)
+     *   ?paginated=1&ciudad=X         → { propiedades, nextCursor }    (filtrado + paginado)
+     */
     const { searchParams } = new URL(request.url)
     const ciudad = searchParams.get("ciudad")
     const cursor = searchParams.get("cursor")
+    const paginated = searchParams.get("paginated") === "1" || Boolean(cursor)
     const PAGE_SIZE = 20
 
     let query = admin.from("propiedades").select("*")
@@ -84,7 +92,11 @@ export async function GET(request: Request) {
       console.log("✓ Cursor:", cursor)
     }
 
-    query = query.order("created_at", { ascending: false }).limit(PAGE_SIZE + 1)
+    query = query.order("created_at", { ascending: false })
+
+    if (paginated) {
+      query = query.limit(PAGE_SIZE + 1)
+    }
 
     const { data, error } = await query
 
@@ -97,11 +109,17 @@ export async function GET(request: Request) {
     }
 
     const rows = data ?? []
+
+    if (!paginated) {
+      console.log("✓ SUCCESS (array)! Retornando", rows.length, "propiedades")
+      return NextResponse.json(rows)
+    }
+
     const hayMas = rows.length > PAGE_SIZE
     const propiedades = hayMas ? rows.slice(0, PAGE_SIZE) : rows
     const nextCursor = hayMas ? propiedades[propiedades.length - 1].created_at : null
 
-    console.log("✓ SUCCESS! Retornando", propiedades.length, "propiedades, hayMas:", hayMas)
+    console.log("✓ SUCCESS (paginado)! Retornando", propiedades.length, "propiedades, hayMas:", hayMas)
     return NextResponse.json({ propiedades, nextCursor })
     
   } catch (err: any) {

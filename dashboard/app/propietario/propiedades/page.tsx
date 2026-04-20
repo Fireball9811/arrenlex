@@ -42,6 +42,7 @@ export default function PropietarioPropiedadesPage() {
 
   function buildUrl(ciudad: string, cursor?: string) {
     const params = new URLSearchParams()
+    params.set("paginated", "1")
     if (ciudad) params.set("ciudad", ciudad)
     if (cursor) params.set("cursor", cursor)
     return `/api/propiedades?${params.toString()}`
@@ -55,7 +56,7 @@ export default function PropietarioPropiedadesPage() {
         if (data?.role === "admin") { router.replace("/admin/dashboard"); return }
         if (data?.role === "inquilino") { router.replace("/inquilino/dashboard"); return }
 
-        return fetch("/api/propiedades")
+        return fetch(buildUrl(""))
           .then((res) => {
             if (!res.ok) throw new Error(`HTTP ${res.status}`)
             return res.json()
