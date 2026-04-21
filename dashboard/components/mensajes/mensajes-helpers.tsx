@@ -16,6 +16,14 @@ type ScoreFlags = {
   hayCoarrendatario: boolean
   ninosEnHogar: boolean
   negocioEnPropiedad: boolean
+  tieneRechazoPrevio: boolean
+  rechazosPrevios: Array<{
+    id: string
+    motivo_descarte: string | null
+    descartado_at: string | null
+    propiedad_id: string | null
+  }>
+  totalSinPenalizarReincidencia: number
 }
 
 type ScoreDetalle = {
@@ -173,7 +181,12 @@ export function calcularScore(r: IntakeFormulario): ResultadoScore {
     ptsOtros = Math.round(ptsOtros * 0.5)
   }
 
-  const total = ptsPago + ptsLaboral + ptsHogar + ptsMascotas + ptsOtros
+  const totalBruto = ptsPago + ptsLaboral + ptsHogar + ptsMascotas + ptsOtros
+
+  // Reincidencia: misma cédula con un descarte previo → -30% al total final
+  const rechazosPrevios = (r.rechazos_previos ?? []).filter((rp) => rp && rp.id)
+  const tieneRechazoPrevio = rechazosPrevios.length > 0
+  const total = tieneRechazoPrevio ? Math.round(totalBruto * 0.7) : totalBruto
 
   let etiqueta = ""; let nivel: "verde" | "amarillo" | "rojo" = "rojo"
   if (total >= 80) { etiqueta = "Aprobación recomendada"; nivel = "verde" }
@@ -195,6 +208,9 @@ export function calcularScore(r: IntakeFormulario): ResultadoScore {
         hayCoarrendatario,
         ninosEnHogar,
         negocioEnPropiedad,
+        tieneRechazoPrevio,
+        rechazosPrevios,
+        totalSinPenalizarReincidencia: totalBruto,
       },
       total, etiqueta, nivel,
     },
@@ -266,6 +282,17 @@ export function SeccionCalificacion({ registro }: { registro: IntakeFormulario }
       {avisoUnicoArrendatario}
       <div className="mt-6 pt-4 border-t">
       <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">Calificación ARRENLEX</p>
+      {score.flags.tieneRechazoPrevio && (
+        <div className="rounded-lg border-2 border-red-600 bg-red-100/70 dark:bg-red-950/50 px-4 py-3 mb-3">
+          <p className="text-sm font-bold text-red-700 dark:text-red-300">
+            {t.mensajes.cedulaReincidente}
+          </p>
+          <p className="text-xs text-red-800/90 dark:text-red-200/90 mt-1">
+            Puntaje original: <span className="font-semibold">{score.flags.totalSinPenalizarReincidencia}/100</span>{" "}
+            → ajustado a <span className="font-semibold">{score.total}/100</span>. {t.mensajes.rechazoPrevioDetalle}
+          </p>
+        </div>
+      )}
       <div className={`rounded-lg border px-4 py-3 mb-4 ${borderColor}`}>
         <div className="flex items-center justify-between mb-2">
           <span className={`text-lg font-bold ${colorTotal}`}>{score.etiqueta}</span>
@@ -428,6 +455,7 @@ export function TablaIntake({
   motivoInvalido,
   onComparar,
   role,
+  onEliminar,
 }: {
   lista: IntakeFormulario[]
   seleccionados: Set<string>
@@ -439,8 +467,13 @@ export function TablaIntake({
   motivoInvalido: string
   onComparar: () => void
   role: UserRole
+  onEliminar?: (id: string) => Promise<{ ok: boolean; error?: string }>
 }) {
   const { t } = useLang()
+  const [confirmando, setConfirmando] = useState<IntakeFormulario | null>(null)
+  const [eliminando, setEliminando] = useState(false)
+  const [errorEliminar, setErrorEliminar] = useState<string | null>(null)
+
   if (lista.length === 0) return null
 
   const todosSeleccionados = lista.every((r) => seleccionados.has(r.id))
@@ -515,7 +548,17 @@ export function TablaIntake({
                   <td className="p-2">
                     <input type="checkbox" checked={seleccionados.has(r.id)} onChange={() => onToggle(r.id)} className="rounded" />
                   </td>
-                  <td className="p-2 font-medium">{r.nombre ?? "—"}</td>
+                  <td className="p-2 font-medium">
+                    {r.nombre ?? "—"}
+                    {(r.rechazos_previos?.length ?? 0) > 0 && (
+                      <span
+                        className="ml-2 inline-block rounded bg-red-500/15 text-red-700 dark:text-red-300 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide"
+                        title={r.rechazos_previos!.map((rp) => rp.motivo_descarte ?? "—").join(" | ")}
+                      >
+                        {t.mensajes.reincidenteBadge}
+                      </span>
+                    )}
+                  </td>
                   <td className="p-2">{r.cedula ?? "—"}</td>
                   <td className="p-2">{r.email ?? "—"}</td>
                   <td className="p-2">{ingresosTotales > 0 ? formatCurrency(ingresosTotales) : "—"}</td>
@@ -523,7 +566,11 @@ export function TablaIntake({
                   <td className="p-2">{mascotas > 0 ? mascotas : "—"}</td>
                   <td className="p-2 max-w-[150px] truncate" title={empresa}>{empresa}</td>
                   <td className="p-2">
-                    {r.gestionado ? (
+                    {r.descartado ? (
+                      <span className="rounded-full bg-red-100 text-red-800 px-2 py-0.5 text-xs font-medium" title={r.motivo_descarte ?? undefined}>
+                        {t.mensajes.noAceptado}
+                      </span>
+                    ) : r.gestionado ? (
                       <span className="rounded-full bg-green-100 text-green-800 px-2 py-0.5 text-xs font-medium">Gestionado</span>
                     ) : (
                       <span className="rounded-full bg-amber-100 text-amber-800 px-2 py-0.5 text-xs font-medium">Pendiente</span>
@@ -531,12 +578,26 @@ export function TablaIntake({
                   </td>
                   <td className="p-2">{formatDate(r.created_at)}</td>
                   <td className="p-2">
-                    <button
-                      onClick={() => onVerDetalle(r)}
-                      className="rounded bg-primary px-3 py-1 text-xs font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
-                    >
-                      {t.mensajes.verDetalle}
-                    </button>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => onVerDetalle(r)}
+                        className="rounded bg-primary px-3 py-1 text-xs font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
+                      >
+                        {t.mensajes.verDetalle}
+                      </button>
+                      {onEliminar && (
+                        <button
+                          onClick={() => {
+                            setErrorEliminar(null)
+                            setConfirmando(r)
+                          }}
+                          className="rounded border border-red-300 dark:border-red-700 bg-red-50 dark:bg-red-950/40 px-3 py-1 text-xs font-medium text-red-700 dark:text-red-300 hover:bg-red-100 dark:hover:bg-red-950/60 transition-colors"
+                          title={t.mensajes.eliminar}
+                        >
+                          {t.mensajes.eliminar}
+                        </button>
+                      )}
+                    </div>
                   </td>
                 </tr>
               )
@@ -544,6 +605,78 @@ export function TablaIntake({
           </tbody>
         </table>
       </div>
+
+      {confirmando && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
+          onClick={() => {
+            if (!eliminando) {
+              setConfirmando(null)
+              setErrorEliminar(null)
+            }
+          }}
+        >
+          <div
+            className="bg-background rounded-xl shadow-2xl w-full max-w-md p-6"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="text-lg font-bold text-red-700 dark:text-red-400 mb-2">
+              {t.mensajes.eliminarTitulo}
+            </h3>
+            <p className="text-sm text-muted-foreground mb-3">
+              {t.mensajes.eliminarMensaje}
+            </p>
+            <div className="rounded-lg border bg-muted/30 px-3 py-2 text-sm mb-4">
+              <p className="text-xs text-muted-foreground">{t.mensajes.eliminarRegistroDe}</p>
+              <p className="font-medium">{confirmando.nombre ?? "—"}</p>
+              {confirmando.cedula && (
+                <p className="text-xs text-muted-foreground">{confirmando.cedula}</p>
+              )}
+            </div>
+            {errorEliminar && (
+              <div className="mb-3 rounded-lg bg-red-50 border border-red-200 px-3 py-2 text-sm text-red-800 dark:bg-red-950/30 dark:border-red-800 dark:text-red-300">
+                {errorEliminar}
+              </div>
+            )}
+            <div className="flex justify-end gap-2">
+              <button
+                type="button"
+                disabled={eliminando}
+                onClick={() => {
+                  setConfirmando(null)
+                  setErrorEliminar(null)
+                }}
+                className="rounded-lg px-4 py-1.5 text-sm font-medium bg-muted text-muted-foreground hover:bg-muted/80 disabled:opacity-60 disabled:cursor-not-allowed"
+              >
+                {t.comun.cancelar ?? "Cancelar"}
+              </button>
+              <button
+                type="button"
+                disabled={eliminando || !onEliminar}
+                onClick={async () => {
+                  if (!onEliminar || !confirmando) return
+                  setEliminando(true)
+                  setErrorEliminar(null)
+                  const result = await onEliminar(confirmando.id)
+                  if (result.ok) {
+                    setConfirmando(null)
+                  } else {
+                    setErrorEliminar(result.error ?? t.mensajes.errorProceso)
+                  }
+                  setEliminando(false)
+                }}
+                className={`rounded-lg px-4 py-1.5 text-sm font-medium text-white transition-colors ${
+                  eliminando
+                    ? "bg-red-400 cursor-wait opacity-80"
+                    : "bg-red-600 hover:bg-red-700"
+                }`}
+              >
+                {eliminando ? t.mensajes.eliminando : t.mensajes.confirmarEliminacion}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   )
 }
@@ -555,16 +688,28 @@ export function ModalDetalleIntake({
   role,
   onCerrar,
   onPasarArrendatario,
+  onDescartar,
+  onEditarMotivo,
+  onReactivar,
 }: {
   registro: IntakeFormulario
   role: UserRole
   onCerrar: () => void
   onPasarArrendatario: (id: string) => Promise<{ ok: boolean; email?: string; error?: string }>
+  onDescartar?: (id: string, motivo: string) => Promise<{ ok: boolean; error?: string }>
+  onEditarMotivo?: (id: string, motivo: string) => Promise<{ ok: boolean; error?: string }>
+  onReactivar?: (id: string) => Promise<{ ok: boolean; error?: string }>
 }) {
   const { t } = useLang()
   const [pasando, setPasando] = useState(false)
   const [pasadoOk, setPasadoOk] = useState<string | null>(null)
   const [pasadoError, setPasadoError] = useState<string | null>(null)
+  const [mostrarFormDescarte, setMostrarFormDescarte] = useState(false)
+  const [motivoDescarte, setMotivoDescarte] = useState<string>("")
+  const [modoEdicionMotivo, setModoEdicionMotivo] = useState(false)
+  const [guardandoDescarte, setGuardandoDescarte] = useState(false)
+  const [errorDescarte, setErrorDescarte] = useState<string | null>(null)
+  const [reactivando, setReactivando] = useState(false)
 
   const formatDate = (dateStr: string | null | undefined) => {
     if (!dateStr) return "—"
@@ -639,11 +784,21 @@ export function ModalDetalleIntake({
                 {registro.valor_arriendo ? ` — ${t.mensajes.comparacion.canon} ${formatCurrency(registro.valor_arriendo)}` : ""}
               </p>
             )}
-            <div className="mt-2">
-              {registro.gestionado ? (
+            <div className="mt-2 flex flex-wrap items-center gap-2">
+              {registro.descartado ? (
+                <span className="rounded-full bg-red-100 text-red-800 px-2 py-0.5 text-xs font-medium">{t.mensajes.noAceptado}</span>
+              ) : registro.gestionado ? (
                 <span className="rounded-full bg-green-100 text-green-800 px-2 py-0.5 text-xs font-medium">Gestionado</span>
               ) : (
                 <span className="rounded-full bg-amber-100 text-amber-800 px-2 py-0.5 text-xs font-medium">Pendiente de gestión</span>
+              )}
+              {(registro.rechazos_previos?.length ?? 0) > 0 && (
+                <span
+                  className="rounded-full bg-red-500/15 text-red-700 dark:text-red-300 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide"
+                  title={registro.rechazos_previos!.map((rp) => rp.motivo_descarte ?? "—").join(" | ")}
+                >
+                  {t.mensajes.reincidenteBadge}
+                </span>
               )}
             </div>
           </div>
@@ -747,6 +902,36 @@ export function ModalDetalleIntake({
                 {t.mensajes.calificacion.avisoIndependiente}
               </div>
             )}
+            {registro.descartado && (
+              <div className="mt-3 rounded border border-red-500 bg-red-50 dark:bg-red-950/40 p-2 text-xs">
+                <p className="font-bold text-red-700 dark:text-red-300 mb-0.5">{t.mensajes.rechazado}</p>
+                <p className="text-red-800 dark:text-red-200 whitespace-pre-wrap break-words">
+                  {registro.motivo_descarte || t.mensajes.sinMotivoRegistrado}
+                </p>
+                {registro.descartado_at && (
+                  <p className="text-[10px] text-muted-foreground mt-1">{formatDate(registro.descartado_at)}</p>
+                )}
+              </div>
+            )}
+            {(registro.rechazos_previos?.length ?? 0) > 0 && (
+              <div className="mt-3 rounded border-2 border-red-600 bg-red-100/70 dark:bg-red-950/50 p-2 text-xs">
+                <p className="font-bold text-red-700 dark:text-red-300 mb-1">
+                  {t.mensajes.rechazoPrevioAviso}
+                </p>
+                <ul className="space-y-1 list-disc pl-4 text-red-900 dark:text-red-100">
+                  {registro.rechazos_previos!.map((rp) => (
+                    <li key={rp.id}>
+                      <span className="font-semibold">
+                        {rp.descartado_at ? formatDate(rp.descartado_at) : "Sin fecha"}:
+                      </span>{" "}
+                      <span className="whitespace-pre-wrap break-words">
+                        {rp.motivo_descarte || t.mensajes.sinMotivoRegistrado}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
           </div>
         </div>
 
@@ -775,34 +960,162 @@ export function ModalDetalleIntake({
               {pasadoError}
             </div>
           )}
-          <div className="flex justify-between items-center">
+          {errorDescarte && (
+            <div className="rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-800 dark:bg-red-950/30 dark:border-red-800 dark:text-red-300">
+              {errorDescarte}
+            </div>
+          )}
+
+          {mostrarFormDescarte && (onDescartar || onEditarMotivo) && (
+            <div className="rounded-lg border border-red-400 bg-red-50 dark:bg-red-950/30 p-4 space-y-2">
+              <label className="text-sm font-medium text-red-800 dark:text-red-300">
+                {t.mensajes.motivoRechazo}
+              </label>
+              <textarea
+                value={motivoDescarte}
+                onChange={(e) => setMotivoDescarte(e.target.value)}
+                rows={3}
+                placeholder={t.mensajes.motivoRechazoPlaceholder}
+                className="w-full rounded border border-red-300 dark:border-red-700 bg-background p-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-400"
+                autoFocus
+              />
+              <div className="flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMostrarFormDescarte(false)
+                    setModoEdicionMotivo(false)
+                    setErrorDescarte(null)
+                  }}
+                  disabled={guardandoDescarte}
+                  className="rounded-lg px-4 py-1.5 text-sm font-medium bg-muted text-muted-foreground hover:bg-muted/80"
+                >
+                  {t.comun.cancelar ?? "Cancelar"}
+                </button>
+                <button
+                  type="button"
+                  disabled={!motivoDescarte.trim() || guardandoDescarte}
+                  onClick={async () => {
+                    const motivo = motivoDescarte.trim()
+                    if (!motivo) return
+                    setGuardandoDescarte(true)
+                    setErrorDescarte(null)
+                    const fn = modoEdicionMotivo ? onEditarMotivo : onDescartar
+                    const result = fn
+                      ? await fn(registro.id, motivo)
+                      : { ok: false, error: t.mensajes.errorProceso }
+                    if (result.ok) {
+                      setMostrarFormDescarte(false)
+                      setModoEdicionMotivo(false)
+                    } else {
+                      setErrorDescarte(result.error ?? t.mensajes.errorProceso)
+                    }
+                    setGuardandoDescarte(false)
+                  }}
+                  className={`rounded-lg px-4 py-1.5 text-sm font-medium text-white transition-colors ${
+                    !motivoDescarte.trim() || guardandoDescarte
+                      ? "bg-red-400 cursor-not-allowed opacity-60"
+                      : "bg-red-600 hover:bg-red-700"
+                  }`}
+                >
+                  {guardandoDescarte
+                    ? t.mensajes.procesando
+                    : modoEdicionMotivo
+                    ? t.mensajes.editarMotivo
+                    : t.mensajes.confirmarRechazo}
+                </button>
+              </div>
+            </div>
+          )}
+
+          <div className="flex justify-between items-center gap-3 flex-wrap">
             <p className="text-xs text-muted-foreground">
               {t.mensajes.detalle.autorizacion} {registro.autorizacion ? registro.autorizacion.slice(0, 60) + "…" : "—"}
             </p>
-            <button
-              disabled={pasando || !!pasadoOk}
-              onClick={async () => {
-                setPasando(true)
-                setPasadoOk(null)
-                setPasadoError(null)
-                const result = await onPasarArrendatario(registro.id)
-                if (result.ok) {
-                  setPasadoOk(result.email ?? "—")
-                } else {
-                  setPasadoError(result.error ?? t.mensajes.errorProceso)
-                }
-                setPasando(false)
-              }}
-              className={`rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
-                pasadoOk
-                  ? "bg-green-600/40 text-green-900 dark:text-green-300 cursor-not-allowed opacity-60"
-                  : pasando
-                  ? "bg-primary/60 text-primary-foreground cursor-wait opacity-80"
-                  : "bg-primary text-primary-foreground hover:bg-primary/90 cursor-pointer"
-              }`}
-            >
-              {pasando ? t.mensajes.procesando : pasadoOk ? t.mensajes.creado : t.mensajes.pasarArrendatario}
-            </button>
+            <div className="flex items-center gap-2">
+              {registro.descartado ? (
+                <>
+                  {onEditarMotivo && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setMotivoDescarte(registro.motivo_descarte ?? "")
+                        setModoEdicionMotivo(true)
+                        setMostrarFormDescarte(true)
+                        setErrorDescarte(null)
+                      }}
+                      className="rounded-lg px-4 py-2 text-sm font-medium bg-amber-500 text-white hover:bg-amber-600 transition-colors"
+                    >
+                      {t.mensajes.editarMotivo}
+                    </button>
+                  )}
+                  {onReactivar && (
+                    <button
+                      type="button"
+                      disabled={reactivando}
+                      onClick={async () => {
+                        setReactivando(true)
+                        setErrorDescarte(null)
+                        const result = await onReactivar(registro.id)
+                        if (!result.ok) {
+                          setErrorDescarte(result.error ?? t.mensajes.errorProceso)
+                        }
+                        setReactivando(false)
+                      }}
+                      className={`rounded-lg px-4 py-2 text-sm font-medium text-white transition-colors ${
+                        reactivando
+                          ? "bg-primary/60 cursor-wait opacity-80"
+                          : "bg-primary hover:bg-primary/90"
+                      }`}
+                    >
+                      {reactivando ? t.mensajes.procesando : t.mensajes.reactivar}
+                    </button>
+                  )}
+                </>
+              ) : (
+                <>
+                  {onDescartar && (
+                    <button
+                      type="button"
+                      disabled={pasando || !!pasadoOk || mostrarFormDescarte}
+                      onClick={() => {
+                        setMotivoDescarte("")
+                        setModoEdicionMotivo(false)
+                        setMostrarFormDescarte(true)
+                        setErrorDescarte(null)
+                      }}
+                      className="rounded-lg px-4 py-2 text-sm font-medium bg-red-600 text-white hover:bg-red-700 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                    >
+                      {t.mensajes.noAceptar}
+                    </button>
+                  )}
+                  <button
+                    disabled={pasando || !!pasadoOk}
+                    onClick={async () => {
+                      setPasando(true)
+                      setPasadoOk(null)
+                      setPasadoError(null)
+                      const result = await onPasarArrendatario(registro.id)
+                      if (result.ok) {
+                        setPasadoOk(result.email ?? "—")
+                      } else {
+                        setPasadoError(result.error ?? t.mensajes.errorProceso)
+                      }
+                      setPasando(false)
+                    }}
+                    className={`rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
+                      pasadoOk
+                        ? "bg-green-600/40 text-green-900 dark:text-green-300 cursor-not-allowed opacity-60"
+                        : pasando
+                        ? "bg-primary/60 text-primary-foreground cursor-wait opacity-80"
+                        : "bg-primary text-primary-foreground hover:bg-primary/90 cursor-pointer"
+                    }`}
+                  >
+                    {pasando ? t.mensajes.procesando : pasadoOk ? t.mensajes.creado : t.mensajes.pasarArrendatario}
+                  </button>
+                </>
+              )}
+            </div>
           </div>
         </div>
       </div>

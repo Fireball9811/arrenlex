@@ -78,11 +78,60 @@ export async function GET() {
     }
   }
 
-  // Adjuntar valor_arriendo a cada registro
-  const resultado = intakeData.map((r) => ({
-    ...r,
-    valor_arriendo: r.propiedad_id ? (canonPorPropiedad[r.propiedad_id] ?? null) : null,
-  }))
+  // Recopilar cédulas para buscar rechazos previos (misma cédula ya descartada)
+  const cedulas = [
+    ...new Set(
+      intakeData
+        .map((r) => (typeof r.cedula === "string" ? r.cedula.trim() : ""))
+        .filter((c): c is string => c.length > 0)
+    ),
+  ]
+
+  type RechazoPrevio = {
+    id: string
+    cedula: string | null
+    motivo_descarte: string | null
+    descartado_at: string | null
+    propiedad_id: string | null
+  }
+
+  let rechazosPorCedula: Record<string, RechazoPrevio[]> = {}
+
+  if (cedulas.length > 0) {
+    const { data: rechazos } = await admin
+      .from("arrenlex_form_intake")
+      .select("id, cedula, motivo_descarte, descartado_at, propiedad_id")
+      .in("cedula", cedulas)
+      .eq("descartado", true)
+
+    if (rechazos) {
+      for (const rp of rechazos as RechazoPrevio[]) {
+        const key = rp.cedula ?? ""
+        if (!key) continue
+        if (!rechazosPorCedula[key]) rechazosPorCedula[key] = []
+        rechazosPorCedula[key].push(rp)
+      }
+    }
+  }
+
+  // Adjuntar valor_arriendo + rechazos_previos a cada registro
+  const resultado = intakeData.map((r) => {
+    const cedulaKey = typeof r.cedula === "string" ? r.cedula.trim() : ""
+    const rechazosPrevios = cedulaKey
+      ? (rechazosPorCedula[cedulaKey] ?? []).filter((x) => x.id !== r.id)
+      : []
+
+    return {
+      ...r,
+      valor_arriendo: r.propiedad_id ? (canonPorPropiedad[r.propiedad_id] ?? null) : null,
+      rechazos_previos: rechazosPrevios.map(({ id, motivo_descarte, descartado_at, propiedad_id }) => ({
+        id,
+        motivo_descarte,
+        descartado_at,
+        propiedad_id,
+      })),
+    }
+  })
 
   return NextResponse.json(resultado)
 }

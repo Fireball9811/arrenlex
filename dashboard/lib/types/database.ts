@@ -345,8 +345,21 @@ export type IntakeFormulario = {
   fecha_envio: string | null
   created_at: string
   gestionado: boolean
+  // Estado "No Aceptado" (migración 052)
+  descartado?: boolean
+  motivo_descarte?: string | null
+  descartado_at?: string | null
+  descartado_por?: string | null
   // Campo calculado al hacer JOIN con propiedades (no está en la tabla)
   valor_arriendo: number | null
+  // Campo calculado en GET /api/intake: otros registros con la misma cédula
+  // que fueron descartados previamente (reincidencia → penaliza score 30%)
+  rechazos_previos?: Array<{
+    id: string
+    motivo_descarte: string | null
+    descartado_at: string | null
+    propiedad_id: string | null
+  }>
 }
 
 export type ContactoLanding = {

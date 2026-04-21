@@ -21,11 +21,13 @@ export default function PropietarioMensajesPage() {
   const [tab, setTab] = useState<string>("pendiente")
   const [updatingId, setUpdatingId] = useState<string | null>(null)
   const [intakeSeleccionado, setIntakeSeleccionado] = useState<IntakeFormulario | null>(null)
-  const [subTabIntake, setSubTabIntake] = useState<"pendientes" | "gestionados">("pendientes")
+  const [subTabIntake, setSubTabIntake] = useState<"pendientes" | "gestionados" | "no_aceptados">("pendientes")
   const [seleccionados, setSeleccionados] = useState<Set<string>>(new Set())
   const [mostrarComparacion, setMostrarComparacion] = useState(false)
   const [propiedades, setPropiedades] = useState<Array<{ id: string; direccion?: string; ciudad?: string }>>([])
   const [propiedadSeleccionada, setPropiedadSeleccionada] = useState<string | "all">("all")
+  const [busquedaNombre, setBusquedaNombre] = useState("")
+  const [busquedaCelular, setBusquedaCelular] = useState("")
 
   const fetchSolicitudes = useCallback(async () => {
     const res = await fetch("/api/solicitudes-visita")
@@ -51,7 +53,12 @@ export default function PropietarioMensajesPage() {
     fetch("/api/propietario/propiedades")
       .then((res) => (res.ok ? res.json() : []))
       .then((data: Array<{ id: string; direccion?: string; ciudad?: string }>) => {
-        setPropiedades(Array.isArray(data) ? data : [])
+        const lista = Array.isArray(data) ? data : []
+        setPropiedades(lista)
+        setPropiedadSeleccionada((prev) => {
+          if (prev === "all") return prev
+          return lista.some((p) => p.id === prev) ? prev : "all"
+        })
       })
       .catch(() => setPropiedades([]))
   }, [])
@@ -112,6 +119,82 @@ export default function PropietarioMensajesPage() {
     }
   }, [t])
 
+  const patchIntake = useCallback(async (
+    intakeId: string,
+    body: Record<string, unknown>,
+  ): Promise<{ ok: boolean; error?: string }> => {
+    try {
+      const res = await fetch(`/api/intake/${intakeId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      })
+      const json = await res.json().catch(() => ({}))
+      if (!res.ok) return { ok: false, error: json.error ?? t.mensajes.errorProceso }
+      return { ok: true }
+    } catch {
+      return { ok: false, error: t.mensajes.errorConexion }
+    }
+  }, [t])
+
+  const handleDescartar = useCallback(async (intakeId: string, motivo: string) => {
+    const result = await patchIntake(intakeId, { accion: "descartar", motivo })
+    if (result.ok) {
+      const nowIso = new Date().toISOString()
+      setIntakeRegistros((prev) =>
+        prev.map((r) =>
+          r.id === intakeId
+            ? { ...r, descartado: true, motivo_descarte: motivo, descartado_at: nowIso, gestionado: true }
+            : r,
+        ),
+      )
+    }
+    return result
+  }, [patchIntake])
+
+  const handleEditarMotivo = useCallback(async (intakeId: string, motivo: string) => {
+    const result = await patchIntake(intakeId, { accion: "editar_motivo", motivo })
+    if (result.ok) {
+      setIntakeRegistros((prev) =>
+        prev.map((r) => (r.id === intakeId ? { ...r, motivo_descarte: motivo } : r)),
+      )
+    }
+    return result
+  }, [patchIntake])
+
+  const handleReactivar = useCallback(async (intakeId: string) => {
+    const result = await patchIntake(intakeId, { accion: "reactivar" })
+    if (result.ok) {
+      setIntakeRegistros((prev) =>
+        prev.map((r) =>
+          r.id === intakeId
+            ? { ...r, descartado: false, motivo_descarte: null, descartado_at: null, gestionado: false }
+            : r,
+        ),
+      )
+    }
+    return result
+  }, [patchIntake])
+
+  const handleEliminarIntake = useCallback(async (intakeId: string): Promise<{ ok: boolean; error?: string }> => {
+    try {
+      const res = await fetch(`/api/intake/${intakeId}`, { method: "DELETE" })
+      const json = await res.json().catch(() => ({}))
+      if (!res.ok) return { ok: false, error: json.error ?? t.mensajes.errorProceso }
+      setIntakeRegistros((prev) => prev.filter((r) => r.id !== intakeId))
+      setSeleccionados((prev) => {
+        if (!prev.has(intakeId)) return prev
+        const next = new Set(prev)
+        next.delete(intakeId)
+        return next
+      })
+      setIntakeSeleccionado((prev) => (prev?.id === intakeId ? null : prev))
+      return { ok: true }
+    } catch {
+      return { ok: false, error: t.mensajes.errorConexion }
+    }
+  }, [t])
+
   const { registrosParaComparar, puedeComparar, motivoInvalido } = useMemo(() => {
     const lista = intakeRegistros.filter((r) => seleccionados.has(r.id))
     if (lista.length < 2) return { registrosParaComparar: lista, puedeComparar: false, motivoInvalido: t.mensajes.comparacion.sinPropiedad }
@@ -126,6 +209,46 @@ export default function PropietarioMensajesPage() {
     }
     return intakeRegistros
   }, [intakeRegistros, propiedadSeleccionada])
+
+  const normalizarTexto = useCallback((s: string) =>
+    s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim()
+  , [])
+  const normalizarTelefono = useCallback((s: string) =>
+    s.replace(/[\s\-().+]/g, "")
+  , [])
+
+  const busquedaActiva = busquedaNombre.trim().length > 0 || busquedaCelular.trim().length > 0
+
+  const intakeRegistrosBuscados = useMemo(() => {
+    if (!busquedaActiva) return intakeRegistrosFiltrados
+    const qNombre = normalizarTexto(busquedaNombre)
+    const qTel = normalizarTelefono(busquedaCelular)
+    return intakeRegistrosFiltrados.filter((r) => {
+      const nombre = normalizarTexto(r.nombre ?? "")
+      const tel = normalizarTelefono(r.telefono ?? "")
+      const matchNombre = qNombre ? nombre.includes(qNombre) : true
+      const matchTel = qTel ? tel.includes(qTel) : true
+      return matchNombre && matchTel
+    })
+  }, [busquedaActiva, busquedaNombre, busquedaCelular, intakeRegistrosFiltrados, normalizarTexto, normalizarTelefono])
+
+  const conteoPorSubtab = useMemo(() => {
+    const base = busquedaActiva ? intakeRegistrosBuscados : intakeRegistrosFiltrados
+    return {
+      pendientes: base.filter((r) => !r.gestionado && !r.descartado).length,
+      gestionados: base.filter((r) => r.gestionado && !r.descartado).length,
+      no_aceptados: base.filter((r) => r.descartado === true).length,
+    }
+  }, [busquedaActiva, intakeRegistrosBuscados, intakeRegistrosFiltrados])
+
+  useEffect(() => {
+    if (!busquedaActiva) return
+    if (conteoPorSubtab[subTabIntake] > 0) return
+    const siguiente = (["pendientes", "gestionados", "no_aceptados"] as const).find(
+      (tab) => conteoPorSubtab[tab] > 0,
+    )
+    if (siguiente) setSubTabIntake(siguiente)
+  }, [busquedaActiva, conteoPorSubtab, subTabIntake])
 
   const filtered = solicitudes.filter((s) => s.status === tab)
 
@@ -167,10 +290,13 @@ export default function PropietarioMensajesPage() {
 
       {intakeSeleccionado && (
         <ModalDetalleIntake
-          registro={intakeSeleccionado}
+          registro={intakeRegistros.find((r) => r.id === intakeSeleccionado.id) ?? intakeSeleccionado}
           role="propietario"
           onCerrar={() => setIntakeSeleccionado(null)}
           onPasarArrendatario={handlePasarArrendatario}
+          onDescartar={handleDescartar}
+          onEditarMotivo={handleEditarMotivo}
+          onReactivar={handleReactivar}
         />
       )}
 
@@ -272,13 +398,13 @@ export default function PropietarioMensajesPage() {
                 <>
                   {propiedades.length > 0 && (
                     <div className="mb-4 flex items-center gap-2">
-                      <label className="text-sm font-medium text-muted-foreground">Filtrar por propiedad:</label>
+                      <label className="text-sm font-medium text-muted-foreground">Filtrar por propiedad disponible:</label>
                       <select
                         value={propiedadSeleccionada}
                         onChange={(e) => setPropiedadSeleccionada(e.target.value)}
                         className="rounded border bg-background px-3 py-1.5 text-sm"
                       >
-                        <option value="all">Todas mis propiedades</option>
+                        <option value="all">Todas mis propiedades disponibles</option>
                         {propiedades.map((p) => (
                           <option key={p.id} value={p.id}>
                             {p.direccion ? `${p.direccion}${p.ciudad ? `, ${p.ciudad}` : ""}` : p.id}
@@ -287,6 +413,65 @@ export default function PropietarioMensajesPage() {
                       </select>
                     </div>
                   )}
+
+                  <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
+                    <div className="relative flex-1">
+                      <input
+                        type="search"
+                        value={busquedaNombre}
+                        onChange={(e) => setBusquedaNombre(e.target.value)}
+                        placeholder="Buscar por nombre…"
+                        className="w-full rounded-lg border bg-background px-3 py-1.5 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+                      />
+                      {busquedaNombre && (
+                        <button
+                          type="button"
+                          onClick={() => setBusquedaNombre("")}
+                          className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground text-sm"
+                          aria-label="Limpiar búsqueda por nombre"
+                          title="Limpiar"
+                        >
+                          ×
+                        </button>
+                      )}
+                    </div>
+                    <div className="relative flex-1">
+                      <input
+                        type="search"
+                        inputMode="tel"
+                        value={busquedaCelular}
+                        onChange={(e) => setBusquedaCelular(e.target.value)}
+                        placeholder="Buscar por celular…"
+                        className="w-full rounded-lg border bg-background px-3 py-1.5 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+                      />
+                      {busquedaCelular && (
+                        <button
+                          type="button"
+                          onClick={() => setBusquedaCelular("")}
+                          className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground text-sm"
+                          aria-label="Limpiar búsqueda por celular"
+                          title="Limpiar"
+                        >
+                          ×
+                        </button>
+                      )}
+                    </div>
+                    {busquedaActiva && (
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                        <span>
+                          {intakeRegistrosBuscados.length} coincidencia
+                          {intakeRegistrosBuscados.length === 1 ? "" : "s"}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => { setBusquedaNombre(""); setBusquedaCelular("") }}
+                          className="rounded border px-2 py-0.5 text-xs hover:bg-muted"
+                        >
+                          Limpiar
+                        </button>
+                      </div>
+                    )}
+                  </div>
 
                   <div className="flex items-center justify-between mb-4 border-b pb-2">
                     <div className="flex gap-2">
@@ -297,9 +482,9 @@ export default function PropietarioMensajesPage() {
                         }`}
                       >
                         {t.mensajes.pendientes}
-                        {intakeRegistrosFiltrados.filter((r) => !r.gestionado).length > 0 && (
+                        {conteoPorSubtab.pendientes > 0 && (
                           <span className="ml-1.5 rounded-full bg-amber-500/90 px-1.5 py-0.5 text-xs font-medium text-white">
-                            {intakeRegistrosFiltrados.filter((r) => !r.gestionado).length}
+                            {conteoPorSubtab.pendientes}
                           </span>
                         )}
                       </button>
@@ -311,7 +496,18 @@ export default function PropietarioMensajesPage() {
                       >
                         {t.mensajes.gestionados}
                         <span className="ml-1.5 text-xs text-muted-foreground">
-                          ({intakeRegistrosFiltrados.filter((r) => r.gestionado).length})
+                          ({conteoPorSubtab.gestionados})
+                        </span>
+                      </button>
+                      <button
+                        onClick={() => setSubTabIntake("no_aceptados")}
+                        className={`px-3 py-1.5 rounded text-sm font-medium transition-colors ${
+                          subTabIntake === "no_aceptados" ? "bg-red-600 text-white" : "text-muted-foreground hover:text-foreground"
+                        }`}
+                      >
+                        {t.mensajes.noAceptados}
+                        <span className={`ml-1.5 text-xs ${subTabIntake === "no_aceptados" ? "text-white/80" : "text-muted-foreground"}`}>
+                          ({conteoPorSubtab.no_aceptados})
                         </span>
                       </button>
                     </div>
@@ -334,15 +530,31 @@ export default function PropietarioMensajesPage() {
                   </div>
 
                   {(() => {
-                    const lista = intakeRegistrosFiltrados
-                      .filter((r) => (subTabIntake === "pendientes" ? !r.gestionado : r.gestionado))
+                    const baseLista = busquedaActiva ? intakeRegistrosBuscados : intakeRegistrosFiltrados
+                    const lista = baseLista
+                      .filter((r) => {
+                        if (subTabIntake === "no_aceptados") return r.descartado === true
+                        if (subTabIntake === "gestionados") return r.gestionado && !r.descartado
+                        return !r.gestionado && !r.descartado
+                      })
                       .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
 
                     if (lista.length === 0) {
+                      if (busquedaActiva) {
+                        return (
+                          <p className="text-muted-foreground py-8">
+                            Sin resultados para la búsqueda actual.
+                          </p>
+                        )
+                      }
+                      const vacioMsg =
+                        subTabIntake === "pendientes"
+                          ? t.mensajes.noHaySolicitudes
+                          : subTabIntake === "gestionados"
+                          ? t.mensajes.noHayGestionados
+                          : t.mensajes.noHayNoAceptados
                       return (
-                        <p className="text-muted-foreground py-8">
-                          {subTabIntake === "pendientes" ? t.mensajes.noHaySolicitudes : t.mensajes.noHayGestionados}
-                        </p>
+                        <p className="text-muted-foreground py-8">{vacioMsg}</p>
                       )
                     }
                     return (
@@ -357,6 +569,7 @@ export default function PropietarioMensajesPage() {
                         motivoInvalido={motivoInvalido}
                         onComparar={() => setMostrarComparacion(true)}
                         role="propietario"
+                        onEliminar={handleEliminarIntake}
                       />
                     )
                   })()}
