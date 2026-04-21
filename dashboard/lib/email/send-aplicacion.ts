@@ -20,12 +20,15 @@ export type SendAplicacionParams = {
   ingresos: number | null
   // Coarrendatario (todos opcionales)
   nombreCoarrendatario: string | null
+  emailCoarrendatario: string | null
   cedulaCoarrendatario: string | null
   fechaExpedicionCedulaCoarrendatario: string | null
   empresaCoarrendatario: string | null
   antiguedadMeses2: number | null
   salario2: number | null
   telefonoCoarrendatario: string | null
+  // Motivo de estudio
+  unicoArrendatario?: boolean
   // Hogar
   personas: number | null
   ninos: number | null
@@ -156,8 +159,15 @@ function section(title: string, rows: string): string {
 }
 
 function buildBody(params: SendAplicacionParams, baseUrl: string): string {
+  const esUnico = params.unicoArrendatario === true
   const tieneCoarrendatario =
-    !!params.nombreCoarrendatario || !!params.cedulaCoarrendatario
+    !esUnico && (!!params.nombreCoarrendatario || !!params.cedulaCoarrendatario)
+
+  const avisoUnico = esUnico
+    ? `<div style="margin-bottom: 20px; border: 1px solid #f59e0b; background: #fffbeb; border-radius: 8px; padding: 12px 16px; color: #92400e; font-size: 0.875rem;">
+        <strong>Motivo de estudio:</strong> el aplicante declara que será el <u>único arrendatario</u> y vivirá solo en el inmueble. No se aportan datos de coarrendatario. Evaluar capacidad de pago sin codeudor.
+      </div>`
+    : ""
 
   const secArrendatario = section("1. Arrendatario", [
     row("Nombre completo", params.nombre),
@@ -177,6 +187,7 @@ function buildBody(params: SendAplicacionParams, baseUrl: string): string {
   const secCoarrendatario = tieneCoarrendatario
     ? section("3. Coarrendatario", [
         row("Nombre completo", params.nombreCoarrendatario),
+        row("Correo electrónico", params.emailCoarrendatario),
         row("Cédula", params.cedulaCoarrendatario),
         row("Fecha exp. cédula", params.fechaExpedicionCedulaCoarrendatario),
         row("Empresa", params.empresaCoarrendatario),
@@ -198,7 +209,7 @@ function buildBody(params: SendAplicacionParams, baseUrl: string): string {
     ? `<p style="margin: 16px 0 0;"><a href="${baseUrl}/mensajes" style="display: inline-block; background: #4f46e5; color: #fff; text-decoration: none; padding: 10px 20px; border-radius: 6px; font-size: 0.875rem; font-weight: 600;">Ver detalle en el panel de Arrenlex</a></p>`
     : ""
 
-  return `${secArrendatario}${secLaboral}${secCoarrendatario}${secHogar}${linkPanel}`
+  return `${avisoUnico}${secArrendatario}${secLaboral}${secCoarrendatario}${secHogar}${linkPanel}`
 }
 
 function buildHtmlCEO(params: SendAplicacionParams, baseUrl: string): string {

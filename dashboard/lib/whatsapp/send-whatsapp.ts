@@ -101,6 +101,7 @@ export function buildAplicacionWhatsAppText(params: {
   ninos: number | null
   mascotas: number | null
   negocio: string | null
+  unicoArrendatario?: boolean
 }): string {
   const cop = (val: number | null) => {
     if (!val) return "—"
@@ -115,16 +116,21 @@ export function buildAplicacionWhatsAppText(params: {
   const v = (val: string | number | null | undefined) =>
     val !== null && val !== undefined && val !== "" ? String(val) : "—"
 
+  const esUnico = params.unicoArrendatario === true
+
   const lines = [
     "📋 *Nueva aplicación de arrendamiento*",
     "",
     `🏠 Propiedad: ${params.propiedadRef}${params.canonArriendo ? ` · Canon: ${cop(params.canonArriendo)}/mes` : ""}`,
     "",
+    ...(esUnico
+      ? ["⚠️ *Motivo de estudio:* el aplicante declara que será el _único arrendatario_ (vivirá solo, sin coarrendatario).", ""]
+      : []),
     `👤 Arrendatario: ${params.nombre}`,
     `🪪 Cédula: ${v(params.cedula)}`,
     `📞 Teléfono: ${v(params.telefono)}`,
     `💼 Salario arrendatario: ${cop(params.salario)}`,
-    ...(params.salario2 ? [`💼 Salario coarrendatario: ${cop(params.salario2)}`] : []),
+    ...(!esUnico && params.salario2 ? [`💼 Salario coarrendatario: ${cop(params.salario2)}`] : []),
     `💰 Ingresos grupales: ${cop(params.ingresos)}`,
     "",
     `👥 Adultos: ${v(params.personas)}  ·  Niños: ${v(params.ninos)}  ·  Mascotas: ${v(params.mascotas)}`,

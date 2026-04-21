@@ -24,6 +24,7 @@ type FormData = {
   cedula: string
   fecha_expedicion_cedula: string
   telefono: string
+  unico_arrendatario: boolean
   // Paso 2 — Laboral arrendatario
   empresa_arrendatario: string
   antiguedad_meses: string
@@ -31,6 +32,7 @@ type FormData = {
   ingresos: string
   // Paso 3 — Coarrendatario
   nombre_coarrendatario: string
+  email_coarrendatario: string
   cedula_coarrendatario: string
   fecha_expedicion_cedula_coarrendatario: string
   empresa_coarrendatario: string
@@ -52,11 +54,13 @@ const INITIAL_FORM: FormData = {
   cedula: "",
   fecha_expedicion_cedula: "",
   telefono: "",
+  unico_arrendatario: false,
   empresa_arrendatario: "",
   antiguedad_meses: "",
   salario: "",
   ingresos: "",
   nombre_coarrendatario: "",
+  email_coarrendatario: "",
   cedula_coarrendatario: "",
   fecha_expedicion_cedula_coarrendatario: "",
   empresa_coarrendatario: "",
@@ -91,17 +95,21 @@ function formatCOP(val: number) {
   }).format(val)
 }
 
-// Validación de email
+// Validación de email — regex alineada con el backend
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 function isEmailValido(email: string): boolean {
-  if (!email.trim()) return false
-  return email.includes("@")
+  const v = email.trim()
+  if (!v) return false
+  return EMAIL_REGEX.test(v)
 }
 
-// Validación de salario: mínimo 7 dígitos
+// Validación de salario: numéricamente debe ser >= 1.000.000 (7 cifras)
 function isSalarioValido(salario: string): boolean {
   if (!salario.trim()) return false
   const soloDigitos = salario.replace(/\D/g, "")
-  return soloDigitos.length >= 7
+  if (soloDigitos.length < 7) return false
+  const numero = Number(soloDigitos)
+  return Number.isFinite(numero) && numero >= 1_000_000
 }
 
 // Validación de teléfono: mínimo 10 dígitos
@@ -160,17 +168,25 @@ function SelectGroup({
 
 // ─── Barra de progreso ────────────────────────────────────────────────────────
 
-function ProgressBar({ step }: { step: number }) {
+function ProgressBar({ step, skipStep3 }: { step: number; skipStep3?: boolean }) {
   return (
     <div className="flex gap-1.5 mb-1">
-      {Array.from({ length: TOTAL_STEPS }).map((_, i) => (
-        <div
-          key={i}
-          className={`h-1.5 flex-1 rounded-full transition-colors duration-300 ${
-            i < step ? "bg-cyan-500" : "bg-gray-200"
-          }`}
-        />
-      ))}
+      {Array.from({ length: TOTAL_STEPS }).map((_, i) => {
+        const isStep3 = i === 2
+        const skipped = skipStep3 && isStep3
+        return (
+          <div
+            key={i}
+            className={`h-1.5 flex-1 rounded-full transition-colors duration-300 ${
+              skipped
+                ? "bg-gray-300 opacity-60"
+                : i < step
+                ? "bg-cyan-500"
+                : "bg-gray-200"
+            }`}
+          />
+        )
+      })}
     </div>
   )
 }
@@ -195,13 +211,15 @@ function PropiedadHeader({ info }: { info: PropiedadInfo }) {
 
 // ─── Pasos del formulario ─────────────────────────────────────────────────────
 
+type OnChange = <K extends keyof FormData>(field: K, value: FormData[K]) => void
+
 function Paso1({
   form,
   onChange,
   disabled,
 }: {
   form: FormData
-  onChange: (field: keyof FormData, value: string) => void
+  onChange: OnChange
   disabled: boolean
 }) {
   const emailError = form.email && !isEmailValido(form.email)
@@ -282,6 +300,30 @@ function Paso1({
           </p>
         )}
       </div>
+
+      <div className="rounded-lg border border-gray-200 bg-gray-50 p-3 mt-2">
+        <label
+          className={`flex items-start gap-2 cursor-pointer text-sm text-gray-700 ${disabled ? "cursor-not-allowed opacity-50" : ""}`}
+        >
+          <input
+            type="checkbox"
+            checked={form.unico_arrendatario}
+            onChange={(e) => onChange("unico_arrendatario", e.target.checked)}
+            disabled={disabled}
+            className="mt-0.5 h-4 w-4 rounded border-gray-300 text-cyan-600 focus:ring-cyan-500"
+          />
+          <span>
+            <span className="font-medium">Soy el único arrendatario.</span>{" "}
+            Viviré solo en el inmueble y no tengo coarrendatario.
+          </span>
+        </label>
+        {form.unico_arrendatario && (
+          <p className="text-xs text-amber-700 mt-2 pl-6">
+            Se omitirá el paso del coarrendatario. Este dato se reportará como motivo de estudio
+            en la revisión de tu solicitud.
+          </p>
+        )}
+      </div>
     </div>
   )
 }
@@ -292,7 +334,7 @@ function Paso2({
   disabled,
 }: {
   form: FormData
-  onChange: (field: keyof FormData, value: string) => void
+  onChange: OnChange
   disabled: boolean
 }) {
   const salarioError = form.salario && !isSalarioValido(form.salario)
@@ -340,7 +382,7 @@ function Paso2({
           />
           {salarioError && (
             <p className="text-xs text-red-600 mt-1">
-              El salario debe tener al menos 7 dígitos o está muy bajo para ser considerado.
+              El salario mensual debe ser de al menos $1.000.000 (7 cifras).
             </p>
           )}
         </div>
@@ -355,11 +397,16 @@ function Paso3({
   disabled,
 }: {
   form: FormData
-  onChange: (field: keyof FormData, value: string) => void
+  onChange: OnChange
   disabled: boolean
 }) {
   const salarioError = form.salario_2 && !isSalarioValido(form.salario_2)
   const telefonoError = form.telefono_coarrendatario && !isTelefonoValido(form.telefono_coarrendatario)
+  const emailError = form.email_coarrendatario && !isEmailValido(form.email_coarrendatario)
+  const cedulaDuplicada =
+    form.cedula_coarrendatario.trim() !== "" &&
+    form.cedula.trim() !== "" &&
+    form.cedula.trim() === form.cedula_coarrendatario.trim()
   
   return (
     <div className="space-y-4">
@@ -385,8 +432,34 @@ function Paso3({
             placeholder=""
             required
             disabled={disabled}
+            aria-invalid={cedulaDuplicada || undefined}
+            className={`${cedulaDuplicada ? "border-red-500 focus:ring-red-500" : ""}`}
           />
+          {cedulaDuplicada && (
+            <p className="text-xs text-red-600 mt-1">
+              La cédula del coarrendatario no puede ser la misma que la del arrendatario principal.
+            </p>
+          )}
         </div>
+      </div>
+      <div>
+        <FieldLabel htmlFor="email_coarrendatario" required>Correo electrónico</FieldLabel>
+        <Input
+          id="email_coarrendatario"
+          type="email"
+          value={form.email_coarrendatario}
+          onChange={(e) => onChange("email_coarrendatario", e.target.value)}
+          placeholder=""
+          required
+          disabled={disabled}
+          aria-invalid={!!emailError || undefined}
+          className={`${emailError ? "border-red-500 focus:ring-red-500" : ""}`}
+        />
+        {emailError && (
+          <p className="text-xs text-red-600 mt-1">
+            Ingresa un correo electrónico válido (ej. nombre@dominio.com).
+          </p>
+        )}
       </div>
       <div>
         <FieldLabel htmlFor="fecha_expedicion_cedula_coarrendatario" required>Fecha de expedición cédula</FieldLabel>
@@ -440,7 +513,7 @@ function Paso3({
           />
           {salarioError && (
             <p className="text-xs text-red-600 mt-1">
-              El salario debe tener al menos 7 dígitos.
+              El salario mensual debe ser de al menos $1.000.000 (7 cifras).
             </p>
           )}
         </div>
@@ -480,7 +553,7 @@ function Paso4({
   disabled,
 }: {
   form: FormData
-  onChange: (field: keyof FormData, value: string) => void
+  onChange: OnChange
   disabled: boolean
 }) {
   return (
@@ -667,7 +740,7 @@ export default function AplicacionPage() {
       .finally(() => setLoadingInfo(false))
   }, [propiedadId, token])
 
-  const handleChange = (field: keyof FormData, value: string) => {
+  const handleChange = <K extends keyof FormData>(field: K, value: FormData[K]) => {
     setForm((prev) => ({ ...prev, [field]: value }))
   }
 
@@ -693,10 +766,18 @@ export default function AplicacionPage() {
       )
     }
     if (step === 3) {
+      // Si declaró que es único arrendatario, este paso se omite (no debería poder llegar aquí)
+      if (form.unico_arrendatario) return true
+      const cedulasIguales =
+        form.cedula.trim() !== "" &&
+        form.cedula.trim() === form.cedula_coarrendatario.trim()
       return (
         form.nombre_coarrendatario.trim() !== "" &&
         form.cedula_coarrendatario.trim() !== "" &&
+        !cedulasIguales &&
         form.fecha_expedicion_cedula_coarrendatario !== "" &&
+        form.email_coarrendatario.trim() !== "" &&
+        isEmailValido(form.email_coarrendatario) &&
         form.empresa_coarrendatario.trim() !== "" &&
         form.antiguedad_meses_2.trim() !== "" &&
         form.salario_2.trim() !== "" &&
@@ -718,11 +799,24 @@ export default function AplicacionPage() {
     form.negocio !== ""
 
   const handleNext = () => {
-    if (step < TOTAL_STEPS) setStep((s) => s + 1)
+    if (step < TOTAL_STEPS) {
+      // Si es único arrendatario, saltar el paso 3 (coarrendatario)
+      if (step === 2 && form.unico_arrendatario) {
+        setStep(4)
+      } else {
+        setStep((s) => s + 1)
+      }
+    }
   }
 
   const handleBack = () => {
-    if (step > 1) setStep((s) => s - 1)
+    if (step > 1) {
+      if (step === 4 && form.unico_arrendatario) {
+        setStep(2)
+      } else {
+        setStep((s) => s - 1)
+      }
+    }
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -732,11 +826,26 @@ export default function AplicacionPage() {
     setSubmitting(true)
     setSubmitError(null)
 
+    // Si es único arrendatario, limpiar campos del coarrendatario antes de enviar
+    const payload = form.unico_arrendatario
+      ? {
+          ...form,
+          nombre_coarrendatario: "",
+          email_coarrendatario: "",
+          cedula_coarrendatario: "",
+          fecha_expedicion_cedula_coarrendatario: "",
+          empresa_coarrendatario: "",
+          antiguedad_meses_2: "",
+          salario_2: "",
+          telefono_coarrendatario: "",
+        }
+      : form
+
     try {
       const res = await fetch("/api/intake/aplicacion", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...form, propiedad_id: propiedadId, token }),
+        body: JSON.stringify({ ...payload, propiedad_id: propiedadId, token }),
       })
       const data = await res.json().catch(() => ({}))
       if (!res.ok) {
@@ -840,10 +949,11 @@ export default function AplicacionPage() {
 
           {/* Progreso */}
           <div className="px-6 pt-4 pb-1">
-            <ProgressBar step={step} />
+            <ProgressBar step={step} skipStep3={form.unico_arrendatario} />
             <div className="flex justify-between items-center mt-1.5">
               <p className="text-xs text-gray-400">
                 Paso {step} de {TOTAL_STEPS}
+                {form.unico_arrendatario && " (paso 3 omitido)"}
               </p>
               <p className="text-xs font-medium text-gray-600">{PASO_TITULOS[step - 1]}</p>
             </div>

@@ -31,13 +31,15 @@ export async function POST(request: Request) {
     cedula,
     fecha_expedicion_cedula,
     telefono,
+    unico_arrendatario,
     // Paso 2 — Laboral arrendatario
     empresa_arrendatario,
     antiguedad_meses,
     salario,
     ingresos,
-    // Paso 3 — Coarrendatario (todos opcionales)
+    // Paso 3 — Coarrendatario (todos opcionales cuando unico_arrendatario === true)
     nombre_coarrendatario,
+    email_coarrendatario,
     cedula_coarrendatario,
     fecha_expedicion_cedula_coarrendatario,
     empresa_coarrendatario,
@@ -52,6 +54,8 @@ export async function POST(request: Request) {
     negocio,
     autorizacion,
   } = body as Record<string, unknown>
+
+  const esUnicoArrendatario = unico_arrendatario === true
 
   // Validar autorización — bloquear si no es "Si"
   if (autorizacion !== "Si") {
@@ -89,6 +93,28 @@ export async function POST(request: Request) {
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
   if (!emailRegex.test(emailTrim)) {
     return NextResponse.json({ error: "Formato de correo electrónico inválido" }, { status: 400 })
+  }
+
+  // Validaciones específicas del coarrendatario cuando NO es único arrendatario
+  const cedulaCoarrendatarioTrim =
+    typeof cedula_coarrendatario === "string" ? cedula_coarrendatario.trim() : ""
+  const emailCoarrendatarioTrim =
+    typeof email_coarrendatario === "string" ? email_coarrendatario.trim().toLowerCase() : ""
+
+  if (!esUnicoArrendatario) {
+    if (cedulaCoarrendatarioTrim && cedulaCoarrendatarioTrim === cedulaTrim) {
+      return NextResponse.json(
+        { error: "La cédula del coarrendatario no puede ser la misma que la del arrendatario principal" },
+        { status: 400 }
+      )
+    }
+
+    if (emailCoarrendatarioTrim && !emailRegex.test(emailCoarrendatarioTrim)) {
+      return NextResponse.json(
+        { error: "Formato de correo electrónico del coarrendatario inválido" },
+        { status: 400 }
+      )
+    }
   }
 
   const admin = createAdminClient()
@@ -166,6 +192,29 @@ export async function POST(request: Request) {
     return null
   }
 
+  // Si el aplicante es único arrendatario, forzar a null todos los campos del coarrendatario
+  const coarrendatarioPayload = esUnicoArrendatario
+    ? {
+        coarrendatario_nombre: null,
+        coarrendatario_email: null,
+        coarrendatario_cedula: null,
+        coarrendatario_cedula_expedicion: null,
+        empresa_secundaria: null,
+        tiempo_servicio_secundario_meses: null,
+        salario_secundario: null,
+        coarrendatario_telefono: null,
+      }
+    : {
+        coarrendatario_nombre: toNullableText(nombre_coarrendatario),
+        coarrendatario_email: emailCoarrendatarioTrim || null,
+        coarrendatario_cedula: toNullableText(cedula_coarrendatario),
+        coarrendatario_cedula_expedicion: toNullableText(fecha_expedicion_cedula_coarrendatario),
+        empresa_secundaria: toNullableText(empresa_coarrendatario),
+        tiempo_servicio_secundario_meses: toNullableInt(antiguedad_meses_2),
+        salario_secundario: toNullableNum(salario_2),
+        coarrendatario_telefono: toNullableText(telefono_coarrendatario),
+      }
+
   const { data: inserted, error: errInsert } = await admin
     .from("arrenlex_form_intake")
     .insert({
@@ -176,23 +225,18 @@ export async function POST(request: Request) {
       // Nuevos nombres de columnas (unificados con arrendatarios)
       cedula_ciudad_expedicion: toNullableText(fecha_expedicion_cedula),
       telefono: toNullableText(telefono),
-      adultos_habitantes: toNullableInt(personas), // renamed from personas
-      ninos_habitantes: toNullableInt(ninos), // renamed from ninos
-      mascotas_cantidad: toNullableInt(mascotas), // renamed from mascotas
-      salario_principal: toNullableNum(salario), // renamed from salario
+      adultos_habitantes: toNullableInt(personas),
+      ninos_habitantes: toNullableInt(ninos),
+      mascotas_cantidad: toNullableInt(mascotas),
+      salario_principal: toNullableNum(salario),
       ingresos: toNullableNum(ingresos),
-      empresa_principal: toNullableText(empresa_arrendatario), // renamed
-      tiempo_servicio_principal_meses: toNullableInt(antiguedad_meses), // renamed
-      coarrendatario_nombre: toNullableText(nombre_coarrendatario), // renamed
-      coarrendatario_cedula: toNullableText(cedula_coarrendatario), // renamed
-      coarrendatario_cedula_expedicion: toNullableText(fecha_expedicion_cedula_coarrendatario), // renamed
-      empresa_secundaria: toNullableText(empresa_coarrendatario), // renamed
-      tiempo_servicio_secundario_meses: toNullableInt(antiguedad_meses_2), // renamed
-      salario_secundario: toNullableNum(salario_2), // renamed from salario_2
-      coarrendatario_telefono: toNullableText(telefono_coarrendatario), // renamed
+      empresa_principal: toNullableText(empresa_arrendatario),
+      tiempo_servicio_principal_meses: toNullableInt(antiguedad_meses),
+      ...coarrendatarioPayload,
       personas_trabajan: toNullableInt(personas_trabajan),
       negocio: toNullableText(negocio),
       autorizacion: "Si",
+      unico_arrendatario: esUnicoArrendatario,
       fecha_envio: new Date().toISOString(),
       gestionado: false,
     })
@@ -249,18 +293,20 @@ export async function POST(request: Request) {
     antiguedadMeses: toNullableInt(antiguedad_meses),
     salario: toNullableNum(salario),
     ingresos: toNullableNum(ingresos),
-    nombreCoarrendatario: toNullableText(nombre_coarrendatario),
-    cedulaCoarrendatario: toNullableText(cedula_coarrendatario),
-    fechaExpedicionCedulaCoarrendatario: toNullableText(fecha_expedicion_cedula_coarrendatario),
-    empresaCoarrendatario: toNullableText(empresa_coarrendatario),
-    antiguedadMeses2: toNullableInt(antiguedad_meses_2),
-    salario2: toNullableNum(salario_2),
-    telefonoCoarrendatario: toNullableText(telefono_coarrendatario),
+    nombreCoarrendatario: esUnicoArrendatario ? null : toNullableText(nombre_coarrendatario),
+    emailCoarrendatario: esUnicoArrendatario ? null : (emailCoarrendatarioTrim || null),
+    cedulaCoarrendatario: esUnicoArrendatario ? null : toNullableText(cedula_coarrendatario),
+    fechaExpedicionCedulaCoarrendatario: esUnicoArrendatario ? null : toNullableText(fecha_expedicion_cedula_coarrendatario),
+    empresaCoarrendatario: esUnicoArrendatario ? null : toNullableText(empresa_coarrendatario),
+    antiguedadMeses2: esUnicoArrendatario ? null : toNullableInt(antiguedad_meses_2),
+    salario2: esUnicoArrendatario ? null : toNullableNum(salario_2),
+    telefonoCoarrendatario: esUnicoArrendatario ? null : toNullableText(telefono_coarrendatario),
     personas: toNullableInt(personas),
     ninos: toNullableInt(ninos),
     mascotas: toNullableInt(mascotas),
     personasTrabajan: toNullableInt(personas_trabajan),
     negocio: toNullableText(negocio),
+    unicoArrendatario: esUnicoArrendatario,
     propietarioEmail,
     propietarioNombre,
   }).catch((err) => console.error("[intake/aplicacion] Error enviando emails:", err))
@@ -274,12 +320,13 @@ export async function POST(request: Request) {
       cedula: cedulaTrim,
       telefono: toNullableText(telefono),
       salario: toNullableNum(salario),
-      salario2: toNullableNum(salario_2),
+      salario2: esUnicoArrendatario ? null : toNullableNum(salario_2),
       ingresos: toNullableNum(ingresos),
       personas: toNullableInt(personas),
       ninos: toNullableInt(ninos),
       mascotas: toNullableInt(mascotas),
       negocio: toNullableText(negocio),
+      unicoArrendatario: esUnicoArrendatario,
     })
   ).catch((err) => {
     console.error("[intake/aplicacion] Error enviando WhatsApp:", err)

@@ -207,25 +207,45 @@ export function SeccionCalificacion({ registro }: { registro: IntakeFormulario }
   const resultado = calcularScore(registro)
   const { t } = useLang()
 
+  const avisoUnicoArrendatario = registro.unico_arrendatario === true ? (
+    <div className="mt-6 pt-4 border-t">
+      <div className="rounded-lg border border-amber-500/50 bg-amber-500/10 px-4 py-3">
+        <p className="text-sm font-bold text-amber-800 dark:text-amber-300 mb-1">
+          Motivo de estudio: único arrendatario
+        </p>
+        <p className="text-xs text-amber-800/90 dark:text-amber-300/90">
+          El aplicante declaró que será la única persona que vivirá en el inmueble y no
+          registra coarrendatario. Evaluar capacidad de pago sin codeudor.
+        </p>
+      </div>
+    </div>
+  ) : null
+
   if (resultado.sinCanon) {
     return (
-      <div className="mt-6 pt-4 border-t">
-        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">{t.mensajes.calificacion.titulo}</p>
-        <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-700 dark:text-amber-400">
-          {t.mensajes.calificacion.sinCanonMsg}
+      <>
+        {avisoUnicoArrendatario}
+        <div className="mt-6 pt-4 border-t">
+          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">{t.mensajes.calificacion.titulo}</p>
+          <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-700 dark:text-amber-400">
+            {t.mensajes.calificacion.sinCanonMsg}
+          </div>
         </div>
-      </div>
+      </>
     )
   }
   if (resultado.excluido) {
     return (
-      <div className="mt-6 pt-4 border-t">
-        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">{t.mensajes.calificacion.titulo}</p>
-        <div className="rounded-lg border border-red-500/40 bg-red-500/10 px-4 py-3">
-          <p className="text-sm font-bold text-red-600 dark:text-red-400 mb-1">{t.mensajes.calificacion.rechazado}</p>
-          <p className="text-sm text-red-600/80 dark:text-red-400/80">{resultado.filtro.motivo}</p>
+      <>
+        {avisoUnicoArrendatario}
+        <div className="mt-6 pt-4 border-t">
+          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">{t.mensajes.calificacion.titulo}</p>
+          <div className="rounded-lg border border-red-500/40 bg-red-500/10 px-4 py-3">
+            <p className="text-sm font-bold text-red-600 dark:text-red-400 mb-1">{t.mensajes.calificacion.rechazado}</p>
+            <p className="text-sm text-red-600/80 dark:text-red-400/80">{resultado.filtro.motivo}</p>
+          </div>
         </div>
-      </div>
+      </>
     )
   }
 
@@ -242,7 +262,9 @@ export function SeccionCalificacion({ registro }: { registro: IntakeFormulario }
   ]
 
   return (
-    <div className="mt-6 pt-4 border-t">
+    <>
+      {avisoUnicoArrendatario}
+      <div className="mt-6 pt-4 border-t">
       <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">Calificación ARRENLEX</p>
       <div className={`rounded-lg border px-4 py-3 mb-4 ${borderColor}`}>
         <div className="flex items-center justify-between mb-2">
@@ -268,6 +290,7 @@ export function SeccionCalificacion({ registro }: { registro: IntakeFormulario }
         ))}
       </div>
     </div>
+    </>
   )
 }
 
@@ -670,8 +693,24 @@ export function ModalDetalleIntake({
             </p>
           </div>
 
+          {/* Único arrendatario — motivo de estudio */}
+          {registro.unico_arrendatario === true && (
+            <div className="space-y-2 p-4 bg-amber-50/60 dark:bg-amber-950/30 rounded-lg border-2 border-amber-400 dark:border-amber-700">
+              <p className="font-semibold text-amber-700 dark:text-amber-300 uppercase text-xs tracking-wide border-b border-amber-300 dark:border-amber-700 pb-1">
+                Motivo de estudio — único arrendatario
+              </p>
+              <p className="text-sm text-amber-900 dark:text-amber-100">
+                El aplicante declaró que <strong>será la única persona</strong> que vivirá en el
+                inmueble. No se registran datos de coarrendatario.
+              </p>
+              <p className="text-xs text-amber-800/90 dark:text-amber-200/90">
+                Evaluar capacidad de pago sin codeudor y considerar solicitar garantías adicionales.
+              </p>
+            </div>
+          )}
+
           {/* Coarrendatario */}
-          {(registro.coarrendatario_nombre || registro.nombre_coarrendatario || registro.coarrendatario_cedula || registro.cedula_coarrendatario) && (
+          {registro.unico_arrendatario !== true && (registro.coarrendatario_nombre || registro.nombre_coarrendatario || registro.coarrendatario_cedula || registro.cedula_coarrendatario) && (
             <div className="space-y-2 p-4 bg-blue-50/50 dark:bg-blue-950/30 rounded-lg border border-blue-200 dark:border-blue-800">
               <p className="font-semibold text-blue-700 dark:text-blue-300 uppercase text-xs tracking-wide border-b border-blue-200 dark:border-blue-800 pb-1">Coarrendatario</p>
               <p><span className="font-medium">Nombre completo:</span> {registro.coarrendatario_nombre ?? registro.nombre_coarrendatario ?? "—"}</p>

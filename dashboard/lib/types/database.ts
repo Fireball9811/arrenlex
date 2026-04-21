@@ -339,6 +339,7 @@ export type IntakeFormulario = {
   negocio: string | null
   empresas: string | null
   autorizacion: string | null
+  unico_arrendatario?: boolean | null
   raw_data: Record<string, unknown> | null
   data: Record<string, unknown> | null
   fecha_envio: string | null
