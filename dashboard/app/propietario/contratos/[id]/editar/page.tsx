@@ -11,7 +11,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
-import { ArrowLeft, Save } from "lucide-react"
+import { ArrowLeft, Save, FileCheck2 } from "lucide-react"
 import type { ContratoConRelaciones } from "@/lib/types/database"
 import { DocumentosContrato } from "@/components/contratos/documentos-contrato"
 import { RecibosContrato } from "@/components/contratos/recibos-contrato"
@@ -36,7 +36,7 @@ export default function PropietarioEditarContratoPage() {
     canon_mensual: 0,
     porcentaje_garantia: 0.5,
     ciudad_firma: "",
-    estado: "borrador" as "borrador" | "activo" | "terminado" | "vencido",
+    estado: "borrador" as "borrador" | "activo" | "terminado" | "vencido" | "pendiente_cierre",
   })
 
   useEffect(() => {
@@ -190,9 +190,10 @@ export default function PropietarioEditarContratoPage() {
 
               <div>
                 <label className="block text-sm font-medium mb-1">Estado *</label>
-                <select required className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm" value={formData.estado} onChange={(e) => setFormData({ ...formData, estado: e.target.value as "borrador" | "activo" | "terminado" | "vencido" })}>
+                <select required className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm" value={formData.estado} onChange={(e) => setFormData({ ...formData, estado: e.target.value as "borrador" | "activo" | "terminado" | "vencido" | "pendiente_cierre" })}>
                   <option value="borrador">Borrador</option>
                   <option value="activo">Activo</option>
+                  <option value="pendiente_cierre">Pendiente de cierre</option>
                   <option value="terminado">Terminado</option>
                   <option value="vencido">Vencido</option>
                 </select>
@@ -200,13 +201,19 @@ export default function PropietarioEditarContratoPage() {
             </CardContent>
           </Card>
 
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <Button type="submit" disabled={saving}>
               <Save className="mr-2 h-4 w-4" />
               {saving ? "Guardando..." : "Guardar Cambios"}
             </Button>
             <Button type="button" variant="outline" asChild>
               <Link href={`/propietario/contratos/${params.id}`}>Cancelar</Link>
+            </Button>
+            <Button type="button" variant="secondary" asChild>
+              <Link href={`/propietario/contratos/${params.id}/terminacion`}>
+                <FileCheck2 className="mr-2 h-4 w-4" />
+                Terminación de contrato
+              </Link>
             </Button>
           </div>
         </form>

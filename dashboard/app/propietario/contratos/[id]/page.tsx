@@ -12,7 +12,7 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import type { ContratoConRelaciones } from "@/lib/types/database"
-import { FileText, Download, ArrowLeft } from "lucide-react"
+import { FileText, Download, ArrowLeft, FileCheck2 } from "lucide-react"
 import { DocumentosContrato } from "@/components/contratos/documentos-contrato"
 import { RecibosContrato } from "@/components/contratos/recibos-contrato"
 
@@ -58,6 +58,7 @@ export default function PropietarioContratoDetallePage() {
     activo: "bg-green-100 text-green-800",
     terminado: "bg-blue-100 text-blue-800",
     vencido: "bg-red-100 text-red-800",
+    pendiente_cierre: "bg-amber-100 text-amber-800",
   }
 
   const estadoLabels: Record<string, string> = {
@@ -65,6 +66,7 @@ export default function PropietarioContratoDetallePage() {
     activo: "Activo",
     terminado: "Terminado",
     vencido: "Vencido",
+    pendiente_cierre: "Pendiente de cierre",
   }
 
   if (loading) {
@@ -98,11 +100,19 @@ export default function PropietarioContratoDetallePage() {
           </Button>
           <h1 className="text-3xl font-bold">Detalle del Contrato</h1>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <Button variant="outline" onClick={handleDownloadPDF}>
             <Download className="mr-2 h-4 w-4" />
             Descargar PDF
           </Button>
+          {(isAdmin || isPropietario) && (
+            <Button variant="secondary" asChild>
+              <Link href={`/propietario/contratos/${params.id}/terminacion`}>
+                <FileCheck2 className="mr-2 h-4 w-4" />
+                Terminación de contrato
+              </Link>
+            </Button>
+          )}
         </div>
       </div>
 

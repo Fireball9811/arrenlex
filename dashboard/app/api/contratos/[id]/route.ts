@@ -146,7 +146,13 @@ export async function PATCH(
     if (body.canon_mensual !== undefined) updates.canon_mensual = Number(body.canon_mensual)
     if (body.porcentaje_garantia !== undefined) updates.porcentaje_garantia = Number(body.porcentaje_garantia)
     if (body.ciudad_firma !== undefined) updates.ciudad_firma = body.ciudad_firma
-    if (body.estado !== undefined) updates.estado = body.estado
+    if (body.estado !== undefined) {
+      const estadosValidos = ["borrador", "activo", "terminado", "vencido", "pendiente_cierre"]
+      if (!estadosValidos.includes(body.estado)) {
+        return NextResponse.json({ error: "Estado inválido" }, { status: 400 })
+      }
+      updates.estado = body.estado
+    }
 
     // Si cambia la propiedad, actualizar el user_id al del propietario de la nueva propiedad
     if (body.propiedad_id !== undefined) {

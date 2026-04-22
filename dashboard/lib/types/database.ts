@@ -126,9 +126,37 @@ export type Contrato = {
   canon_mensual: number
   porcentaje_garantia: number
   ciudad_firma: string
-  estado: "borrador" | "activo" | "terminado" | "vencido"
+  estado: "borrador" | "activo" | "terminado" | "vencido" | "pendiente_cierre"
   created_at: string
   updated_at: string
+}
+
+export type TerminacionContrato = {
+  id: string
+  contrato_id: string
+  deposito: number
+  fecha_entrega: string | null
+  lectura_agua: string | null
+  valor_agua: number
+  lectura_gas: string | null
+  valor_gas: number
+  lectura_energia: string | null
+  valor_energia: number
+  notas: string | null
+  finalizado: boolean
+  finalizado_en: string | null
+  created_at: string
+  updated_at: string
+}
+
+export type TerminacionRegistro = {
+  id: string
+  terminacion_id: string
+  descripcion: string
+  valor: number
+  foto_url: string | null
+  orden: number
+  created_at: string
 }
 
 // Tipo expandido con relaciones para mostrar en la UI
