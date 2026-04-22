@@ -57,6 +57,49 @@ function esVacio(v: unknown): boolean {
   return false
 }
 
+// Formatea una fecha ISO/texto como "DD/MM/AAAA".
+// Si viene solo "YYYY-MM-DD" (DATE) la reordena sin pasar por Date() para evitar
+// desplazamientos de zona horaria.
+function formatearFechaDMY(raw: string | null | undefined): string {
+  if (!raw) return "—"
+  const s = raw.trim()
+  if (!s || s === "—") return "—"
+  const dateOnly = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s)
+  if (dateOnly) return `${dateOnly[3]}/${dateOnly[2]}/${dateOnly[1]}`
+  const asDate = new Date(s)
+  if (!isNaN(asDate.getTime())) {
+    const d = String(asDate.getDate()).padStart(2, "0")
+    const m = String(asDate.getMonth() + 1).padStart(2, "0")
+    const y = asDate.getFullYear()
+    return `${d}/${m}/${y}`
+  }
+  return s
+}
+
+// Cuenta días hábiles (lunes a viernes) desde `desde` hasta `hasta`, sin incluir `desde`
+// e incluyendo `hasta` si es hábil. Devuelve null si alguno de los valores es inválido.
+export function diasHabilesEntre(
+  desde: string | Date | null | undefined,
+  hasta: string | Date | null | undefined
+): number | null {
+  if (!desde || !hasta) return null
+  const d0 = typeof desde === "string" ? new Date(desde) : desde
+  const d1Raw = typeof hasta === "string" ? new Date(hasta) : hasta
+  if (isNaN(d0.getTime()) || isNaN(d1Raw.getTime())) return null
+  // Normalizar a inicio de día para evitar que el componente horario meta ruido.
+  const a = new Date(d0.getFullYear(), d0.getMonth(), d0.getDate())
+  const b = new Date(d1Raw.getFullYear(), d1Raw.getMonth(), d1Raw.getDate())
+  if (b <= a) return 0
+  let dias = 0
+  const cursor = new Date(a)
+  while (cursor < b) {
+    cursor.setDate(cursor.getDate() + 1)
+    const dow = cursor.getDay() // 0=Dom, 6=Sáb
+    if (dow !== 0 && dow !== 6) dias += 1
+  }
+  return dias
+}
+
 // ── Función pura de scoring ────────────────────────────────────────────────
 
 export function calcularScore(r: IntakeFormulario): ResultadoScore {
@@ -732,6 +775,15 @@ export function ModalDetalleIntake({
   const salarioSecundario = registro.salario_secundario ?? registro.salario_2 ?? 0
   const ingresosTotales = salarioPrincipal + salarioSecundario
 
+  // Aviso: el inquilino quiere ocupar el inmueble en menos de 5 días hábiles
+  // desde la fecha de envío de la solicitud. Informativo para el propietario.
+  const diasHabilesParaIngreso =
+    registro.fecha_ingreso_deseada
+      ? diasHabilesEntre(registro.fecha_envio ?? registro.created_at, registro.fecha_ingreso_deseada)
+      : null
+  const ingresoUrgente =
+    diasHabilesParaIngreso !== null && diasHabilesParaIngreso < 5
+
   // Resultado del score para resaltar campos vacíos, "Independiente" y aviso RUT
   const resultadoScore = calcularScore(registro)
   const camposVaciosSet: Set<string> =
@@ -812,7 +864,7 @@ export function ModalDetalleIntake({
             <p><span className="font-medium">Email:</span> {renderValor("email", registro.email, registro.email)}</p>
             <p><span className="font-medium">Teléfono:</span> {renderValor("telefono", registro.telefono, registro.telefono)}</p>
             <p><span className="font-medium">Cédula:</span> {renderValor("cedula", registro.cedula, registro.cedula)}</p>
-            <p><span className="font-medium">Ciudad Expedición:</span> {renderValor("cedula_ciudad_expedicion", registro.cedula_ciudad_expedicion ?? registro.fecha_expedicion_cedula, registro.cedula_ciudad_expedicion ?? registro.fecha_expedicion_cedula)}</p>
+            <p><span className="font-medium">Fecha Expedición:</span> {renderValor("cedula_ciudad_expedicion", formatearFechaDMY(registro.cedula_ciudad_expedicion ?? registro.fecha_expedicion_cedula), registro.cedula_ciudad_expedicion ?? registro.fecha_expedicion_cedula)}</p>
           </div>
 
           {/* Información financiera */}
@@ -846,6 +898,10 @@ export function ModalDetalleIntake({
             >
               <span className="font-medium">Negocio en propiedad:</span> {registro.negocio ?? "—"}
             </p>
+            <p>
+              <span className="font-medium">Fecha deseada de ingreso:</span>{" "}
+              {formatearFechaDMY(registro.fecha_ingreso_deseada)}
+            </p>
           </div>
 
           {/* Único arrendatario — motivo de estudio */}
@@ -870,7 +926,7 @@ export function ModalDetalleIntake({
               <p className="font-semibold text-blue-700 dark:text-blue-300 uppercase text-xs tracking-wide border-b border-blue-200 dark:border-blue-800 pb-1">Coarrendatario</p>
               <p><span className="font-medium">Nombre completo:</span> {registro.coarrendatario_nombre ?? registro.nombre_coarrendatario ?? "—"}</p>
               <p><span className="font-medium">Cédula:</span> {registro.coarrendatario_cedula ?? registro.cedula_coarrendatario ?? "—"}</p>
-              <p><span className="font-medium">Ciudad expedición:</span> {registro.coarrendatario_cedula_expedicion ?? registro.fecha_expedicion_cedula_coarrendatario ?? "—"}</p>
+              <p><span className="font-medium">Fecha expedición:</span> {formatearFechaDMY(registro.coarrendatario_cedula_expedicion ?? registro.fecha_expedicion_cedula_coarrendatario)}</p>
               <p><span className="font-medium">Email:</span> {renderValor("coarrendatario_email", registro.coarrendatario_email, registro.coarrendatario_email)}</p>
               <p><span className="font-medium">Teléfono:</span> {renderValor("coarrendatario_telefono", registro.coarrendatario_telefono ?? registro.telefono_coarrendatario, registro.coarrendatario_telefono ?? registro.telefono_coarrendatario)}</p>
               <p>
@@ -948,6 +1004,29 @@ export function ModalDetalleIntake({
         )}
 
         <SeccionCalificacion registro={registro} />
+
+        {ingresoUrgente && (
+          <div className="mt-4 rounded-lg border-2 border-amber-500 bg-amber-50 dark:bg-amber-950/40 p-4">
+            <p className="text-sm font-bold text-amber-800 dark:text-amber-300 mb-1">
+              Nota: ingreso solicitado en menos de 5 días hábiles
+            </p>
+            <p className="text-xs text-amber-900 dark:text-amber-200 leading-relaxed">
+              El aplicante indicó que quiere ocupar el inmueble el{" "}
+              <strong>{formatearFechaDMY(registro.fecha_ingreso_deseada)}</strong>
+              {diasHabilesParaIngreso != null && (
+                <>
+                  {" "}(a{" "}
+                  <strong>
+                    {diasHabilesParaIngreso} día{diasHabilesParaIngreso === 1 ? "" : "s"} hábil
+                    {diasHabilesParaIngreso === 1 ? "" : "es"}
+                  </strong>{" "}
+                  desde la fecha de envío)
+                </>
+              )}
+              . Tenlo en cuenta para coordinar la entrega.
+            </p>
+          </div>
+        )}
 
         <div className="mt-4 pt-4 border-t space-y-3">
           {pasadoOk && (

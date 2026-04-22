@@ -45,6 +45,7 @@ type FormData = {
   mascotas: string
   personas_trabajan: string
   negocio: string
+  fecha_ingreso_deseada: string
   autorizacion: string
 }
 
@@ -72,6 +73,7 @@ const INITIAL_FORM: FormData = {
   mascotas: "",
   personas_trabajan: "",
   negocio: "",
+  fecha_ingreso_deseada: "",
   autorizacion: "",
 }
 
@@ -117,6 +119,112 @@ function isTelefonoValido(telefono: string): boolean {
   if (!telefono.trim()) return false
   const soloDigitos = telefono.replace(/\D/g, "")
   return soloDigitos.length >= 10
+}
+
+// ─── Fecha Día/Mes/Año ────────────────────────────────────────────────────────
+//
+// Un solo input con formato visual "DD/MM/AAAA". Auto-inserta las barras y
+// solo acepta dígitos. Internamente emite un string ISO "YYYY-MM-DD" (o ""
+// si la fecha aún no está completa / no es válida) para poder guardarla en
+// la BD como tipo DATE sin ambigüedad.
+
+// Convierte el valor interno (ISO "YYYY-MM-DD") al texto visible "DD/MM/AAAA".
+function isoToDisplay(iso: string): string {
+  if (!iso) return ""
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso)
+  if (!m) return ""
+  return `${m[3]}/${m[2]}/${m[1]}`
+}
+
+// Da formato mientras el usuario escribe: deja pasar solo dígitos e inserta
+// "/" tras 2 y 5 caracteres. Máximo DD/MM/AAAA (10 caracteres).
+function formatDisplayWhileTyping(raw: string): string {
+  const digits = raw.replace(/\D/g, "").slice(0, 8)
+  let out = ""
+  for (let i = 0; i < digits.length; i++) {
+    if (i === 2 || i === 4) out += "/"
+    out += digits[i]
+  }
+  return out
+}
+
+// Convierte "DD/MM/AAAA" a ISO "YYYY-MM-DD" si la fecha es completa y válida;
+// en caso contrario devuelve "".
+function displayToISO(display: string): string {
+  const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(display)
+  if (!m) return ""
+  const dNum = parseInt(m[1], 10)
+  const mNum = parseInt(m[2], 10)
+  const yNum = parseInt(m[3], 10)
+  if (
+    !Number.isFinite(dNum) || !Number.isFinite(mNum) || !Number.isFinite(yNum) ||
+    dNum < 1 || dNum > 31 || mNum < 1 || mNum > 12 || yNum < 1900
+  ) return ""
+  const asDate = new Date(Date.UTC(yNum, mNum - 1, dNum))
+  if (
+    asDate.getUTCFullYear() !== yNum ||
+    asDate.getUTCMonth() !== mNum - 1 ||
+    asDate.getUTCDate() !== dNum
+  ) return ""
+  return `${m[3]}-${m[2]}-${m[1]}`
+}
+
+function DateDMY({
+  id,
+  value,
+  onChange,
+  disabled,
+  required,
+}: {
+  id: string
+  // ISO "YYYY-MM-DD" o ""
+  value: string
+  // Emite ISO "YYYY-MM-DD" o "" si aún no es válida
+  onChange: (iso: string) => void
+  disabled?: boolean
+  required?: boolean
+}) {
+  // Estado visible "DD/MM/AAAA" — se deriva del ISO cuando hay valor válido
+  // y, mientras el usuario escribe parcial, se mantiene localmente.
+  const [display, setDisplay] = useState<string>(() => isoToDisplay(value))
+
+  // Si el valor ISO externo cambia (por ejemplo un reset del formulario),
+  // sincronizar el texto mostrado.
+  useEffect(() => {
+    const fromIso = isoToDisplay(value)
+    // Solo sobrescribir si el display actual no corresponde al ISO; así evitamos
+    // sobrescribir mientras el usuario está escribiendo.
+    if (fromIso && fromIso !== display) {
+      setDisplay(fromIso)
+    } else if (!value && display && displayToISO(display) === "") {
+      // ISO vacío y display inválido → respetar lo que el usuario escribe
+    } else if (!value && displayToISO(display) !== "") {
+      // El padre limpió el valor → limpiar también
+      setDisplay("")
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [value])
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const next = formatDisplayWhileTyping(e.target.value)
+    setDisplay(next)
+    onChange(displayToISO(next))
+  }
+
+  return (
+    <input
+      id={id}
+      type="text"
+      inputMode="numeric"
+      placeholder="DD/MM/AAAA"
+      value={display}
+      onChange={handleChange}
+      disabled={disabled}
+      required={required}
+      maxLength={10}
+      className="flex h-9 w-full rounded-md border border-gray-300 bg-white px-3 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500 disabled:opacity-50"
+    />
+  )
 }
 
 // ─── Sub-componentes de UI ────────────────────────────────────────────────────
@@ -271,14 +379,12 @@ function Paso1({
         </div>
         <div>
           <FieldLabel htmlFor="fecha_expedicion_cedula" required>Fecha de expedición</FieldLabel>
-          <input
+          <DateDMY
             id="fecha_expedicion_cedula"
-            type="date"
             value={form.fecha_expedicion_cedula}
-            onChange={(e) => onChange("fecha_expedicion_cedula", e.target.value)}
+            onChange={(iso) => onChange("fecha_expedicion_cedula", iso)}
             required
             disabled={disabled}
-            className="flex h-9 w-full rounded-md border border-gray-300 bg-white px-3 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500 disabled:opacity-50"
           />
         </div>
       </div>
@@ -411,36 +517,16 @@ function Paso3({
   return (
     <div className="space-y-4">
       <p className="text-sm text-gray-500 -mt-1 mb-2">Datos del coarrendatario</p>
-      <div className="grid grid-cols-2 gap-3">
-        <div>
-          <FieldLabel htmlFor="nombre_coarrendatario" required>Nombre completo</FieldLabel>
-          <Input
-            id="nombre_coarrendatario"
-            value={form.nombre_coarrendatario}
-            onChange={(e) => onChange("nombre_coarrendatario", e.target.value)}
-            placeholder=""
-            required
-            disabled={disabled}
-          />
-        </div>
-        <div>
-          <FieldLabel htmlFor="cedula_coarrendatario" required>Cédula</FieldLabel>
-          <Input
-            id="cedula_coarrendatario"
-            value={form.cedula_coarrendatario}
-            onChange={(e) => onChange("cedula_coarrendatario", e.target.value)}
-            placeholder=""
-            required
-            disabled={disabled}
-            aria-invalid={cedulaDuplicada || undefined}
-            className={`${cedulaDuplicada ? "border-red-500 focus:ring-red-500" : ""}`}
-          />
-          {cedulaDuplicada && (
-            <p className="text-xs text-red-600 mt-1">
-              La cédula del coarrendatario no puede ser la misma que la del arrendatario principal.
-            </p>
-          )}
-        </div>
+      <div>
+        <FieldLabel htmlFor="nombre_coarrendatario" required>Nombre completo</FieldLabel>
+        <Input
+          id="nombre_coarrendatario"
+          value={form.nombre_coarrendatario}
+          onChange={(e) => onChange("nombre_coarrendatario", e.target.value)}
+          placeholder=""
+          required
+          disabled={disabled}
+        />
       </div>
       <div>
         <FieldLabel htmlFor="email_coarrendatario" required>Correo electrónico</FieldLabel>
@@ -461,17 +547,35 @@ function Paso3({
           </p>
         )}
       </div>
-      <div>
-        <FieldLabel htmlFor="fecha_expedicion_cedula_coarrendatario" required>Fecha de expedición cédula</FieldLabel>
-        <input
-          id="fecha_expedicion_cedula_coarrendatario"
-          type="date"
-          value={form.fecha_expedicion_cedula_coarrendatario}
-          onChange={(e) => onChange("fecha_expedicion_cedula_coarrendatario", e.target.value)}
-          required
-          disabled={disabled}
-          className="flex h-9 w-full rounded-md border border-gray-300 bg-white px-3 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500 disabled:opacity-50"
-        />
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <FieldLabel htmlFor="cedula_coarrendatario" required>Cédula</FieldLabel>
+          <Input
+            id="cedula_coarrendatario"
+            value={form.cedula_coarrendatario}
+            onChange={(e) => onChange("cedula_coarrendatario", e.target.value)}
+            placeholder=""
+            required
+            disabled={disabled}
+            aria-invalid={cedulaDuplicada || undefined}
+            className={`${cedulaDuplicada ? "border-red-500 focus:ring-red-500" : ""}`}
+          />
+          {cedulaDuplicada && (
+            <p className="text-xs text-red-600 mt-1">
+              La cédula del coarrendatario no puede ser la misma que la del arrendatario principal.
+            </p>
+          )}
+        </div>
+        <div>
+          <FieldLabel htmlFor="fecha_expedicion_cedula_coarrendatario" required>Fecha de expedición</FieldLabel>
+          <DateDMY
+            id="fecha_expedicion_cedula_coarrendatario"
+            value={form.fecha_expedicion_cedula_coarrendatario}
+            onChange={(iso) => onChange("fecha_expedicion_cedula_coarrendatario", iso)}
+            required
+            disabled={disabled}
+          />
+        </div>
       </div>
       <div>
         <FieldLabel htmlFor="empresa_coarrendatario" required>Empresa donde labora</FieldLabel>
@@ -624,6 +728,23 @@ function Paso4({
           required
           disabled={disabled}
         />
+      </div>
+
+      <div>
+        <FieldLabel htmlFor="fecha_ingreso_deseada" required>
+          ¿Cuándo deseas pasarte al inmueble?
+        </FieldLabel>
+        <DateDMY
+          id="fecha_ingreso_deseada"
+          value={form.fecha_ingreso_deseada}
+          onChange={(iso) => onChange("fecha_ingreso_deseada", iso)}
+          required
+          disabled={disabled}
+        />
+        <p className="text-xs text-gray-500 mt-1">
+          Indícanos la fecha en la que esperas ocupar el inmueble. Esto le ayuda al propietario a
+          coordinar la entrega.
+        </p>
       </div>
 
       {/* Autorización de tratamiento de datos */}
@@ -796,7 +917,8 @@ export default function AplicacionPage() {
     form.ninos !== "" &&
     form.mascotas !== "" &&
     form.personas_trabajan !== "" &&
-    form.negocio !== ""
+    form.negocio !== "" &&
+    form.fecha_ingreso_deseada !== ""
 
   const handleNext = () => {
     if (step < TOTAL_STEPS) {

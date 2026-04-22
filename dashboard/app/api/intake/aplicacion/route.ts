@@ -52,6 +52,7 @@ export async function POST(request: Request) {
     mascotas,
     personas_trabajan,
     negocio,
+    fecha_ingreso_deseada,
     autorizacion,
   } = body as Record<string, unknown>
 
@@ -235,6 +236,7 @@ export async function POST(request: Request) {
       ...coarrendatarioPayload,
       personas_trabajan: toNullableInt(personas_trabajan),
       negocio: toNullableText(negocio),
+      fecha_ingreso_deseada: toNullableText(fecha_ingreso_deseada),
       autorizacion: "Si",
       unico_arrendatario: esUnicoArrendatario,
       fecha_envio: new Date().toISOString(),

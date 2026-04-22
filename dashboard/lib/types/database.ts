@@ -368,6 +368,9 @@ export type IntakeFormulario = {
   empresas: string | null
   autorizacion: string | null
   unico_arrendatario?: boolean | null
+  // Fecha (YYYY-MM-DD) en la que el aplicante desea ocupar el inmueble.
+  // Capturada en el formulario público de aplicación (migración 055).
+  fecha_ingreso_deseada?: string | null
   raw_data: Record<string, unknown> | null
   data: Record<string, unknown> | null
   fecha_envio: string | null
