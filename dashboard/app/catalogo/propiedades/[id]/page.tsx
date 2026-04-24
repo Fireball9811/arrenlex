@@ -18,7 +18,35 @@ import {
   TabsTrigger,
 } from "@/components/ui/tabs"
 import { Input } from "@/components/ui/input"
-import { ArrowLeft, Calendar, ClipboardList, MapPin } from "lucide-react"
+import {
+  ArrowLeft,
+  Bath,
+  Bed,
+  Calendar,
+  ClipboardList,
+  Map as MapIcon,
+  MapPin,
+  Package,
+  Ruler,
+  Car,
+  Building2,
+} from "lucide-react"
+
+const TIPO_LABELS: Record<string, string> = {
+  apartaestudio: "Apartaestudio",
+  apartamento: "Apartamento",
+  bodega: "Bodega",
+  casa: "Casa",
+  casaquinta: "Casa Quinta",
+  deposito: "Depósito",
+  finca: "Finca",
+  glamping: "Glamping",
+  habitacion: "Habitación",
+  local: "Local",
+  lote: "Lote",
+  oficina: "Oficina",
+  parqueadero: "Parqueadero",
+}
 
 const HORARIOS_VISITA = [
   { value: "08:00", label: "8:00 AM" },
@@ -56,10 +84,19 @@ type PropiedadImagenPublica = {
 
 type PropiedadDetallePublico = {
   id: string
+  titulo: string | null
+  tipo: string | null
   descripcion: string | null
   area: number
   direccion: string | null
+  barrio: string | null
   ciudad: string | null
+  habitaciones: number | null
+  banos: number | null
+  ascensor: number | null
+  depositos: number | null
+  parqueaderos: number | null
+  numero_matricula: string | null
   imagenes: PropiedadImagenPublica[]
 }
 
@@ -147,7 +184,8 @@ export default function PropiedadDetallePage() {
     )
   }
 
-  const imagenes = propiedad.imagenes
+  const imagenMapa = propiedad.imagenes.find((img) => img.categoria === "mapa") ?? null
+  const imagenes = propiedad.imagenes.filter((img) => img.categoria !== "mapa")
   const imagenesPorCategoria = categorias.reduce((acc, cat) => {
     acc[cat.value] = imagenes.filter((img) => img.categoria === cat.value)
     return acc
@@ -222,75 +260,215 @@ export default function PropiedadDetallePage() {
         </Button>
       </div>
 
-      {/* Información pública: solo descripcion, tamaño y fotos */}
+      {/* ─── Bloque 1: Información del inmueble ─────────────────────────── */}
       <Card className="mb-6">
-        <CardContent className="pt-6">
-          <div className="grid gap-6 lg:grid-cols-2">
-            {/* Imagen destacada */}
-            <div className="aspect-video rounded-lg overflow-hidden bg-muted">
-              {imagenes[0] ? (
-                <img
-                  src={imagenes[0].url_publica}
-                  alt="Imagen principal"
-                  className="h-full w-full object-cover"
-                />
-              ) : (
-                <div className="flex h-full w-full items-center justify-center text-4xl">
-                  🏠
-                </div>
+        <CardContent className="pt-6 space-y-5">
+          {/* Título + tipo + matrícula */}
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              {propiedad.titulo && (
+                <h1 className="text-2xl md:text-3xl font-bold leading-tight">
+                  {propiedad.titulo}
+                </h1>
               )}
-            </div>
-
-            {/* Dirección, descripción y tamaño (sin renta ni propietario) */}
-            <div className="space-y-4">
-              {propiedad.direccion && (
-                <div>
-                  <p className="text-sm text-muted-foreground">Dirección</p>
-                  <p className="flex items-start gap-2 text-base font-medium">
-                    <MapPin className="h-4 w-4 mt-1 shrink-0 text-muted-foreground" />
-                    <span>
-                      {propiedad.direccion}
-                      {propiedad.ciudad ? `, ${propiedad.ciudad}` : ""}
-                    </span>
-                  </p>
-                </div>
-              )}
-
-              <div>
-                <p className="text-sm text-muted-foreground">Tamaño</p>
-                <p className="text-2xl font-bold">{propiedad.area} m²</p>
-              </div>
-
-              {propiedad.descripcion && (
-                <div>
-                  <p className="text-sm text-muted-foreground">Descripción</p>
-                  <p className="text-sm">{propiedad.descripcion}</p>
-                </div>
-              )}
-
-              <div className="flex flex-col gap-2">
-                <Button size="lg" className="w-full" onClick={openModal}>
-                  <Calendar className="mr-2 h-4 w-4" />
-                  Solicitar visita
-                </Button>
-
-                <Button
-                  size="lg"
-                  variant="outline"
-                  className="w-full border-cyan-500 text-cyan-700 hover:bg-cyan-50"
-                  onClick={handleDiligenciarAplicacion}
-                  disabled={generandoToken}
-                >
-                  <ClipboardList className="mr-2 h-4 w-4" />
-                  {generandoToken ? "Preparando formulario…" : "Diligenciar Aplicación"}
-                </Button>
-
-                {errorToken && (
-                  <p className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-md px-3 py-2">
-                    {errorToken}
-                  </p>
+              <div className="mt-1 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+                {propiedad.tipo && (
+                  <span className="inline-flex items-center gap-1">
+                    <Building2 className="h-4 w-4" />
+                    {TIPO_LABELS[propiedad.tipo] ?? propiedad.tipo}
+                  </span>
+                )}
+                {propiedad.tipo && propiedad.numero_matricula && (
+                  <span className="text-muted-foreground/60">·</span>
+                )}
+                {propiedad.numero_matricula && (
+                  <span className="text-xs bg-blue-50 border border-blue-200 text-blue-700 font-semibold px-2 py-0.5 rounded">
+                    {propiedad.numero_matricula}
+                  </span>
                 )}
               </div>
+            </div>
+          </div>
+
+          {/* Dirección */}
+          {propiedad.direccion && (
+            <div className="flex items-start gap-2 text-base font-medium">
+              <MapPin className="h-5 w-5 mt-0.5 shrink-0 text-muted-foreground" />
+              <span>
+                {propiedad.direccion}
+                {propiedad.barrio ? `, ${propiedad.barrio}` : ""}
+                {propiedad.ciudad ? `, ${propiedad.ciudad}` : ""}
+              </span>
+            </div>
+          )}
+
+          {/* Specs en fila con íconos */}
+          <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-sm border-t border-b py-3">
+            <span className="inline-flex items-center gap-1.5">
+              <Ruler className="h-4 w-4 text-muted-foreground" />
+              <span className="font-semibold">{propiedad.area}</span>
+              <span className="text-muted-foreground">m²</span>
+            </span>
+            {propiedad.habitaciones !== null && propiedad.habitaciones > 0 && (
+              <span className="inline-flex items-center gap-1.5">
+                <Bed className="h-4 w-4 text-muted-foreground" />
+                <span className="font-semibold">{propiedad.habitaciones}</span>
+                <span className="text-muted-foreground">
+                  {propiedad.habitaciones === 1 ? "habitación" : "habitaciones"}
+                </span>
+              </span>
+            )}
+            {propiedad.banos !== null && propiedad.banos > 0 && (
+              <span className="inline-flex items-center gap-1.5">
+                <Bath className="h-4 w-4 text-muted-foreground" />
+                <span className="font-semibold">{propiedad.banos}</span>
+                <span className="text-muted-foreground">
+                  {propiedad.banos === 1 ? "baño" : "baños"}
+                </span>
+              </span>
+            )}
+            {propiedad.parqueaderos !== null && propiedad.parqueaderos > 0 && (
+              <span className="inline-flex items-center gap-1.5">
+                <Car className="h-4 w-4 text-muted-foreground" />
+                <span className="font-semibold">{propiedad.parqueaderos}</span>
+                <span className="text-muted-foreground">
+                  {propiedad.parqueaderos === 1 ? "parqueadero" : "parqueaderos"}
+                </span>
+              </span>
+            )}
+            {propiedad.depositos !== null && propiedad.depositos > 0 && (
+              <span className="inline-flex items-center gap-1.5">
+                <Package className="h-4 w-4 text-muted-foreground" />
+                <span className="font-semibold">{propiedad.depositos}</span>
+                <span className="text-muted-foreground">
+                  {propiedad.depositos === 1 ? "depósito" : "depósitos"}
+                </span>
+              </span>
+            )}
+            {propiedad.ascensor !== null && propiedad.ascensor > 0 && (
+              <span className="inline-flex items-center gap-1.5">
+                <Building2 className="h-4 w-4 text-muted-foreground" />
+                <span className="font-semibold">{propiedad.ascensor}</span>
+                <span className="text-muted-foreground">
+                  {propiedad.ascensor === 1 ? "ascensor" : "ascensores"}
+                </span>
+              </span>
+            )}
+          </div>
+
+          {/* Descripción */}
+          {propiedad.descripcion && (
+            <div>
+              <p className="text-sm text-muted-foreground mb-1">Descripción</p>
+              <p className="text-sm leading-relaxed whitespace-pre-line">
+                {propiedad.descripcion}
+              </p>
+            </div>
+          )}
+
+          {/* Botones de acción */}
+          <div className="grid gap-3 sm:grid-cols-2 pt-2">
+            <Button size="lg" className="w-full" onClick={openModal}>
+              <Calendar className="mr-2 h-4 w-4" />
+              Solicitar visita
+            </Button>
+            <Button
+              size="lg"
+              variant="outline"
+              className="w-full border-cyan-500 text-cyan-700 hover:bg-cyan-50"
+              onClick={handleDiligenciarAplicacion}
+              disabled={generandoToken}
+            >
+              <ClipboardList className="mr-2 h-4 w-4" />
+              {generandoToken ? "Preparando formulario…" : "Diligenciar Aplicación"}
+            </Button>
+          </div>
+
+          {errorToken && (
+            <p className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-md px-3 py-2">
+              {errorToken}
+            </p>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* ─── Bloque 2: Portada + Mapa (lado a lado) ────────────────────── */}
+      <Card className="mb-6">
+        <CardContent className="pt-6">
+          <div className="grid gap-4 md:grid-cols-2">
+            {/* Foto de portada */}
+            <div>
+              <p className="text-sm font-medium text-muted-foreground mb-2">
+                Foto principal
+              </p>
+              <div
+                className="aspect-video rounded-lg overflow-hidden bg-muted cursor-pointer hover:opacity-90 transition border"
+                onClick={() =>
+                  imagenes[0] && setImagenActiva(imagenes[0].url_publica)
+                }
+              >
+                {imagenes[0] ? (
+                  <img
+                    src={imagenes[0].url_publica}
+                    alt="Foto principal del inmueble"
+                    className="h-full w-full object-cover"
+                  />
+                ) : (
+                  <div className="flex h-full w-full items-center justify-center text-6xl">
+                    🏠
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Mapa / Ubicación */}
+            <div>
+              <p className="text-sm font-medium text-muted-foreground mb-2">
+                Ubicación y alrededores
+              </p>
+              {imagenMapa ? (
+                <>
+                  <div
+                    className="aspect-video rounded-lg overflow-hidden border cursor-pointer hover:opacity-90 transition bg-muted"
+                    onClick={() => setImagenActiva(imagenMapa.url_publica)}
+                  >
+                    <img
+                      src={imagenMapa.url_publica}
+                      alt="Mapa de ubicación del inmueble"
+                      className="h-full w-full object-cover"
+                    />
+                  </div>
+                  {propiedad.direccion && (
+                    <a
+                      href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+                        `${propiedad.direccion}${propiedad.ciudad ? `, ${propiedad.ciudad}` : ""}`
+                      )}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="mt-2 inline-block text-xs text-cyan-700 hover:underline"
+                    >
+                      Abrir en Google Maps →
+                    </a>
+                  )}
+                </>
+              ) : (
+                <div className="aspect-video rounded-lg bg-muted border border-dashed flex flex-col items-center justify-center text-muted-foreground gap-2 p-4 text-center">
+                  <MapIcon className="h-10 w-10" />
+                  <p className="text-sm font-medium">Mapa no disponible</p>
+                  {propiedad.direccion && (
+                    <a
+                      href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+                        `${propiedad.direccion}${propiedad.ciudad ? `, ${propiedad.ciudad}` : ""}`
+                      )}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-xs text-cyan-700 hover:underline"
+                    >
+                      Ver ubicación en Google Maps →
+                    </a>
+                  )}
+                </div>
+              )}
             </div>
           </div>
         </CardContent>

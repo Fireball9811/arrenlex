@@ -241,7 +241,7 @@ export type DatosContrato = {
 export type PropiedadImagen = {
   id: string
   propiedad_id: string
-  categoria: "principal" | "sala" | "sala_estar" | "comedor" | "cocina" | "habitacion" | "bano" | "zona_lavado" | "parqueadero" | "deposito" | "fachada" | "otra"
+  categoria: "principal" | "sala" | "sala_estar" | "comedor" | "cocina" | "habitacion" | "bano" | "zona_lavado" | "parqueadero" | "deposito" | "fachada" | "mapa" | "otra"
   nombre_archivo: string
   url_publica: string
   orden: number

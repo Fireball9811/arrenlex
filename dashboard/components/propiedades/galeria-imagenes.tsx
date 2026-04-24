@@ -20,7 +20,8 @@ const VIDEO_MAX_MINUTOS = 12
 // ─── Categorías de imágenes ────────────────────────────────────────────────
 type CategoriaValue =
   | "principal" | "fachada" | "sala" | "sala_estar" | "comedor" | "cocina"
-  | "habitacion" | "bano" | "zona_lavado" | "parqueadero" | "deposito" | "otra"
+  | "habitacion" | "bano" | "zona_lavado" | "parqueadero" | "deposito"
+  | "mapa" | "otra"
 
 const categorias: Array<{
   value: CategoriaValue
@@ -41,6 +42,7 @@ const categorias: Array<{
   { value: "zona_lavado", label: "Zona de Lavado",      icon: "🫧", descripcion: "Lavandería, zona de lavado o cuarto de ropas." },
   { value: "parqueadero", label: "Parqueadero",         icon: "🚗", descripcion: "Zona de parqueo asignada." },
   { value: "deposito",    label: "Depósito",            icon: "📦", descripcion: "Depósito o cuarto de almacenamiento." },
+  { value: "mapa",        label: "Mapa / Ubicación",    icon: "🗺️", maxFotos: 1, descripcion: "Captura de Google Maps o similar mostrando la ubicación del inmueble. Se mostrará en el catálogo público." },
   { value: "otra",        label: "Otra",                icon: "📷", descripcion: "Zonas comunes, terraza, balcón, etc." },
 ]
 

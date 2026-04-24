@@ -141,19 +141,19 @@ function CatalogoContent() {
             {propiedades.map((propiedad) => (
               <Card
                 key={propiedad.id}
-                className="overflow-hidden cursor-pointer hover:shadow-lg transition"
+                className="overflow-hidden cursor-pointer hover:shadow-lg transition h-full flex flex-col pt-0 gap-4"
                 onClick={() => router.push(`/catalogo/propiedades/${propiedad.id}`)}
               >
-                {/* Foto de portada */}
-                <div className="aspect-video w-full bg-muted relative">
+                {/* Foto de portada - proporción fija 4:3 para todas */}
+                <div className="relative w-full aspect-[4/3] bg-muted shrink-0 overflow-hidden">
                   {propiedad.imagen_principal ? (
                     <img
                       src={propiedad.imagen_principal}
                       alt="Imagen de propiedad"
-                      className="h-full w-full object-cover"
+                      className="absolute inset-0 h-full w-full object-cover"
                     />
                   ) : (
-                    <div className="flex h-full w-full items-center justify-center text-muted-foreground">
+                    <div className="absolute inset-0 flex items-center justify-center text-6xl text-muted-foreground">
                       🏠
                     </div>
                   )}
@@ -182,7 +182,7 @@ function CatalogoContent() {
                   )}
                 </CardHeader>
 
-                <CardContent>
+                <CardContent className="mt-auto">
                   <Button variant="outline" className="w-full" asChild>
                     <Link href={`/catalogo/propiedades/${propiedad.id}`} onClick={(e) => e.stopPropagation()}>
                       {t.catalogo.verDetalle}
