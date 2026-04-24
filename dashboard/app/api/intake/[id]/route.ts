@@ -3,16 +3,24 @@ import { createClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { getUserRole } from "@/lib/auth/role"
 
-type PatchAccion = "gestionar" | "descartar" | "editar_motivo" | "reactivar"
+type PatchAccion =
+  | "gestionar"
+  | "descartar"
+  | "editar_motivo"
+  | "reactivar"
+  | "completar"
+  | "descompletar"
 
 /**
  * PATCH - Actualiza el estado de un registro de intake.
  *
- * Body opcional (JSON): { accion: "gestionar" | "descartar" | "editar_motivo" | "reactivar", motivo?: string }
+ * Body opcional (JSON): { accion: PatchAccion, motivo?: string }
  * - Sin body o accion="gestionar": marca gestionado=true (comportamiento original)
  * - "descartar": marca descartado=true, gestionado=true, guarda motivo y auditoría
  * - "editar_motivo": solo cambia motivo_descarte (requiere estar descartado)
  * - "reactivar": limpia el descarte y vuelve a pendiente (gestionado=false)
+ * - "completar": marca completado=true, gestionado=true y registra auditoría
+ * - "descompletar": reabre el registro (completado=false)
  *
  * Admin: puede actuar sobre cualquier registro.
  * Propietario: solo sobre registros de sus propiedades.
@@ -122,6 +130,22 @@ export async function PATCH(
       descartado_at: null,
       descartado_por: null,
       gestionado: false,
+      completado: false,
+      completado_at: null,
+      completado_por: null,
+    }
+  } else if (accion === "completar") {
+    update = {
+      completado: true,
+      completado_at: new Date().toISOString(),
+      completado_por: user.id,
+      gestionado: true,
+    }
+  } else if (accion === "descompletar") {
+    update = {
+      completado: false,
+      completado_at: null,
+      completado_por: null,
     }
   } else {
     update = { gestionado: true }

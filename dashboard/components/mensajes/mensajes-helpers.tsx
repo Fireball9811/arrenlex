@@ -499,6 +499,8 @@ export function TablaIntake({
   onComparar,
   role,
   onEliminar,
+  onCompletar,
+  onDescompletar,
 }: {
   lista: IntakeFormulario[]
   seleccionados: Set<string>
@@ -511,11 +513,14 @@ export function TablaIntake({
   onComparar: () => void
   role: UserRole
   onEliminar?: (id: string) => Promise<{ ok: boolean; error?: string }>
+  onCompletar?: (id: string) => Promise<{ ok: boolean; error?: string }>
+  onDescompletar?: (id: string) => Promise<{ ok: boolean; error?: string }>
 }) {
   const { t } = useLang()
   const [confirmando, setConfirmando] = useState<IntakeFormulario | null>(null)
   const [eliminando, setEliminando] = useState(false)
   const [errorEliminar, setErrorEliminar] = useState<string | null>(null)
+  const [procesandoCompletarId, setProcesandoCompletarId] = useState<string | null>(null)
 
   if (lista.length === 0) return null
 
@@ -565,12 +570,15 @@ export function TablaIntake({
               <th className="text-left p-2 font-medium">Nombre</th>
               <th className="text-left p-2 font-medium">Cédula</th>
               <th className="text-left p-2 font-medium">Email</th>
+              <th className="text-left p-2 font-medium">{t.mensajes.columnas.celular}</th>
+              <th className="text-left p-2 font-medium">{t.mensajes.columnas.celularCoarrendatario}</th>
               <th className="text-left p-2 font-medium">Ingresos</th>
               <th className="text-left p-2 font-medium">Personas</th>
+              <th className="text-left p-2 font-medium">{t.mensajes.columnas.ninos}</th>
               <th className="text-left p-2 font-medium">Mascotas</th>
               <th className="text-left p-2 font-medium">Empresa</th>
               <th className="text-left p-2 font-medium">Estado</th>
-              <th className="text-left p-2 font-medium">Fecha (Bogotá)</th>
+              <th className="text-left p-2 font-medium">Fecha</th>
               <th className="text-left p-2 font-medium">{t.mensajes.columnas.acciones}</th>
             </tr>
           </thead>
@@ -580,8 +588,11 @@ export function TablaIntake({
               const salarioSecundario = r.salario_secundario ?? r.salario_2 ?? 0
               const ingresosTotales = salarioPrincipal + salarioSecundario
               const personas = r.adultos_habitantes ?? r.personas ?? 0
+              const ninos = r.ninos_habitantes ?? r.ninos ?? 0
               const mascotas = r.mascotas_cantidad ?? r.mascotas ?? 0
               const empresa = r.empresa_principal ?? r.empresa_arrendatario ?? r.empresas ?? "—"
+              const celularPrincipal = r.telefono ?? "—"
+              const celularCoarrendatario = r.coarrendatario_telefono ?? r.telefono_coarrendatario ?? "—"
 
               return (
                 <tr
@@ -604,12 +615,19 @@ export function TablaIntake({
                   </td>
                   <td className="p-2">{r.cedula ?? "—"}</td>
                   <td className="p-2">{r.email ?? "—"}</td>
+                  <td className="p-2 whitespace-nowrap">{celularPrincipal}</td>
+                  <td className="p-2 whitespace-nowrap">{celularCoarrendatario}</td>
                   <td className="p-2">{ingresosTotales > 0 ? formatCurrency(ingresosTotales) : "—"}</td>
                   <td className="p-2">{personas > 0 ? personas : "—"}</td>
+                  <td className="p-2">{ninos > 0 ? ninos : "—"}</td>
                   <td className="p-2">{mascotas > 0 ? mascotas : "—"}</td>
                   <td className="p-2 max-w-[150px] truncate" title={empresa}>{empresa}</td>
                   <td className="p-2">
-                    {r.descartado ? (
+                    {r.completado ? (
+                      <span className="rounded-full bg-blue-100 text-blue-800 dark:bg-blue-950/50 dark:text-blue-300 px-2 py-0.5 text-xs font-medium">
+                        {t.mensajes.completado}
+                      </span>
+                    ) : r.descartado ? (
                       <span className="rounded-full bg-red-100 text-red-800 px-2 py-0.5 text-xs font-medium" title={r.motivo_descarte ?? undefined}>
                         {t.mensajes.noAceptado}
                       </span>
@@ -619,15 +637,43 @@ export function TablaIntake({
                       <span className="rounded-full bg-amber-100 text-amber-800 px-2 py-0.5 text-xs font-medium">Pendiente</span>
                     )}
                   </td>
-                  <td className="p-2">{formatDate(r.created_at)}</td>
+                  <td className="p-2 whitespace-nowrap">{formatDate(r.created_at)}</td>
                   <td className="p-2">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
                       <button
                         onClick={() => onVerDetalle(r)}
                         className="rounded bg-primary px-3 py-1 text-xs font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
                       >
                         {t.mensajes.verDetalle}
                       </button>
+                      {onCompletar && !r.completado && !r.descartado && (
+                        <button
+                          onClick={async () => {
+                            setProcesandoCompletarId(r.id)
+                            await onCompletar(r.id)
+                            setProcesandoCompletarId(null)
+                          }}
+                          disabled={procesandoCompletarId === r.id}
+                          className="rounded border border-blue-300 dark:border-blue-700 bg-blue-50 dark:bg-blue-950/40 px-3 py-1 text-xs font-medium text-blue-700 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-950/60 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                          title={t.mensajes.marcarCompletado}
+                        >
+                          {procesandoCompletarId === r.id ? t.mensajes.procesando : t.mensajes.marcarCompletado}
+                        </button>
+                      )}
+                      {onDescompletar && r.completado && (
+                        <button
+                          onClick={async () => {
+                            setProcesandoCompletarId(r.id)
+                            await onDescompletar(r.id)
+                            setProcesandoCompletarId(null)
+                          }}
+                          disabled={procesandoCompletarId === r.id}
+                          className="rounded border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/40 px-3 py-1 text-xs font-medium text-amber-700 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-950/60 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                          title={t.mensajes.reabrirCompletado}
+                        >
+                          {procesandoCompletarId === r.id ? t.mensajes.procesando : t.mensajes.reabrirCompletado}
+                        </button>
+                      )}
                       {onEliminar && (
                         <button
                           onClick={() => {
@@ -734,6 +780,8 @@ export function ModalDetalleIntake({
   onDescartar,
   onEditarMotivo,
   onReactivar,
+  onCompletar,
+  onDescompletar,
 }: {
   registro: IntakeFormulario
   role: UserRole
@@ -742,6 +790,8 @@ export function ModalDetalleIntake({
   onDescartar?: (id: string, motivo: string) => Promise<{ ok: boolean; error?: string }>
   onEditarMotivo?: (id: string, motivo: string) => Promise<{ ok: boolean; error?: string }>
   onReactivar?: (id: string) => Promise<{ ok: boolean; error?: string }>
+  onCompletar?: (id: string) => Promise<{ ok: boolean; error?: string }>
+  onDescompletar?: (id: string) => Promise<{ ok: boolean; error?: string }>
 }) {
   const { t } = useLang()
   const [pasando, setPasando] = useState(false)
@@ -753,17 +803,10 @@ export function ModalDetalleIntake({
   const [guardandoDescarte, setGuardandoDescarte] = useState(false)
   const [errorDescarte, setErrorDescarte] = useState<string | null>(null)
   const [reactivando, setReactivando] = useState(false)
+  const [completando, setCompletando] = useState(false)
+  const [errorCompletar, setErrorCompletar] = useState<string | null>(null)
 
-  const formatDate = (dateStr: string | null | undefined) => {
-    if (!dateStr) return "—"
-    try {
-      return new Date(dateStr).toLocaleDateString("es-CO", {
-        day: "2-digit", month: "short", year: "numeric",
-        hour: "2-digit", minute: "2-digit",
-        timeZone: "America/Bogota",
-      })
-    } catch { return dateStr }
-  }
+  const formatDate = (dateStr: string | null | undefined) => formatearFechaDMY(dateStr)
 
   const formatCurrency = (value: number | null | undefined) => {
     if (value == null) return "—"
@@ -837,7 +880,11 @@ export function ModalDetalleIntake({
               </p>
             )}
             <div className="mt-2 flex flex-wrap items-center gap-2">
-              {registro.descartado ? (
+              {registro.completado ? (
+                <span className="rounded-full bg-blue-100 text-blue-800 dark:bg-blue-950/50 dark:text-blue-300 px-2 py-0.5 text-xs font-medium">
+                  {t.mensajes.completado}
+                </span>
+              ) : registro.descartado ? (
                 <span className="rounded-full bg-red-100 text-red-800 px-2 py-0.5 text-xs font-medium">{t.mensajes.noAceptado}</span>
               ) : registro.gestionado ? (
                 <span className="rounded-full bg-green-100 text-green-800 px-2 py-0.5 text-xs font-medium">Gestionado</span>
@@ -1044,6 +1091,11 @@ export function ModalDetalleIntake({
               {errorDescarte}
             </div>
           )}
+          {errorCompletar && (
+            <div className="rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-800 dark:bg-red-950/30 dark:border-red-800 dark:text-red-300">
+              {errorCompletar}
+            </div>
+          )}
 
           {mostrarFormDescarte && (onDescartar || onEditarMotivo) && (
             <div className="rounded-lg border border-red-400 bg-red-50 dark:bg-red-950/30 p-4 space-y-2">
@@ -1111,7 +1163,43 @@ export function ModalDetalleIntake({
             <p className="text-xs text-muted-foreground">
               {t.mensajes.detalle.autorizacion} {registro.autorizacion ? registro.autorizacion.slice(0, 60) + "…" : "—"}
             </p>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
+              {registro.completado && onDescompletar && (
+                <button
+                  type="button"
+                  disabled={completando}
+                  onClick={async () => {
+                    setCompletando(true)
+                    setErrorCompletar(null)
+                    const result = await onDescompletar(registro.id)
+                    if (!result.ok) setErrorCompletar(result.error ?? t.mensajes.errorProceso)
+                    setCompletando(false)
+                  }}
+                  className={`rounded-lg px-4 py-2 text-sm font-medium text-white transition-colors ${
+                    completando ? "bg-amber-400 cursor-wait opacity-80" : "bg-amber-500 hover:bg-amber-600"
+                  }`}
+                >
+                  {completando ? t.mensajes.procesando : t.mensajes.reabrirCompletado}
+                </button>
+              )}
+              {!registro.completado && !registro.descartado && onCompletar && (
+                <button
+                  type="button"
+                  disabled={completando}
+                  onClick={async () => {
+                    setCompletando(true)
+                    setErrorCompletar(null)
+                    const result = await onCompletar(registro.id)
+                    if (!result.ok) setErrorCompletar(result.error ?? t.mensajes.errorProceso)
+                    setCompletando(false)
+                  }}
+                  className={`rounded-lg px-4 py-2 text-sm font-medium text-white transition-colors ${
+                    completando ? "bg-blue-400 cursor-wait opacity-80" : "bg-blue-600 hover:bg-blue-700"
+                  }`}
+                >
+                  {completando ? t.mensajes.procesando : t.mensajes.marcarCompletado}
+                </button>
+              )}
               {registro.descartado ? (
                 <>
                   {onEditarMotivo && (

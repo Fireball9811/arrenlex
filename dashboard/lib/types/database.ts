@@ -381,6 +381,10 @@ export type IntakeFormulario = {
   motivo_descarte?: string | null
   descartado_at?: string | null
   descartado_por?: string | null
+  // Estado "Completado" (migración 056)
+  completado?: boolean
+  completado_at?: string | null
+  completado_por?: string | null
   // Campo calculado al hacer JOIN con propiedades (no está en la tabla)
   valor_arriendo: number | null
   // Campo calculado en GET /api/intake: otros registros con la misma cédula

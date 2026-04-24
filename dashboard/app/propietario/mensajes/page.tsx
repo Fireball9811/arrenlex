@@ -21,7 +21,7 @@ export default function PropietarioMensajesPage() {
   const [tab, setTab] = useState<string>("pendiente")
   const [updatingId, setUpdatingId] = useState<string | null>(null)
   const [intakeSeleccionado, setIntakeSeleccionado] = useState<IntakeFormulario | null>(null)
-  const [subTabIntake, setSubTabIntake] = useState<"pendientes" | "gestionados" | "no_aceptados">("pendientes")
+  const [subTabIntake, setSubTabIntake] = useState<"pendientes" | "gestionados" | "no_aceptados" | "completados">("pendientes")
   const [seleccionados, setSeleccionados] = useState<Set<string>>(new Set())
   const [mostrarComparacion, setMostrarComparacion] = useState(false)
   const [propiedades, setPropiedades] = useState<Array<{ id: string; direccion?: string; ciudad?: string }>>([])
@@ -168,7 +168,44 @@ export default function PropietarioMensajesPage() {
       setIntakeRegistros((prev) =>
         prev.map((r) =>
           r.id === intakeId
-            ? { ...r, descartado: false, motivo_descarte: null, descartado_at: null, gestionado: false }
+            ? {
+                ...r,
+                descartado: false,
+                motivo_descarte: null,
+                descartado_at: null,
+                gestionado: false,
+                completado: false,
+                completado_at: null,
+              }
+            : r,
+        ),
+      )
+    }
+    return result
+  }, [patchIntake])
+
+  const handleCompletar = useCallback(async (intakeId: string) => {
+    const result = await patchIntake(intakeId, { accion: "completar" })
+    if (result.ok) {
+      const nowIso = new Date().toISOString()
+      setIntakeRegistros((prev) =>
+        prev.map((r) =>
+          r.id === intakeId
+            ? { ...r, completado: true, completado_at: nowIso, gestionado: true }
+            : r,
+        ),
+      )
+    }
+    return result
+  }, [patchIntake])
+
+  const handleDescompletar = useCallback(async (intakeId: string) => {
+    const result = await patchIntake(intakeId, { accion: "descompletar" })
+    if (result.ok) {
+      setIntakeRegistros((prev) =>
+        prev.map((r) =>
+          r.id === intakeId
+            ? { ...r, completado: false, completado_at: null }
             : r,
         ),
       )
@@ -235,16 +272,17 @@ export default function PropietarioMensajesPage() {
   const conteoPorSubtab = useMemo(() => {
     const base = busquedaActiva ? intakeRegistrosBuscados : intakeRegistrosFiltrados
     return {
-      pendientes: base.filter((r) => !r.gestionado && !r.descartado).length,
-      gestionados: base.filter((r) => r.gestionado && !r.descartado).length,
+      pendientes: base.filter((r) => !r.gestionado && !r.descartado && !r.completado).length,
+      gestionados: base.filter((r) => r.gestionado && !r.descartado && !r.completado).length,
       no_aceptados: base.filter((r) => r.descartado === true).length,
+      completados: base.filter((r) => r.completado === true).length,
     }
   }, [busquedaActiva, intakeRegistrosBuscados, intakeRegistrosFiltrados])
 
   useEffect(() => {
     if (!busquedaActiva) return
     if (conteoPorSubtab[subTabIntake] > 0) return
-    const siguiente = (["pendientes", "gestionados", "no_aceptados"] as const).find(
+    const siguiente = (["pendientes", "gestionados", "no_aceptados", "completados"] as const).find(
       (tab) => conteoPorSubtab[tab] > 0,
     )
     if (siguiente) setSubTabIntake(siguiente)
@@ -263,13 +301,18 @@ export default function PropietarioMensajesPage() {
 
   const formatDate = (dateStr: string | null | undefined) => {
     if (!dateStr) return "—"
+    const s = dateStr.trim()
+    if (!s) return "—"
+    const dateOnly = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s)
+    if (dateOnly) return `${dateOnly[3]}/${dateOnly[2]}/${dateOnly[1]}`
     try {
-      return new Date(dateStr).toLocaleDateString("es-CO", {
-        day: "2-digit", month: "short", year: "numeric",
-        hour: "2-digit", minute: "2-digit",
+      const d = new Date(s)
+      if (isNaN(d.getTime())) return s
+      return d.toLocaleDateString("es-CO", {
+        day: "2-digit", month: "2-digit", year: "numeric",
         timeZone: "America/Bogota",
       })
-    } catch { return dateStr }
+    } catch { return s }
   }
 
   const formatCurrency = (value: number | null | undefined) => {
@@ -297,6 +340,8 @@ export default function PropietarioMensajesPage() {
           onDescartar={handleDescartar}
           onEditarMotivo={handleEditarMotivo}
           onReactivar={handleReactivar}
+          onCompletar={handleCompletar}
+          onDescompletar={handleDescompletar}
         />
       )}
 
@@ -305,9 +350,9 @@ export default function PropietarioMensajesPage() {
           <TabsTrigger value="solicitudes">{t.mensajes.tabSolicitudes}</TabsTrigger>
           <TabsTrigger value="posibles-arrendatarios">
             {t.mensajes.tabArrendatarios}
-            {intakeRegistrosFiltrados.filter((r) => !r.gestionado).length > 0 && (
+            {intakeRegistrosFiltrados.filter((r) => !r.gestionado && !r.descartado && !r.completado).length > 0 && (
               <span className="ml-2 rounded-full bg-amber-500/90 px-2 py-0.5 text-xs font-medium text-white">
-                {intakeRegistrosFiltrados.filter((r) => !r.gestionado).length}
+                {intakeRegistrosFiltrados.filter((r) => !r.gestionado && !r.descartado && !r.completado).length}
               </span>
             )}
           </TabsTrigger>
@@ -510,6 +555,17 @@ export default function PropietarioMensajesPage() {
                           ({conteoPorSubtab.no_aceptados})
                         </span>
                       </button>
+                      <button
+                        onClick={() => setSubTabIntake("completados")}
+                        className={`px-3 py-1.5 rounded text-sm font-medium transition-colors ${
+                          subTabIntake === "completados" ? "bg-blue-600 text-white" : "text-muted-foreground hover:text-foreground"
+                        }`}
+                      >
+                        {t.mensajes.completados}
+                        <span className={`ml-1.5 text-xs ${subTabIntake === "completados" ? "text-white/80" : "text-muted-foreground"}`}>
+                          ({conteoPorSubtab.completados})
+                        </span>
+                      </button>
                     </div>
 
                     <button
@@ -533,9 +589,10 @@ export default function PropietarioMensajesPage() {
                     const baseLista = busquedaActiva ? intakeRegistrosBuscados : intakeRegistrosFiltrados
                     const lista = baseLista
                       .filter((r) => {
-                        if (subTabIntake === "no_aceptados") return r.descartado === true
-                        if (subTabIntake === "gestionados") return r.gestionado && !r.descartado
-                        return !r.gestionado && !r.descartado
+                        if (subTabIntake === "completados") return r.completado === true
+                        if (subTabIntake === "no_aceptados") return r.descartado === true && !r.completado
+                        if (subTabIntake === "gestionados") return r.gestionado && !r.descartado && !r.completado
+                        return !r.gestionado && !r.descartado && !r.completado
                       })
                       .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
 
@@ -552,6 +609,8 @@ export default function PropietarioMensajesPage() {
                           ? t.mensajes.noHaySolicitudes
                           : subTabIntake === "gestionados"
                           ? t.mensajes.noHayGestionados
+                          : subTabIntake === "completados"
+                          ? t.mensajes.noHayCompletados
                           : t.mensajes.noHayNoAceptados
                       return (
                         <p className="text-muted-foreground py-8">{vacioMsg}</p>
@@ -570,6 +629,8 @@ export default function PropietarioMensajesPage() {
                         onComparar={() => setMostrarComparacion(true)}
                         role="propietario"
                         onEliminar={handleEliminarIntake}
+                        onCompletar={handleCompletar}
+                        onDescompletar={handleDescompletar}
                       />
                     )
                   })()}
