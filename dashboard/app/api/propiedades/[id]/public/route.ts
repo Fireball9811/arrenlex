@@ -3,8 +3,8 @@ import { createAdminClient } from "@/lib/supabase/admin"
 
 /**
  * GET - Detalle público de una propiedad (sin auth).
- * Solo devuelve si estado = 'disponible'; expone únicamente id, descripcion, area e imágenes.
- * No expone dirección, valor_arriendo, user_id ni datos del propietario.
+ * Solo devuelve si estado = 'disponible'; expone id, descripcion, area, direccion, ciudad e imágenes.
+ * No expone valor_arriendo, user_id ni datos del propietario.
  */
 export async function GET(
   _request: Request,
@@ -15,7 +15,7 @@ export async function GET(
 
   const { data: propiedad, error } = await admin
     .from("propiedades")
-    .select("id, descripcion, area")
+    .select("id, descripcion, area, direccion, ciudad")
     .eq("id", id)
     .eq("estado", "disponible")
     .single()

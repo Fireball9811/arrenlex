@@ -18,7 +18,7 @@ import {
   TabsTrigger,
 } from "@/components/ui/tabs"
 import { Input } from "@/components/ui/input"
-import { ArrowLeft, Calendar, ClipboardList } from "lucide-react"
+import { ArrowLeft, Calendar, ClipboardList, MapPin } from "lucide-react"
 
 const HORARIOS_VISITA = [
   { value: "08:00", label: "8:00 AM" },
@@ -58,6 +58,8 @@ type PropiedadDetallePublico = {
   id: string
   descripcion: string | null
   area: number
+  direccion: string | null
+  ciudad: string | null
   imagenes: PropiedadImagenPublica[]
 }
 
@@ -239,8 +241,21 @@ export default function PropiedadDetallePage() {
               )}
             </div>
 
-            {/* Solo descripcion y tamaño (sin dirección, renta ni propietario) */}
+            {/* Dirección, descripción y tamaño (sin renta ni propietario) */}
             <div className="space-y-4">
+              {propiedad.direccion && (
+                <div>
+                  <p className="text-sm text-muted-foreground">Dirección</p>
+                  <p className="flex items-start gap-2 text-base font-medium">
+                    <MapPin className="h-4 w-4 mt-1 shrink-0 text-muted-foreground" />
+                    <span>
+                      {propiedad.direccion}
+                      {propiedad.ciudad ? `, ${propiedad.ciudad}` : ""}
+                    </span>
+                  </p>
+                </div>
+              )}
+
               <div>
                 <p className="text-sm text-muted-foreground">Tamaño</p>
                 <p className="text-2xl font-bold">{propiedad.area} m²</p>
