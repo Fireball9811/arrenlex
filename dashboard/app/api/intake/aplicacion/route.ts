@@ -3,6 +3,32 @@ import { createAdminClient } from "@/lib/supabase/admin"
 import { sendAplicacionEmail } from "@/lib/email/send-aplicacion"
 import { sendWhatsAppCEO, buildAplicacionWhatsAppText } from "@/lib/whatsapp/send-whatsapp"
 
+// Salario mensual mínimo (COP) que aceptamos para una solicitud de
+// arrendamiento. El cliente ya valida esto, pero lo replicamos en el servidor
+// porque el formulario puede ser saltado (curl, JS deshabilitado, etc.).
+const SALARIO_MINIMO = 1_000_000
+
+const toNullableText = (v: unknown) =>
+  typeof v === "string" && v.trim() !== "" ? v.trim() : null
+
+const toNullableInt = (v: unknown) => {
+  if (typeof v === "number") return v
+  if (typeof v === "string" && v.trim() !== "") {
+    const n = parseInt(v, 10)
+    return isNaN(n) ? null : n
+  }
+  return null
+}
+
+const toNullableNum = (v: unknown) => {
+  if (typeof v === "number") return v
+  if (typeof v === "string" && v.trim() !== "") {
+    const n = parseFloat(v.replace(/[^0-9.]/g, ""))
+    return isNaN(n) ? null : n
+  }
+  return null
+}
+
 /**
  * POST /api/intake/aplicacion
  *
@@ -13,6 +39,7 @@ import { sendWhatsAppCEO, buildAplicacionWhatsAppText } from "@/lib/whatsapp/sen
  *  - autorizacion === "Si" (obligatorio)
  *  - propiedad_id existe y está disponible
  *  - campos requeridos del arrendatario
+ *  - salario del arrendatario (y coarrendatario si aplica) >= SALARIO_MINIMO
  */
 export async function POST(request: Request) {
   let body: Record<string, unknown>
@@ -96,6 +123,20 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Formato de correo electrónico inválido" }, { status: 400 })
   }
 
+  // Validar salario mínimo del arrendatario principal — replica la regla del
+  // wizard (isSalarioValido) para evitar que solicitudes con valores irrisorios
+  // (ej. $2) entren a la base si alguien salta la UI.
+  const salarioMinFmt = `$${SALARIO_MINIMO.toLocaleString("es-CO")}`
+  const salarioNum = toNullableNum(salario)
+  if (salarioNum == null || salarioNum < SALARIO_MINIMO) {
+    return NextResponse.json(
+      {
+        error: `El salario mensual debe ser de al menos ${salarioMinFmt}. No se aceptan solicitudes con un valor menor.`,
+      },
+      { status: 400 }
+    )
+  }
+
   // Validaciones específicas del coarrendatario cuando NO es único arrendatario
   const cedulaCoarrendatarioTrim =
     typeof cedula_coarrendatario === "string" ? cedula_coarrendatario.trim() : ""
@@ -113,6 +154,16 @@ export async function POST(request: Request) {
     if (emailCoarrendatarioTrim && !emailRegex.test(emailCoarrendatarioTrim)) {
       return NextResponse.json(
         { error: "Formato de correo electrónico del coarrendatario inválido" },
+        { status: 400 }
+      )
+    }
+
+    const salario2Num = toNullableNum(salario_2)
+    if (salario2Num == null || salario2Num < SALARIO_MINIMO) {
+      return NextResponse.json(
+        {
+          error: `El salario del coarrendatario debe ser de al menos ${salarioMinFmt}. No se aceptan solicitudes con un valor menor.`,
+        },
         { status: 400 }
       )
     }
@@ -172,25 +223,6 @@ export async function POST(request: Request) {
       { error: "Este enlace ha expirado. Solicita un nuevo enlace al arrendador." },
       { status: 400 }
     )
-  }
-
-  const toNullableText = (v: unknown) =>
-    typeof v === "string" && v.trim() !== "" ? v.trim() : null
-  const toNullableInt = (v: unknown) => {
-    if (typeof v === "number") return v
-    if (typeof v === "string" && v.trim() !== "") {
-      const n = parseInt(v, 10)
-      return isNaN(n) ? null : n
-    }
-    return null
-  }
-  const toNullableNum = (v: unknown) => {
-    if (typeof v === "number") return v
-    if (typeof v === "string" && v.trim() !== "") {
-      const n = parseFloat(v.replace(/[^0-9.]/g, ""))
-      return isNaN(n) ? null : n
-    }
-    return null
   }
 
   // Si el aplicante es único arrendatario, forzar a null todos los campos del coarrendatario

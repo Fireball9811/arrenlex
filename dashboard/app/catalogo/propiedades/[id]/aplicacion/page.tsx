@@ -5,7 +5,7 @@ import { useParams, useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { ArrowLeft, ArrowRight, CheckCircle, ClipboardList } from "lucide-react"
+import { AlertCircle, ArrowLeft, ArrowRight, CheckCircle, ClipboardList } from "lucide-react"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -438,13 +438,17 @@ function Paso2({
   form,
   onChange,
   disabled,
+  intentoAvanzar,
 }: {
   form: FormData
   onChange: OnChange
   disabled: boolean
+  intentoAvanzar: boolean
 }) {
-  const salarioError = form.salario && !isSalarioValido(form.salario)
-  
+  const salarioVacio = form.salario.trim() === ""
+  const salarioInvalido = !salarioVacio && !isSalarioValido(form.salario)
+  const mostrarErrorSalario = salarioInvalido || (intentoAvanzar && salarioVacio)
+
   return (
     <div className="space-y-4">
       <p className="text-sm text-gray-500 -mt-1 mb-2">Información laboral del arrendatario</p>
@@ -484,15 +488,29 @@ function Paso2({
             placeholder=""
             required
             disabled={disabled}
-            className={`${salarioError ? "border-red-500 focus:ring-red-500" : ""}`}
+            aria-invalid={mostrarErrorSalario || undefined}
+            aria-describedby={mostrarErrorSalario ? "salario-error" : undefined}
+            className={`${mostrarErrorSalario ? "border-red-500 focus:ring-red-500" : ""}`}
           />
-          {salarioError && (
-            <p className="text-xs text-red-600 mt-1">
-              El salario mensual debe ser de al menos $1.000.000 (7 cifras).
-            </p>
-          )}
         </div>
       </div>
+      {mostrarErrorSalario && (
+        <div
+          id="salario-error"
+          role="alert"
+          className="flex items-start gap-2 rounded-md border border-red-300 border-l-4 border-l-red-500 bg-red-50 px-3 py-2"
+        >
+          <AlertCircle className="h-4 w-4 text-red-600 mt-0.5 shrink-0" />
+          <div className="text-xs text-red-700 leading-relaxed">
+            <p className="font-semibold">Salario insuficiente</p>
+            <p>
+              El salario mensual del arrendatario debe ser de{" "}
+              <strong>al menos $1.000.000</strong>. No podemos aceptar solicitudes
+              con un valor menor al mínimo requerido.
+            </p>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
@@ -501,12 +519,16 @@ function Paso3({
   form,
   onChange,
   disabled,
+  intentoAvanzar,
 }: {
   form: FormData
   onChange: OnChange
   disabled: boolean
+  intentoAvanzar: boolean
 }) {
-  const salarioError = form.salario_2 && !isSalarioValido(form.salario_2)
+  const salarioVacio = form.salario_2.trim() === ""
+  const salarioInvalido = !salarioVacio && !isSalarioValido(form.salario_2)
+  const mostrarErrorSalario = salarioInvalido || (intentoAvanzar && salarioVacio)
   const telefonoError = form.telefono_coarrendatario && !isTelefonoValido(form.telefono_coarrendatario)
   const emailError = form.email_coarrendatario && !isEmailValido(form.email_coarrendatario)
   const cedulaDuplicada =
@@ -613,13 +635,10 @@ function Paso3({
             placeholder=""
             required
             disabled={disabled}
-            className={`${salarioError ? "border-red-500 focus:ring-red-500" : ""}`}
+            aria-invalid={mostrarErrorSalario || undefined}
+            aria-describedby={mostrarErrorSalario ? "salario-2-error" : undefined}
+            className={`${mostrarErrorSalario ? "border-red-500 focus:ring-red-500" : ""}`}
           />
-          {salarioError && (
-            <p className="text-xs text-red-600 mt-1">
-              El salario mensual debe ser de al menos $1.000.000 (7 cifras).
-            </p>
-          )}
         </div>
         <div>
           <FieldLabel htmlFor="telefono_coarrendatario" required>Teléfono</FieldLabel>
@@ -640,6 +659,23 @@ function Paso3({
           )}
         </div>
       </div>
+      {mostrarErrorSalario && (
+        <div
+          id="salario-2-error"
+          role="alert"
+          className="flex items-start gap-2 rounded-md border border-red-300 border-l-4 border-l-red-500 bg-red-50 px-3 py-2"
+        >
+          <AlertCircle className="h-4 w-4 text-red-600 mt-0.5 shrink-0" />
+          <div className="text-xs text-red-700 leading-relaxed">
+            <p className="font-semibold">Salario insuficiente</p>
+            <p>
+              El salario mensual del coarrendatario debe ser de{" "}
+              <strong>al menos $1.000.000</strong>. No podemos aceptar solicitudes
+              con un valor menor al mínimo requerido.
+            </p>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
@@ -834,6 +870,10 @@ export default function AplicacionPage() {
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
+  // Se enciende cuando el usuario intenta avanzar con datos inválidos en el paso
+  // actual. Permite que los pasos muestren errores incluso para campos vacíos
+  // (ej. salario insuficiente). Se reinicia al cambiar de paso.
+  const [intentoAvanzar, setIntentoAvanzar] = useState(false)
 
   // Cargar info de la propiedad al montar — el token se pasa al API
   useEffect(() => {
@@ -920,7 +960,104 @@ export default function AplicacionPage() {
     form.negocio !== "" &&
     form.fecha_ingreso_deseada !== ""
 
+  // Devuelve un mensaje corto explicando por qué no se puede avanzar al
+  // siguiente paso. Si todo está OK devuelve `null`. Se usa como `title`
+  // (tooltip) del botón "Siguiente" cuando está bloqueado y como guía
+  // para el scroll-to-error.
+  const motivoBloqueo = (): { mensaje: string; idCampo?: string } | null => {
+    if (step === 1) {
+      if (!form.nombre.trim()) return { mensaje: "Ingresa el nombre completo.", idCampo: "nombre" }
+      if (!form.email.trim() || !isEmailValido(form.email))
+        return { mensaje: "Ingresa un correo electrónico válido.", idCampo: "email" }
+      if (!form.cedula.trim()) return { mensaje: "Ingresa la cédula.", idCampo: "cedula" }
+      if (!form.fecha_expedicion_cedula)
+        return { mensaje: "Ingresa la fecha de expedición.", idCampo: "fecha_expedicion_cedula" }
+      if (!form.telefono.trim() || !isTelefonoValido(form.telefono))
+        return { mensaje: "El teléfono debe tener al menos 10 dígitos.", idCampo: "telefono" }
+      return null
+    }
+    if (step === 2) {
+      if (!form.empresa_arrendatario.trim())
+        return { mensaje: "Ingresa la empresa donde labora.", idCampo: "empresa_arrendatario" }
+      if (!form.antiguedad_meses.trim())
+        return { mensaje: "Ingresa la antigüedad en meses.", idCampo: "antiguedad_meses" }
+      if (!form.salario.trim() || !isSalarioValido(form.salario))
+        return {
+          mensaje: "El salario mensual debe ser de al menos $1.000.000.",
+          idCampo: "salario",
+        }
+      return null
+    }
+    if (step === 3) {
+      if (form.unico_arrendatario) return null
+      if (!form.nombre_coarrendatario.trim())
+        return { mensaje: "Ingresa el nombre del coarrendatario.", idCampo: "nombre_coarrendatario" }
+      if (!form.email_coarrendatario.trim() || !isEmailValido(form.email_coarrendatario))
+        return {
+          mensaje: "Ingresa un correo válido del coarrendatario.",
+          idCampo: "email_coarrendatario",
+        }
+      if (!form.cedula_coarrendatario.trim())
+        return { mensaje: "Ingresa la cédula del coarrendatario.", idCampo: "cedula_coarrendatario" }
+      if (form.cedula.trim() === form.cedula_coarrendatario.trim())
+        return {
+          mensaje: "La cédula del coarrendatario no puede ser igual a la del arrendatario.",
+          idCampo: "cedula_coarrendatario",
+        }
+      if (!form.fecha_expedicion_cedula_coarrendatario)
+        return {
+          mensaje: "Ingresa la fecha de expedición del coarrendatario.",
+          idCampo: "fecha_expedicion_cedula_coarrendatario",
+        }
+      if (!form.empresa_coarrendatario.trim())
+        return {
+          mensaje: "Ingresa la empresa del coarrendatario.",
+          idCampo: "empresa_coarrendatario",
+        }
+      if (!form.antiguedad_meses_2.trim())
+        return {
+          mensaje: "Ingresa la antigüedad del coarrendatario.",
+          idCampo: "antiguedad_meses_2",
+        }
+      if (!form.salario_2.trim() || !isSalarioValido(form.salario_2))
+        return {
+          mensaje: "El salario del coarrendatario debe ser de al menos $1.000.000.",
+          idCampo: "salario_2",
+        }
+      if (!form.telefono_coarrendatario.trim() || !isTelefonoValido(form.telefono_coarrendatario))
+        return {
+          mensaje: "El teléfono del coarrendatario debe tener al menos 10 dígitos.",
+          idCampo: "telefono_coarrendatario",
+        }
+      return null
+    }
+    return null
+  }
+
   const handleNext = () => {
+    // Si la validación del paso falla, en vez de no hacer nada, marcar el
+    // intento para que los pasos muestren los mensajes de error y mover el
+    // foco al primer campo inválido.
+    if (!canAdvance()) {
+      setIntentoAvanzar(true)
+      const motivo = motivoBloqueo()
+      if (motivo?.idCampo) {
+        const target = document.getElementById(motivo.idCampo)
+        if (target) {
+          target.scrollIntoView({ behavior: "smooth", block: "center" })
+          // Pequeño delay para no pelear con el scroll antes de enfocar
+          setTimeout(() => {
+            try {
+              target.focus({ preventScroll: true })
+            } catch {
+              target.focus()
+            }
+          }, 250)
+        }
+      }
+      return
+    }
+
     if (step < TOTAL_STEPS) {
       // Si es único arrendatario, saltar el paso 3 (coarrendatario)
       if (step === 2 && form.unico_arrendatario) {
@@ -928,6 +1065,7 @@ export default function AplicacionPage() {
       } else {
         setStep((s) => s + 1)
       }
+      setIntentoAvanzar(false)
     }
   }
 
@@ -938,6 +1076,7 @@ export default function AplicacionPage() {
       } else {
         setStep((s) => s - 1)
       }
+      setIntentoAvanzar(false)
     }
   }
 
@@ -1085,8 +1224,22 @@ export default function AplicacionPage() {
           <form onSubmit={handleSubmit}>
             <div className="px-6 py-5">
               {step === 1 && <Paso1 form={form} onChange={handleChange} disabled={submitting} />}
-              {step === 2 && <Paso2 form={form} onChange={handleChange} disabled={submitting} />}
-              {step === 3 && <Paso3 form={form} onChange={handleChange} disabled={submitting} />}
+              {step === 2 && (
+                <Paso2
+                  form={form}
+                  onChange={handleChange}
+                  disabled={submitting}
+                  intentoAvanzar={intentoAvanzar}
+                />
+              )}
+              {step === 3 && (
+                <Paso3
+                  form={form}
+                  onChange={handleChange}
+                  disabled={submitting}
+                  intentoAvanzar={intentoAvanzar}
+                />
+              )}
               {step === 4 && <Paso4 form={form} onChange={handleChange} disabled={submitting} />}
 
               {submitError && (
@@ -1112,15 +1265,27 @@ export default function AplicacionPage() {
               </Button>
 
               {step < TOTAL_STEPS ? (
-                <Button
-                  type="button"
-                  onClick={handleNext}
-                  disabled={!canAdvance()}
-                  className="bg-cyan-500 hover:bg-cyan-600 text-white"
-                >
-                  Siguiente
-                  <ArrowRight className="ml-1 h-4 w-4" />
-                </Button>
+                (() => {
+                  const motivo = motivoBloqueo()
+                  const bloqueado = motivo !== null
+                  return (
+                    <Button
+                      type="button"
+                      onClick={handleNext}
+                      disabled={submitting}
+                      aria-disabled={bloqueado || undefined}
+                      title={bloqueado ? motivo!.mensaje : undefined}
+                      className={`text-white ${
+                        bloqueado
+                          ? "bg-cyan-500/50 hover:bg-cyan-500/50 cursor-not-allowed"
+                          : "bg-cyan-500 hover:bg-cyan-600"
+                      }`}
+                    >
+                      Siguiente
+                      <ArrowRight className="ml-1 h-4 w-4" />
+                    </Button>
+                  )
+                })()
               ) : (
                 <Button
                   type="submit"
