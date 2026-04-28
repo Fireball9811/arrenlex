@@ -24,6 +24,12 @@ type ScoreFlags = {
     propiedad_id: string | null
   }>
   totalSinPenalizarReincidencia: number
+  // Política de arriendo según dependientes
+  incumplePoliticaArriendo: boolean
+  porcentajeMax: number
+  porcentajeReal: number
+  ingresoMinimoRecomendado: number
+  dependientes: number
 }
 
 type ScoreDetalle = {
@@ -125,12 +131,37 @@ export function calcularScore(r: IntakeFormulario): ResultadoScore {
     }
   }
 
-  const ratio = canon > 0 ? ingresoTotal / canon : 0
+  // Política de arriendo según dependientes:
+  // dependientes = niños del hogar + adultos que no trabajan.
+  // El % máximo del ingreso destinado al arriendo baja a más dependientes.
+  const adultosBase = r.adultos_habitantes ?? r.personas ?? 1
+  const ninosBase = r.ninos_habitantes ?? r.ninos ?? 0
+  const personasTrabajan = r.personas_trabajan ?? 1
+  const adultosNoTrabajan = Math.max(0, adultosBase - personasTrabajan)
+  const dependientes = adultosNoTrabajan + ninosBase
+
+  const porcentajeMax =
+    dependientes <= 0 ? 0.30 :
+    dependientes === 1 ? 0.28 :
+    dependientes === 2 ? 0.25 : 0.22
+
+  const ingresoMinimoRecomendado = canon > 0 ? canon / porcentajeMax : 0
+  const porcentajeReal = ingresoTotal > 0 && canon > 0 ? canon / ingresoTotal : 1
+  const ratioPolitica = ingresoMinimoRecomendado > 0 ? ingresoTotal / ingresoMinimoRecomendado : 0
+  const incumplePoliticaArriendo = canon > 0 && ingresoTotal < ingresoMinimoRecomendado
+
+  const pctRealStr = `${(porcentajeReal * 100).toFixed(1)}%`
+  const pctMaxStr = `${Math.round(porcentajeMax * 100)}%`
+  const depStr = `${dependientes} ${dependientes === 1 ? "dependiente" : "dependientes"}`
+  const baseDesc = `Arriendo = ${pctRealStr} del ingreso (máx ${pctMaxStr}, ${depStr}). Mín. recomendado: ${fmt(ingresoMinimoRecomendado)}`
+
   let ptsPago = 0; let descPago = ""
-  if (ratio >= 3) { ptsPago = 50; descPago = `${ratio.toFixed(1)}x canon — Excelente` }
-  else if (ratio >= 2) { ptsPago = 38; descPago = `${ratio.toFixed(1)}x canon — Aceptable` }
-  else if (ratio >= 1.5) { ptsPago = 30; descPago = `${ratio.toFixed(1)}x canon — Adecuado` }
-  else { ptsPago = 20; descPago = `${ratio.toFixed(1)}x canon — Mínimo aceptable` }
+  if (ratioPolitica >= 1.5) { ptsPago = 50; descPago = `Excelente — holgado vs. política. ${baseDesc}` }
+  else if (ratioPolitica >= 1.2) { ptsPago = 42; descPago = `Muy bueno. ${baseDesc}` }
+  else if (ratioPolitica >= 1.0) { ptsPago = 35; descPago = `Cumple política recomendada. ${baseDesc}` }
+  else if (ratioPolitica >= 0.85) { ptsPago = 20; descPago = `Incumple política — leve. ${baseDesc}` }
+  else if (ratioPolitica >= 0.7) { ptsPago = 10; descPago = `Incumple política — moderado. ${baseDesc}` }
+  else { ptsPago = 3; descPago = `Incumple política — alto riesgo. ${baseDesc}` }
 
   const meses = r.tiempo_servicio_principal_meses ?? r.antiguedad_meses ?? 0
   let ptsLaboral = 0; let descLaboral = ""
@@ -254,6 +285,11 @@ export function calcularScore(r: IntakeFormulario): ResultadoScore {
         tieneRechazoPrevio,
         rechazosPrevios,
         totalSinPenalizarReincidencia: totalBruto,
+        incumplePoliticaArriendo,
+        porcentajeMax,
+        porcentajeReal,
+        ingresoMinimoRecomendado,
+        dependientes,
       },
       total, etiqueta, nivel,
     },
@@ -336,6 +372,31 @@ export function SeccionCalificacion({ registro }: { registro: IntakeFormulario }
           </p>
         </div>
       )}
+      {score.flags.incumplePoliticaArriendo && (() => {
+        const fmtCop = (v: number) =>
+          new Intl.NumberFormat("es-CO", { style: "currency", currency: "COP", maximumFractionDigits: 0 }).format(v)
+        const ingresoTotalReal =
+          (registro.salario_principal ?? registro.salario ?? 0) +
+          (registro.salario_secundario ?? registro.salario_2 ?? 0)
+        const dep = score.flags.dependientes
+        const depLabel = `${dep} ${dep === 1 ? "dependiente" : "dependientes"}`
+        return (
+          <div className="rounded-lg border-2 border-amber-500 bg-amber-100/70 dark:bg-amber-950/50 px-4 py-3 mb-3">
+            <p className="text-sm font-bold text-amber-800 dark:text-amber-200">
+              Incumple política de arriendo
+            </p>
+            <p className="text-xs text-amber-900/90 dark:text-amber-100/90 mt-1">
+              Política recomendada: arriendo ≤ <span className="font-semibold">{Math.round(score.flags.porcentajeMax * 100)}%</span> del ingreso del hogar ({depLabel}).
+              {" "}Hoy el arriendo equivale al{" "}
+              <span className="font-semibold">{(score.flags.porcentajeReal * 100).toFixed(1)}%</span> del ingreso.
+            </p>
+            <p className="text-xs text-amber-900/90 dark:text-amber-100/90 mt-1">
+              Ingreso actual: <span className="font-semibold">{fmtCop(ingresoTotalReal)}</span>{" "}
+              · Mínimo recomendado: <span className="font-semibold">{fmtCop(score.flags.ingresoMinimoRecomendado)}</span>
+            </p>
+          </div>
+        )
+      })()}
       <div className={`rounded-lg border px-4 py-3 mb-4 ${borderColor}`}>
         <div className="flex items-center justify-between mb-2">
           <span className={`text-lg font-bold ${colorTotal}`}>{score.etiqueta}</span>
