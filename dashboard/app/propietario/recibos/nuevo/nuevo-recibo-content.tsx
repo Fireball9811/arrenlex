@@ -49,6 +49,35 @@ export default function NuevoReciboPagoContent() {
 
   const [propiedades, setPropiedades] = useState<Propiedad[]>([])
 
+  const addDays = (dateStr: string, days: number): string => {
+    const d = new Date(dateStr + "T12:00:00")
+    d.setDate(d.getDate() + days)
+    return d.toISOString().split("T")[0]
+  }
+
+  const cargarUltimoRecibo = async (propiedadId: string) => {
+    try {
+      const res = await fetch(`/api/recibos-pago?propiedad_id=${propiedadId}`)
+      if (!res.ok) return
+      const recibos = await res.json()
+      if (recibos.length > 0) {
+        const ultimo = recibos[0]
+        const fechaFin = ultimo.fecha_fin_periodo?.split("T")[0]
+        if (fechaFin) {
+          const nuevaInicio = addDays(fechaFin, 1)
+          const nuevaFin = addDays(nuevaInicio, 30)
+          setFormData((prev) => ({
+            ...prev,
+            fecha_inicio_periodo: prev.fecha_inicio_periodo || nuevaInicio,
+            fecha_fin_periodo: prev.fecha_fin_periodo || nuevaFin,
+          }))
+        }
+      }
+    } catch {
+      // Silencioso
+    }
+  }
+
   const [formData, setFormData] = useState({
     propiedad_id: propiedadIdParam,
     arrendador_nombre: "",
@@ -147,6 +176,9 @@ export default function NuevoReciboPagoContent() {
             } catch (e) {
               // Silencioso
             }
+
+            // Cargar fechas desde el último recibo de la propiedad
+            await cargarUltimoRecibo(propiedadIdParam)
           }
         } else if (!isAdmin) {
           // Si no hay propiedad seleccionada y es propietario, cargar sus datos
@@ -171,6 +203,18 @@ export default function NuevoReciboPagoContent() {
       ...prev,
       [field]: value,
     }))
+  }
+
+  const handlePropiedadChange = async (propiedadId: string) => {
+    setFormData((prev) => ({
+      ...prev,
+      propiedad_id: propiedadId,
+      fecha_inicio_periodo: "",
+      fecha_fin_periodo: "",
+    }))
+    if (propiedadId) {
+      await cargarUltimoRecibo(propiedadId)
+    }
   }
 
   const handleSave = async () => {
@@ -338,7 +382,7 @@ export default function NuevoReciboPagoContent() {
               <label className="block text-sm font-medium mb-1">Propiedad *</label>
               <select
                 value={formData.propiedad_id}
-                onChange={(e) => handleChange("propiedad_id", e.target.value)}
+                onChange={(e) => handlePropiedadChange(e.target.value)}
                 className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
               >
                 <option value="">Selecciona una propiedad</option>

@@ -73,6 +73,12 @@ export default function RecibosPage() {
     }
   }, [router])
 
+  const formatDate = (dateStr: string) => {
+    if (!dateStr) return "—"
+    const [year, month, day] = dateStr.split("T")[0].split("-")
+    return `${day}/${month}/${year}`
+  }
+
   const getEstadoColor = (estado: string) => {
     switch (estado?.toLowerCase()) {
       case "completado":
@@ -161,13 +167,13 @@ export default function RecibosPage() {
                       <div>
                         <p className="text-xs">Período</p>
                         <p className="font-medium">
-                          {new Date(recibo.fecha_inicio_periodo).toLocaleDateString("es-CO")} -{" "}
-                          {new Date(recibo.fecha_fin_periodo).toLocaleDateString("es-CO")}
+                          {formatDate(recibo.fecha_inicio_periodo)} -{" "}
+                          {formatDate(recibo.fecha_fin_periodo)}
                         </p>
                       </div>
                       <div>
                         <p className="text-xs">Fecha Recibo</p>
-                        <p className="font-medium">{new Date(recibo.fecha_recibo).toLocaleDateString("es-CO")}</p>
+                        <p className="font-medium">{formatDate(recibo.fecha_recibo)}</p>
                       </div>
                     </div>
                   </div>
