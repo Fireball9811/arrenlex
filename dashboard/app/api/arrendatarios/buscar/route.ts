@@ -25,12 +25,33 @@ export async function GET(request: Request) {
 
   const { searchParams } = new URL(request.url)
   const nombre = searchParams.get("nombre")
-
-  if (!nombre || nombre.trim() === "") {
-    return NextResponse.json({ error: "Nombre es requerido" }, { status: 400 })
-  }
+  const cedula = searchParams.get("cedula")
 
   const admin = createAdminClient()
+
+  // Búsqueda por cédula (exacta) si viene — más fiable tras editar el recibo
+  if (cedula && cedula.trim() !== "") {
+    const { data: porCedula, error: errCedula } = await admin
+      .from("arrendatarios")
+      .select("id, email, nombre, cedula")
+      .eq("cedula", cedula.trim())
+      .limit(1)
+
+    if (errCedula) {
+      return NextResponse.json({ error: errCedula.message }, { status: 500 })
+    }
+    if (porCedula && porCedula.length > 0) {
+      return NextResponse.json({ email: porCedula[0].email, arrendatario: porCedula[0] })
+    }
+    // Sin coincidencia por cédula y sin nombre → no hay más que buscar
+    if (!nombre?.trim()) {
+      return NextResponse.json({ email: null })
+    }
+  }
+
+  if (!nombre?.trim()) {
+    return NextResponse.json({ error: "Indica nombre o cédula" }, { status: 400 })
+  }
 
   // Buscar arrendatario por nombre
   const { data, error } = await admin

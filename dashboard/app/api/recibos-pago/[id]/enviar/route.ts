@@ -6,6 +6,14 @@ import { Resend } from 'resend'
 
 const resend = new Resend(process.env.RESEND_API_KEY)
 
+/** PostgREST puede devolver FK como objeto o como array de un elemento */
+function unwrapPropiedad<T extends { user_id?: string; direccion?: string }>(
+  row: T | T[] | null | undefined
+): T | null {
+  if (row == null) return null
+  return Array.isArray(row) ? row[0] ?? null : row
+}
+
 export async function POST(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
@@ -56,15 +64,19 @@ export async function POST(
 
   // Si es propietario, verificar que la propiedad pertenezca al usuario
   if (role === "propietario") {
-    const propiedad = recibo.propiedad as any
+    const propiedad = unwrapPropiedad(recibo.propiedad as { user_id?: string } | { user_id?: string }[] | null)
     if (!propiedad || propiedad.user_id !== user.id) {
-      return NextResponse.json({ error: "No tienes permiso para ver este recibo" }, { status: 403 })
+      return NextResponse.json({ error: "No tienes permiso para enviar este recibo" }, { status: 403 })
     }
   }
 
   // Generar URL del PDF
   const baseUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://arrenlex.com"
   const pdfUrl = `${baseUrl}/api/recibos-pago/${id}/pdf`
+
+  const propMail = unwrapPropiedad(
+    recibo.propiedad as { direccion?: string; ciudad?: string } | { direccion?: string; ciudad?: string }[] | null
+  )
 
   // Generar HTML del email
   const emailHtml = `
@@ -91,13 +103,13 @@ export async function POST(
     </div>
     <div class="content">
       <h2>Hola, ${recibo.arrendador_nombre || 'Arrendatario'}</h2>
-      <p>Se ha generado un nuevo recibo de pago para el inmueble que estás arrendando.</p>
+      <p>Aquí tienes el recibo de pago del inmueble arrendado (incluye recién creados o actualizados).</p>
 
       <div class="details">
         <h3>Detalles del Recibo</h3>
         <p><strong>Número:</strong> ${recibo.numero_recibo || 'N/A'}</p>
         <p><strong>Fecha:</strong> ${new Date(recibo.fecha_recibo).toLocaleDateString('es-CO')}</p>
-        <p><strong>Inmueble:</strong> ${recibo.propiedad?.direccion || 'N/A'}, ${recibo.propiedad?.ciudad || 'N/A'}</p>
+        <p><strong>Inmueble:</strong> ${propMail?.direccion || 'N/A'}, ${propMail?.ciudad || 'N/A'}</p>
         <p><strong>Período:</strong> ${recibo.fecha_inicio_periodo ? new Date(recibo.fecha_inicio_periodo).toLocaleDateString('es-CO') : 'N/A'} - ${recibo.fecha_fin_periodo ? new Date(recibo.fecha_fin_periodo).toLocaleDateString('es-CO') : 'N/A'}</p>
       </div>
 
@@ -129,12 +141,13 @@ export async function POST(
   try {
     // Si no se proporcionaron emails, intentar obtener solo el del propietario
     if (emailsToSend.length === 0) {
+      const propiedadRow = unwrapPropiedad(recibo.propiedad as { user_id?: string } | { user_id?: string }[] | null)
       // Obtener email del propietario desde la propiedad
-      if (recibo.propiedad?.user_id) {
+      if (propiedadRow?.user_id) {
         const { data: propietario } = await admin
           .from("perfiles")
           .select("email")
-          .eq("id", recibo.propiedad.user_id)
+          .eq("id", propiedadRow.user_id)
           .single()
 
         if (propietario?.email) {

@@ -3,6 +3,14 @@ import { createClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { getUserRole } from "@/lib/auth/role"
 
+/** PostgREST puede devolver FK como objeto o como array de un elemento */
+function unwrapPropiedad<T extends { user_id?: string }>(
+  row: T | T[] | null | undefined
+): T | null {
+  if (row == null) return null
+  return Array.isArray(row) ? row[0] ?? null : row
+}
+
 /**
  * GET /api/recibos-pago/[id]
  * Obtiene un recibo específico
@@ -51,7 +59,7 @@ export async function GET(
 
   // Si es propietario, verificar que la propiedad pertenezca al usuario
   if (role === "propietario") {
-    const propiedad = recibo.propiedad as any
+    const propiedad = unwrapPropiedad(recibo.propiedad as { user_id?: string } | { user_id?: string }[] | null)
     console.log("🔒 Verificando propiedad:", {
       propiedadUserId: propiedad?.user_id,
       userId: user.id,
@@ -121,21 +129,28 @@ export async function PATCH(
     }
   }
 
-  // Si es propietario, verificar que el recibo pertenezca a una propiedad suya
+  // Si es propietario: la propiedad del recibo (actual o nueva si cambia) debe ser suya
   if (role === "propietario") {
-    const { data: reciboCheck } = await admin
+    const { data: existing } = await admin
       .from("recibos_pago")
-      .select("propiedad_id, propiedades!inner(user_id)")
+      .select("propiedad_id")
       .eq("id", id)
       .single()
 
-    if (!reciboCheck) {
+    if (!existing) {
       return NextResponse.json({ error: "Recibo no encontrado" }, { status: 404 })
     }
 
-    // Verificar que la propiedad pertenezca al usuario
-    const propiedad = reciboCheck.propiedades as any
-    if (propiedad?.user_id !== user.id) {
+    const targetPropiedadId =
+      updateData.propiedad_id !== undefined ? updateData.propiedad_id : existing.propiedad_id
+
+    const { data: propRow } = await admin
+      .from("propiedades")
+      .select("user_id")
+      .eq("id", targetPropiedadId)
+      .single()
+
+    if (!propRow || propRow.user_id !== user.id) {
       return NextResponse.json({ error: "No tienes permiso para editar este recibo" }, { status: 403 })
     }
   }
@@ -184,21 +199,30 @@ export async function PUT(
   const body = await request.json()
   const admin = createAdminClient()
 
-  // Si es propietario, verificar que el recibo pertenezca a una propiedad suya
+  // Si es propietario: propiedad resultante debe ser suya (PUT puede omitir propiedad_id → se conserva la actual)
   if (role === "propietario") {
-    const { data: reciboCheck } = await admin
+    const { data: existing } = await admin
       .from("recibos_pago")
-      .select("propiedad_id, propiedades!inner(user_id)")
+      .select("propiedad_id")
       .eq("id", id)
       .single()
 
-    if (!reciboCheck) {
+    if (!existing) {
       return NextResponse.json({ error: "Recibo no encontrado" }, { status: 404 })
     }
 
-    // Verificar que la propiedad pertenezca al usuario
-    const propiedad = reciboCheck.propiedades as any
-    if (propiedad?.user_id !== user.id) {
+    const targetPropiedadId =
+      body.propiedad_id !== undefined && body.propiedad_id !== null && body.propiedad_id !== ""
+        ? body.propiedad_id
+        : existing.propiedad_id
+
+    const { data: propRow } = await admin
+      .from("propiedades")
+      .select("user_id")
+      .eq("id", targetPropiedadId)
+      .single()
+
+    if (!propRow || propRow.user_id !== user.id) {
       return NextResponse.json({ error: "No tienes permiso para editar este recibo" }, { status: 403 })
     }
   }
@@ -264,19 +288,23 @@ export async function DELETE(
 
   // Si es propietario, verificar que el recibo pertenezca a una propiedad suya
   if (role === "propietario") {
-    const { data: reciboCheck } = await admin
+    const { data: existing } = await admin
       .from("recibos_pago")
-      .select("propiedad_id, propiedades!inner(user_id)")
+      .select("propiedad_id")
       .eq("id", id)
       .single()
 
-    if (!reciboCheck) {
+    if (!existing) {
       return NextResponse.json({ error: "Recibo no encontrado" }, { status: 404 })
     }
 
-    // Verificar que la propiedad pertenezca al usuario
-    const propiedad = reciboCheck.propiedades as any
-    if (propiedad?.user_id !== user.id) {
+    const { data: propRow } = await admin
+      .from("propiedades")
+      .select("user_id")
+      .eq("id", existing.propiedad_id)
+      .single()
+
+    if (!propRow || propRow.user_id !== user.id) {
       return NextResponse.json({ error: "No tienes permiso para eliminar este recibo" }, { status: 403 })
     }
   }

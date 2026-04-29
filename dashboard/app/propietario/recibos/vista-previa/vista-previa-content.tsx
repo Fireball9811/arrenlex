@@ -52,21 +52,81 @@ export default function VistaPreviaReciboContent() {
     let emailArrendatarioSugerido = ""
     let emailPropietarioSugerido = ""
 
-    // Buscar email del arrendatario por nombre
-    if (recibo.arrendador_nombre) {
+    const norm = (s: string) => s.trim().toLowerCase().replace(/\s+/g, " ")
+    const sameCedula = (a: string, b: string) =>
+      String(a || "").replace(/\s/g, "") === String(b || "").replace(/\s/g, "") &&
+      String(a || "").replace(/\s/g, "").length > 0
+
+    // 1) Contratos de la propiedad → emails (igual tras crear o editar el recibo)
+    if (recibo.propiedad_id) {
       try {
-        const res = await fetch(`/api/arrendatarios/buscar?nombre=${encodeURIComponent(recibo.arrendador_nombre)}`)
+        const res = await fetch(`/api/contratos?propiedad_id=${encodeURIComponent(recibo.propiedad_id)}`)
+        if (res.ok) {
+          const contratos = (await res.json()) as Array<{
+            estado?: string
+            arrendatario?: { nombre?: string; cedula?: string; email?: string | null }
+            propietario?: { email?: string | null }
+          }>
+
+          const matchArr = (c: (typeof contratos)[0]) => {
+            const a = c.arrendatario
+            if (!a) return false
+            if (sameCedula(recibo.arrendador_cedula || "", a.cedula || "")) return true
+            if (recibo.arrendador_nombre && a.nombre && norm(a.nombre) === norm(recibo.arrendador_nombre))
+              return true
+            return false
+          }
+
+          let pool = contratos.filter((c) => c.estado === "activo")
+          if (pool.length === 0) pool = contratos.filter((c) => c.estado === "borrador")
+          if (pool.length === 0) pool = contratos
+
+          let contrato = pool.find(matchArr)
+          if (!contrato && pool.length === 1) contrato = pool[0]
+
+          if (contrato?.arrendatario?.email) {
+            emailArrendatarioSugerido = contrato.arrendatario.email
+          }
+          if (contrato?.propietario?.email) {
+            emailPropietarioSugerido = contrato.propietario.email
+          }
+        }
+      } catch {
+        // Seguir con otros métodos
+      }
+    }
+
+    // 2) Correo del usuario logueado (propietario)
+    try {
+      const meRes = await fetch("/api/auth/me")
+      if (meRes.ok) {
+        const me = await meRes.json()
+        if (me.email && !emailPropietarioSugerido) {
+          emailPropietarioSugerido = me.email
+        }
+      }
+    } catch {
+      /* noop */
+    }
+
+    // 3) Fallback: búsqueda por nombre / cédula en la tabla arrendatarios
+    if (!emailArrendatarioSugerido && (recibo.arrendador_nombre || recibo.arrendador_cedula)) {
+      try {
+        const params = new URLSearchParams()
+        if (recibo.arrendador_nombre?.trim()) params.set("nombre", recibo.arrendador_nombre.trim())
+        if (recibo.arrendador_cedula?.trim()) params.set("cedula", recibo.arrendador_cedula.trim())
+        const res = await fetch(`/api/arrendatarios/buscar?${params.toString()}`)
         if (res.ok) {
           const data = await res.json()
           emailArrendatarioSugerido = data.email || ""
         }
       } catch {
-        // Si falla, continuar sin email
+        /* noop */
       }
     }
 
-    // Buscar email del propietario por nombre
-    if (recibo.propietario_nombre) {
+    // 4) Fallback propietario por nombre en perfiles
+    if (!emailPropietarioSugerido && recibo.propietario_nombre) {
       try {
         const res = await fetch(`/api/perfiles/buscar?nombre=${encodeURIComponent(recibo.propietario_nombre)}`)
         if (res.ok) {
@@ -74,7 +134,7 @@ export default function VistaPreviaReciboContent() {
           emailPropietarioSugerido = data.email || ""
         }
       } catch {
-        // Si falla, continuar sin email
+        /* noop */
       }
     }
 
@@ -519,10 +579,17 @@ export default function VistaPreviaReciboContent() {
 
       {/* Botones de acción al final - no se imprimen */}
       <div className="print:hidden mt-8 flex flex-col sm:flex-row gap-4 justify-center border-t pt-6">
-        <Link href={`/propietario/recibos/nuevo?propiedad_id=${recibo.propiedad_id}`} className="flex-1 max-w-xs">
+        <Link
+          href={
+            reciboId
+              ? `/propietario/recibos/${reciboId}/editar`
+              : `/propietario/recibos/nuevo?propiedad_id=${recibo?.propiedad_id ?? ""}`
+          }
+          className="flex-1 max-w-xs"
+        >
           <Button variant="outline" className="w-full">
             <X className="mr-2 h-4 w-4" />
-            Cancelar y Editar
+            Editar recibo
           </Button>
         </Link>
         <Button onClick={handleImprimir} variant="outline" className="flex-1 max-w-xs">
@@ -551,7 +618,7 @@ export default function VistaPreviaReciboContent() {
             <CardHeader>
               <CardTitle>Enviar Recibo por Email</CardTitle>
               <CardDescription>
-                El recibo se enviará automáticamente al arrendatario y al propietario
+                Puedes enviar el recibo por correo tanto si lo acabas de crear como si lo editaste. Revisa o completa los correos y confirma.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
