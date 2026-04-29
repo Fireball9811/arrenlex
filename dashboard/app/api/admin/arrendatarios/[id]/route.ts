@@ -197,8 +197,8 @@ export async function PUT(
 
 /**
  * DELETE - Eliminar un arrendatario por ID
- * NOTA: Esto solo elimina el arrendatario, NO elimina el usuario asociado
- * Permite eliminar arrendatarios vinculados a la propia cuenta del admin
+ * Admin: puede eliminar cualquier arrendatario.
+ * Propietario: solo puede eliminar arrendatarios con contrato en sus propiedades.
  */
 export async function DELETE(
   request: Request,
@@ -216,15 +216,25 @@ export async function DELETE(
   const admin = createAdminClient()
   const { id } = await params
 
-  // Verificar que el usuario es admin
-  const { data: perfil } = await admin
-    .from("perfiles")
-    .select("role")
-    .eq("id", user.id)
-    .single()
+  // Verificar rol del usuario
+  const role = await getUserRole(supabase, user)
 
-  if (!perfil || perfil.role !== "admin") {
-    return NextResponse.json({ error: "Solo administradores pueden eliminar arrendatarios" }, { status: 403 })
+  if (role !== "admin" && role !== "propietario") {
+    return NextResponse.json({ error: "No tienes permiso para eliminar arrendatarios" }, { status: 403 })
+  }
+
+  // Propietario: verificar que tiene un contrato con este arrendatario
+  if (role === "propietario") {
+    const { data: contrato } = await admin
+      .from("contratos")
+      .select("id")
+      .eq("arrendatario_id", id)
+      .eq("user_id", user.id)
+      .maybeSingle()
+
+    if (!contrato) {
+      return NextResponse.json({ error: "No tienes permiso para eliminar este arrendatario" }, { status: 403 })
+    }
   }
 
   try {

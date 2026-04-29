@@ -1,35 +1,39 @@
 import { NextResponse } from "next/server"
 import { createAdminClient } from "@/lib/supabase/admin"
+import { createClient } from "@/lib/supabase/server"
+import { getUserRole } from "@/lib/auth/role"
 
 /**
  * API para obtener contadores de propiedades
  * Endpoint: /api/reportes/propiedades/counts
- * Devuelve estadísticas reales de propiedades por estado
+ * Admin: todas las propiedades. Propietario: solo sus propiedades.
  */
 export async function GET() {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
   const admin = createAdminClient()
+
+  // Detectar si es propietario para filtrar por sus propiedades
+  let propietarioId: string | null = null
+  if (user) {
+    const role = await getUserRole(supabase, user)
+    if (role === "propietario") {
+      propietarioId = user.id
+    }
+  }
+
+  const buildCountQuery = (estado: string) => {
+    let q = admin.from("propiedades").select("*", { count: "exact", head: true }).eq("estado", estado)
+    if (propietarioId) q = q.eq("user_id", propietarioId)
+    return q
+  }
 
   try {
     // Contar propiedades por estado
-    const { count: disponibles, error: errDisponibles } = await admin
-      .from("propiedades")
-      .select("*", { count: "exact", head: true })
-      .eq("estado", "disponible")
-
-    const { count: arrendadas, error: errArrendadas } = await admin
-      .from("propiedades")
-      .select("*", { count: "exact", head: true })
-      .eq("estado", "arrendado")
-
-    const { count: mantenimiento, error: errMantenimiento } = await admin
-      .from("propiedades")
-      .select("*", { count: "exact", head: true })
-      .eq("estado", "mantenimiento")
-
-    const { count: pendientes, error: errPendientes } = await admin
-      .from("propiedades")
-      .select("*", { count: "exact", head: true })
-      .eq("estado", "pendiente")
+    const { count: disponibles, error: errDisponibles } = await buildCountQuery("disponible")
+    const { count: arrendadas, error: errArrendadas } = await buildCountQuery("arrendado")
+    const { count: mantenimiento, error: errMantenimiento } = await buildCountQuery("mantenimiento")
+    const { count: pendientes, error: errPendientes } = await buildCountQuery("pendiente")
 
     // Log de errores para debugging
     if (errDisponibles) console.error("[api/reportes/propiedades/counts] Error contando disponibles:", errDisponibles)
@@ -43,10 +47,10 @@ export async function GET() {
     // Tasa de ocupación
     const tasaOcupacion = total > 0 ? Math.round(((arrendadas || 0) / total) * 100) : 0
 
-    // Promedio de ingresos (sumar valor_arriendo de todas y dividir por total)
-    const { data: todasProps, error: errProps } = await admin
-      .from("propiedades")
-      .select("valor_arriendo")
+    // Promedio de ingresos (sumar valor_arriendo de las propiedades filtradas)
+    let ingresoQuery = admin.from("propiedades").select("valor_arriendo")
+    if (propietarioId) ingresoQuery = ingresoQuery.eq("user_id", propietarioId)
+    const { data: todasProps, error: errProps } = await ingresoQuery
 
     if (errProps) console.error("[api/reportes/propiedades/counts] Error obteniendo valores:", errProps)
 

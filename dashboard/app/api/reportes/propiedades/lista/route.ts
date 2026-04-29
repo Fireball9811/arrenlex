@@ -1,11 +1,12 @@
 import { NextResponse } from "next/server"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { createClient } from "@/lib/supabase/server"
-import { isAdminRole } from "@/lib/auth/role"
+import { getUserRole } from "@/lib/auth/role"
 
 /**
  * API para obtener listado de propiedades con información de propietario
  * Endpoint: /api/reportes/propiedades/lista?filtro=todos|disponibles|arrendadas|mantenimiento
+ * Admin: todas las propiedades. Propietario: solo las suyas.
  */
 export async function GET(request: Request) {
   const supabaseServer = await createClient()
@@ -17,8 +18,9 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "No autorizado" }, { status: 401 })
   }
 
-  if (!(await isAdminRole(supabaseServer, user.id))) {
-    return NextResponse.json({ error: "Solo administradores pueden ver el listado" }, { status: 403 })
+  const role = await getUserRole(supabaseServer, user)
+  if (role !== "admin" && role !== "propietario") {
+    return NextResponse.json({ error: "No autorizado para ver el listado" }, { status: 403 })
   }
 
   const admin = createAdminClient()
@@ -30,6 +32,11 @@ export async function GET(request: Request) {
       .from("propiedades")
       .select("*")
       .order("created_at", { ascending: false })
+
+    // Propietario: filtrar solo sus propiedades
+    if (role === "propietario") {
+      query = query.eq("user_id", user.id)
+    }
 
     // Aplicar filtro si no es "todos"
     if (filtro !== "todos") {
