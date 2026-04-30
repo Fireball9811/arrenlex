@@ -12,7 +12,7 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import type { ContratoConRelaciones } from "@/lib/types/database"
-import { FileText, Download, ArrowLeft, FileCheck2 } from "lucide-react"
+import { FileText, Download, ArrowLeft, FileCheck2, ClipboardList } from "lucide-react"
 import { DocumentosContrato } from "@/components/contratos/documentos-contrato"
 import { RecibosContrato } from "@/components/contratos/recibos-contrato"
 
@@ -40,6 +40,10 @@ export default function PropietarioContratoDetallePage() {
 
   async function handleDownloadPDF() {
     window.open(`/api/contratos/${params.id}/generar-pdf`, "_blank")
+  }
+
+  function handleDownloadInventario() {
+    window.open(`/api/contratos/${params.id}/inventario-pdf`, "_blank")
   }
 
   const formatPeso = (n: number) =>
@@ -101,6 +105,10 @@ export default function PropietarioContratoDetallePage() {
           <h1 className="text-3xl font-bold">Detalle del Contrato</h1>
         </div>
         <div className="flex flex-wrap gap-2">
+          <Button variant="outline" onClick={handleDownloadInventario}>
+            <ClipboardList className="mr-2 h-4 w-4" />
+            Descargar inventario
+          </Button>
           <Button variant="outline" onClick={handleDownloadPDF}>
             <Download className="mr-2 h-4 w-4" />
             Descargar PDF
@@ -218,7 +226,11 @@ export default function PropietarioContratoDetallePage() {
           </Card>
 
           <Card className="bg-muted/50">
-            <CardContent className="pt-6">
+            <CardContent className="space-y-2 pt-6">
+              <Button className="w-full" variant="outline" onClick={handleDownloadInventario}>
+                <ClipboardList className="mr-2 h-4 w-4" />
+                Descargar inventario
+              </Button>
               <Button className="w-full" onClick={handleDownloadPDF}>
                 <FileText className="mr-2 h-4 w-4" />
                 Generar Contrato PDF

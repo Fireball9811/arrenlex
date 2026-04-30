@@ -118,7 +118,7 @@ export default function ContratoDetallePage() {
           </Button>
           <Button variant="outline" onClick={handleDownloadInventario}>
             <ClipboardList className="mr-2 h-4 w-4" />
-            Inventario PDF
+            Descargar inventario
           </Button>
           <Button variant="outline" asChild>
             <Link href={`/contratos/${contrato.id}/editar`}>
