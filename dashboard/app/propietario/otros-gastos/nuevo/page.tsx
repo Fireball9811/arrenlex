@@ -59,7 +59,7 @@ export default function NuevoOtroGastoPage() {
     if (proveedor) {
       setNombreCompleto(proveedor.nombre_completo)
       setCedula(proveedor.cedula)
-      setTarjetaProfesional(proveedor.tarjetaProfesional || "")
+      setTarjetaProfesional(proveedor.tarjeta_profesional || "")
       setCorreoElectronico(proveedor.correo_electronico || "")
     }
   }
