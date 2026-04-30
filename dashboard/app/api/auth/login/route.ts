@@ -87,7 +87,7 @@ export async function POST(request: Request) {
     console.log("[auth/login] Intentando autenticar con email:", emailToUse)
 
     // Intentar iniciar sesión con Supabase Auth
-    const supabase = createClient()
+    const supabase = await createClient()
     const { data, error: signInError } = await supabase.auth.signInWithPassword({
       email: emailToUse,
       password,
