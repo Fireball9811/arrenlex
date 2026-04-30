@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Plus, MapPin, Home, Edit2, Trash2, Receipt, Link2, Copy, Check } from "lucide-react"
+import { Plus, MapPin, Home, Edit2, Trash2, Receipt, Link2, Copy, Check, DollarSign } from "lucide-react"
 import { useLang } from "@/lib/i18n/context"
 
 interface Propiedad {
@@ -300,6 +300,12 @@ export default function PropietarioPropiedadesPage() {
                       </p>
                     </div>
                     <div className="flex gap-2 pt-2">
+                      <Link href={`/propietario/otros-gastos/nuevo?propiedad_id=${propiedad.id}&propiedad_titulo=${encodeURIComponent(propiedad.titulo || propiedad.direccion)}`} className="flex-1">
+                        <Button variant="outline" size="sm" className="w-full">
+                          <DollarSign className="mr-2 h-4 w-4" />
+                          Otros Gastos
+                        </Button>
+                      </Link>
                       <Link href={`/propietario/propiedades/${propiedad.id}/recibos`} className="flex-1">
                         <Button variant="outline" size="sm" className="w-full">
                           <Receipt className="mr-2 h-4 w-4" />

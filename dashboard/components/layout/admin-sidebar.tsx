@@ -93,6 +93,10 @@ export function AdminSidebar() {
             </span>
           )}
         </Link>
+        <Link href="/admin/otros-gastos" className="flex items-center gap-3 rounded p-2 transition hover:bg-sky-200">
+          <DollarSign className="h-4 w-4" />
+          {t.sidebar.otrosGastos}
+        </Link>
         <Link href="/admin/reportes" className="flex items-center gap-3 rounded p-2 transition hover:bg-sky-200">
           <BarChart3 className="h-4 w-4" />
           {t.sidebar.reportes}

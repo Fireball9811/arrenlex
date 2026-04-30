@@ -99,6 +99,9 @@ export function PropietarioSidebar() {
             </span>
           )}
         </Link>
+        <Link href="/propietario/otros-gastos" className="block rounded p-2 transition hover:bg-green-200">
+          {t.sidebar.otrosGastos}
+        </Link>
       </nav>
       <div className="relative space-y-2 border-t border-green-300 p-4">
         <button
