@@ -7,6 +7,8 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { ArrowLeft, Save, X, Loader2 } from "lucide-react"
+import { todayLocalISODate } from "@/lib/utils/calendar-date"
+import { fechasPeriodoRecibo } from "@/lib/utils/recibo-periodo"
 
 interface Propiedad {
   id: string
@@ -58,7 +60,7 @@ export default function EditarReciboPage() {
     fecha_inicio_periodo: "",
     fecha_fin_periodo: "",
     tipo_pago: "arriendo",
-    fecha_recibo: new Date().toISOString().split("T")[0],
+    fecha_recibo: todayLocalISODate(),
     numero_recibo: "",
     cuenta_consignacion: "",
     referencia_pago: "",
@@ -103,7 +105,7 @@ export default function EditarReciboPage() {
           fecha_inicio_periodo: reciboData.fecha_inicio_periodo?.split("T")[0] || "",
           fecha_fin_periodo: reciboData.fecha_fin_periodo?.split("T")[0] || "",
           tipo_pago: reciboData.tipo_pago || "arriendo",
-          fecha_recibo: reciboData.fecha_recibo?.split("T")[0] || new Date().toISOString().split("T")[0],
+          fecha_recibo: reciboData.fecha_recibo?.split("T")[0] || todayLocalISODate(),
           numero_recibo: reciboData.numero_recibo || "",
           cuenta_consignacion: reciboData.cuenta_consignacion || "",
           referencia_pago: reciboData.referencia_pago || "",
@@ -128,6 +130,15 @@ export default function EditarReciboPage() {
   const handleSave = async () => {
     if (!formData.propiedad_id || !formData.arrendador_nombre || !formData.valor_arriendo) {
       setError("Por favor completa los campos obligatorios")
+      return
+    }
+    const periodo = fechasPeriodoRecibo(
+      formData.tipo_pago,
+      formData.fecha_inicio_periodo,
+      formData.fecha_fin_periodo
+    )
+    if (!periodo.ok) {
+      setError(periodo.error)
       return
     }
 
@@ -335,24 +346,35 @@ export default function EditarReciboPage() {
               </div>
             </div>
 
-            {/* Período */}
+            {/* Período (obligatorio solo para arriendo) */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium mb-1">Fecha Inicio Período *</label>
+                <label className="block text-sm font-medium mb-1">
+                  Fecha inicio período{formData.tipo_pago === "arriendo" ? " *" : ""}
+                </label>
                 <Input
                   type="date"
                   value={formData.fecha_inicio_periodo}
                   onChange={(e) => handleChange("fecha_inicio_periodo", e.target.value)}
+                  disabled={formData.tipo_pago !== "arriendo"}
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1">Fecha Fin Período *</label>
+                <label className="block text-sm font-medium mb-1">
+                  Fecha fin período{formData.tipo_pago === "arriendo" ? " *" : ""}
+                </label>
                 <Input
                   type="date"
                   value={formData.fecha_fin_periodo}
                   onChange={(e) => handleChange("fecha_fin_periodo", e.target.value)}
+                  disabled={formData.tipo_pago !== "arriendo"}
                 />
               </div>
+              <p className="text-xs text-muted-foreground md:col-span-2">
+                {formData.tipo_pago === "arriendo"
+                  ? "Período de canon que cubre este pago."
+                  : "Para depósito, servicios u otro no se exige período de canon."}
+              </p>
             </div>
 
             {/* Tipo de Pago y Fecha Recibo */}
@@ -361,10 +383,20 @@ export default function EditarReciboPage() {
                 <label className="block text-sm font-medium mb-1">Tipo de Pago *</label>
                 <select
                   value={formData.tipo_pago}
-                  onChange={(e) => handleChange("tipo_pago", e.target.value)}
+                  onChange={(e) => {
+                    const v = e.target.value
+                    setFormData((prev) => ({
+                      ...prev,
+                      tipo_pago: v,
+                      ...(v !== "arriendo"
+                        ? { fecha_inicio_periodo: "", fecha_fin_periodo: "" }
+                        : {}),
+                    }))
+                  }}
                   className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                 >
                   <option value="arriendo">Arriendo</option>
+                  <option value="deposito">Depósito</option>
                   <option value="servicios">Servicios</option>
                   <option value="otro">Otro</option>
                 </select>

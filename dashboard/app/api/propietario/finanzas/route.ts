@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server"
+import { calendarMonthKey, calendarYearKey } from "@/lib/utils/calendar-date"
 import { createClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { getUserRole } from "@/lib/auth/role"
@@ -107,10 +108,9 @@ export async function GET(request: Request) {
     for (const recibo of recibos ?? []) {
       if (!recibo.fecha_recibo) continue
 
-      const fecha = new Date(recibo.fecha_recibo)
       const clave = vista === "mensual"
-        ? `${fecha.getFullYear()}-${String(fecha.getMonth() + 1).padStart(2, "0")}`
-        : String(fecha.getFullYear())
+        ? calendarMonthKey(recibo.fecha_recibo)
+        : calendarYearKey(recibo.fecha_recibo)
 
       ingresosMap.set(clave, (ingresosMap.get(clave) || 0) + (recibo.valor_arriendo || 0))
     }

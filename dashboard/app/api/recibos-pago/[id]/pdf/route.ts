@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { getUserRole } from "@/lib/auth/role"
+import { formatCalendarDateEs } from "@/lib/utils/calendar-date"
 
 export async function GET(
   request: Request,
@@ -256,7 +257,7 @@ export async function GET(
   <div class="recibo-container">
     <div class="recibo-header">
       <h1>RECIBO DE PAGO</h1>
-      <p>No. ${recibo.numero_recibo || 'N/A'} | Fecha: ${new Date(recibo.fecha_recibo).toLocaleDateString('es-CO')}</p>
+      <p>No. ${recibo.numero_recibo || 'N/A'} | Fecha: ${formatCalendarDateEs(recibo.fecha_recibo, 'N/A')}</p>
     </div>
 
     <div class="recibo-info-grid">
@@ -292,7 +293,7 @@ export async function GET(
         </tr>
         <tr>
           <td>Período Cancelado:</td>
-          <td>Del ${recibo.fecha_inicio_periodo ? new Date(recibo.fecha_inicio_periodo).toLocaleDateString('es-CO') : 'N/A'} al ${recibo.fecha_fin_periodo ? new Date(recibo.fecha_fin_periodo).toLocaleDateString('es-CO') : 'N/A'}</td>
+          <td>Del ${recibo.fecha_inicio_periodo ? formatCalendarDateEs(recibo.fecha_inicio_periodo, 'N/A') : 'N/A'} al ${recibo.fecha_fin_periodo ? formatCalendarDateEs(recibo.fecha_fin_periodo, 'N/A') : 'N/A'}</td>
         </tr>
         ${recibo.cuenta_consignacion ? `
         <tr>

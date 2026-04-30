@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { getUserRole } from "@/lib/auth/role"
+import { fechasPeriodoRecibo } from "@/lib/utils/recibo-periodo"
 
 /** PostgREST puede devolver FK como objeto o como array de un elemento */
 function unwrapPropiedad<T extends { user_id?: string }>(
@@ -125,8 +126,45 @@ export async function PATCH(
 
   for (const field of allowedFields) {
     if (body[field] !== undefined) {
-      updateData[field] = body[field]
+      let val = body[field]
+      if (
+        (field === "fecha_inicio_periodo" || field === "fecha_fin_periodo") &&
+        (val === "" || val === null)
+      ) {
+        val = null
+      }
+      updateData[field] = val
     }
+  }
+
+  const tocaPeriodo =
+    updateData.tipo_pago !== undefined ||
+    updateData.fecha_inicio_periodo !== undefined ||
+    updateData.fecha_fin_periodo !== undefined
+
+  if (tocaPeriodo) {
+    const { data: ex } = await admin
+      .from("recibos_pago")
+      .select("tipo_pago, fecha_inicio_periodo, fecha_fin_periodo")
+      .eq("id", id)
+      .single()
+
+    if (!ex) {
+      return NextResponse.json({ error: "Recibo no encontrado" }, { status: 404 })
+    }
+
+    const mergedTipo = (updateData.tipo_pago ?? ex.tipo_pago) as string
+    const mergedIni =
+      updateData.fecha_inicio_periodo !== undefined ? updateData.fecha_inicio_periodo : ex.fecha_inicio_periodo
+    const mergedFin =
+      updateData.fecha_fin_periodo !== undefined ? updateData.fecha_fin_periodo : ex.fecha_fin_periodo
+
+    const periodo = fechasPeriodoRecibo(mergedTipo, mergedIni, mergedFin)
+    if (!periodo.ok) {
+      return NextResponse.json({ error: periodo.error }, { status: 400 })
+    }
+    updateData.fecha_inicio_periodo = periodo.fecha_inicio_periodo
+    updateData.fecha_fin_periodo = periodo.fecha_fin_periodo
   }
 
   // Si es propietario: la propiedad del recibo (actual o nueva si cambia) debe ser suya
@@ -227,6 +265,15 @@ export async function PUT(
     }
   }
 
+  const periodoPut = fechasPeriodoRecibo(
+    body.tipo_pago,
+    body.fecha_inicio_periodo,
+    body.fecha_fin_periodo
+  )
+  if (!periodoPut.ok) {
+    return NextResponse.json({ error: periodoPut.error }, { status: 400 })
+  }
+
   let query = admin
     .from("recibos_pago")
     .update({
@@ -236,9 +283,9 @@ export async function PUT(
       propietario_cedula: body.propietario_cedula,
       valor_arriendo: body.valor_arriendo,
       valor_arriendo_letras: body.valor_arriendo_letras,
-      fecha_inicio_periodo: body.fecha_inicio_periodo,
-      fecha_fin_periodo: body.fecha_fin_periodo,
-      tipo_pago: body.tipo_pago,
+      fecha_inicio_periodo: periodoPut.fecha_inicio_periodo,
+      fecha_fin_periodo: periodoPut.fecha_fin_periodo,
+      tipo_pago: body.tipo_pago ?? "arriendo",
       fecha_recibo: body.fecha_recibo,
       numero_recibo: body.numero_recibo,
       cuenta_consignacion: body.cuenta_consignacion,

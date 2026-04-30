@@ -16,14 +16,15 @@ import {
   DollarSign,
   Loader2,
 } from "lucide-react"
+import { formatCalendarDateEs } from "@/lib/utils/calendar-date"
 
 type Recibo = {
   id: string
   contrato_id: string
   arrendador_nombre: string
   valor_arriendo: number
-  fecha_inicio_periodo: string
-  fecha_fin_periodo: string
+  fecha_inicio_periodo: string | null
+  fecha_fin_periodo: string | null
   tipo_pago: string
   fecha_recibo: string
   numero_recibo: string
@@ -147,7 +148,9 @@ export function RecibosContrato({ contratoId, puedeEditar }: RecibosContratoProp
                     <div className="flex items-center gap-2 text-muted-foreground">
                       <Calendar className="h-3 w-3" />
                       <span>
-                        {new Date(recibo.fecha_inicio_periodo).toLocaleDateString("es-CO")} - {new Date(recibo.fecha_fin_periodo).toLocaleDateString("es-CO")}
+                        {!recibo.fecha_inicio_periodo && !recibo.fecha_fin_periodo
+                          ? "Sin período"
+                          : `${formatCalendarDateEs(recibo.fecha_inicio_periodo)} – ${formatCalendarDateEs(recibo.fecha_fin_periodo)}`}
                       </span>
                     </div>
                     <div className="flex items-center gap-2 text-muted-foreground">

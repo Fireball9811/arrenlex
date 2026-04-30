@@ -6,6 +6,7 @@ import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { ArrowLeft, Edit2, Download, Trash2 } from "lucide-react"
+import { formatCalendarDateEs } from "@/lib/utils/calendar-date"
 
 interface ReciboPago {
   id: string
@@ -144,7 +145,7 @@ export default function VerReciboPagoPage() {
             <div className="text-center border-b-2 pb-4">
               <h1 className="text-3xl font-bold">RECIBO DE PAGO</h1>
               <p className="text-muted-foreground">Nº {recibo.numero_recibo || recibo.id.slice(0, 8)}</p>
-              <p className="text-sm text-muted-foreground">{new Date(recibo.fecha_recibo).toLocaleDateString("es-CO")}</p>
+              <p className="text-sm text-muted-foreground">{formatCalendarDateEs(recibo.fecha_recibo)}</p>
             </div>
 
             {/* Información de Partes */}
@@ -175,8 +176,8 @@ export default function VerReciboPagoPage() {
             <div className="border-y py-4">
               <p className="text-sm font-semibold text-muted-foreground">PERÍODO DE PAGO:</p>
               <p className="text-lg font-bold">
-                Del {new Date(recibo.fecha_inicio_periodo).toLocaleDateString("es-CO")} al{" "}
-                {new Date(recibo.fecha_fin_periodo).toLocaleDateString("es-CO")}
+                Del {formatCalendarDateEs(recibo.fecha_inicio_periodo)} al{" "}
+                {formatCalendarDateEs(recibo.fecha_fin_periodo)}
               </p>
             </div>
 

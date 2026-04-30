@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { getUserRole } from "@/lib/auth/role"
+import { fechasPeriodoRecibo } from "@/lib/utils/recibo-periodo"
 
 /**
  * GET /api/recibos-pago
@@ -137,6 +138,15 @@ export async function POST(request: Request) {
     }
   }
 
+  const periodo = fechasPeriodoRecibo(
+    body.tipo_pago,
+    body.fecha_inicio_periodo,
+    body.fecha_fin_periodo
+  )
+  if (!periodo.ok) {
+    return NextResponse.json({ error: periodo.error }, { status: 400 })
+  }
+
   // NO enviar numero_recibo - se autogenera en la base de datos
   const { data, error } = await admin
     .from("recibos_pago")
@@ -149,9 +159,9 @@ export async function POST(request: Request) {
       propietario_cedula: body.propietario_cedula,
       valor_arriendo: body.valor_arriendo,
       valor_arriendo_letras: body.valor_arriendo_letras,
-      fecha_inicio_periodo: body.fecha_inicio_periodo,
-      fecha_fin_periodo: body.fecha_fin_periodo,
-      tipo_pago: body.tipo_pago,
+      fecha_inicio_periodo: periodo.fecha_inicio_periodo,
+      fecha_fin_periodo: periodo.fecha_fin_periodo,
+      tipo_pago: body.tipo_pago ?? "arriendo",
       fecha_recibo: body.fecha_recibo,
       // numero_recibo se autogenera
       cuenta_consignacion: body.cuenta_consignacion,

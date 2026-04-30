@@ -6,6 +6,7 @@ import { ArrowLeft, ChevronDown, ChevronUp, FileText } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { formatCalendarDateEs } from "@/lib/utils/calendar-date"
 
 interface Recibo {
   id: string
@@ -52,12 +53,6 @@ function formatCOP(value: number) {
     currency: "COP",
     maximumFractionDigits: 0,
   }).format(value)
-}
-
-function formatDate(dateStr: string | null) {
-  if (!dateStr) return "-"
-  const [year, month, day] = dateStr.split("T")[0].split("-")
-  return `${day}/${month}/${year}`
 }
 
 function getTodayStr() {
@@ -237,8 +232,8 @@ export default function AdminHistorialPagosPage() {
               <CardTitle className="text-sm font-medium">Período</CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-sm font-semibold">{formatDate(fechaInicio)}</p>
-              <p className="text-xs text-muted-foreground">al {formatDate(fechaFin)}</p>
+              <p className="text-sm font-semibold">{formatCalendarDateEs(fechaInicio, "-")}</p>
+              <p className="text-xs text-muted-foreground">al {formatCalendarDateEs(fechaFin, "-")}</p>
             </CardContent>
           </Card>
         </div>
@@ -318,15 +313,15 @@ export default function AdminHistorialPagosPage() {
                               <td className="px-4 py-2 font-mono text-xs">
                                 {recibo.numero_recibo ?? "—"}
                               </td>
-                              <td className="px-4 py-2">{formatDate(recibo.fecha_recibo)}</td>
+                              <td className="px-4 py-2">{formatCalendarDateEs(recibo.fecha_recibo, "-")}</td>
                               <td className="px-4 py-2">
                                 {recibo.propiedad
                                   ? `${recibo.propiedad.direccion}${recibo.propiedad.ciudad ? `, ${recibo.propiedad.ciudad}` : ""}`
                                   : "—"}
                               </td>
                               <td className="px-4 py-2 text-xs text-muted-foreground">
-                                {formatDate(recibo.fecha_inicio_periodo)} –{" "}
-                                {formatDate(recibo.fecha_fin_periodo)}
+                                {formatCalendarDateEs(recibo.fecha_inicio_periodo, "-")} –{" "}
+                                {formatCalendarDateEs(recibo.fecha_fin_periodo, "-")}
                               </td>
                               <td className="px-4 py-2 text-right font-semibold text-green-700">
                                 {formatCOP(recibo.valor_arriendo)}

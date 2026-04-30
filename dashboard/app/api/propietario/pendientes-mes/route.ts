@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { getUserRole } from "@/lib/auth/role"
+import { lastDayOfMonthLocal } from "@/lib/utils/calendar-date"
 
 /**
  * GET /api/propietario/pendientes-mes
@@ -34,7 +35,7 @@ export async function GET(request: Request) {
   const anio = ahora.getFullYear()
   const mes = ahora.getMonth() + 1
   const primerDia = `${anio}-${String(mes).padStart(2, "0")}-01`
-  const ultimoDia = new Date(anio, mes, 0).toISOString().split("T")[0]
+  const ultimoDia = lastDayOfMonthLocal(anio, mes)
 
   // Obtener contratos activos del propietario con info de propiedad y arrendatario
   let queryContratos = admin

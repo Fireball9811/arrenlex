@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { ArrowLeft, Save, X } from "lucide-react"
+import { addCalendarDays, todayLocalISODate } from "@/lib/utils/calendar-date"
 
 interface Propiedad {
   id: string
@@ -49,13 +50,10 @@ export default function NuevoReciboPagoContent() {
 
   const [propiedades, setPropiedades] = useState<Propiedad[]>([])
 
-  const addDays = (dateStr: string, days: number): string => {
-    const d = new Date(dateStr + "T12:00:00")
-    d.setDate(d.getDate() + days)
-    return d.toISOString().split("T")[0]
-  }
+  const addDays = (dateStr: string, days: number): string => addCalendarDays(dateStr, days)
 
-  const cargarUltimoRecibo = async (propiedadId: string) => {
+  const cargarUltimoRecibo = async (propiedadId: string, tipoPago: string) => {
+    if (tipoPago !== "arriendo") return
     try {
       const res = await fetch(`/api/recibos-pago?propiedad_id=${propiedadId}`)
       if (!res.ok) return
@@ -89,7 +87,7 @@ export default function NuevoReciboPagoContent() {
     fecha_inicio_periodo: "",
     fecha_fin_periodo: "",
     tipo_pago: "arriendo",
-    fecha_recibo: new Date().toISOString().split("T")[0],
+    fecha_recibo: todayLocalISODate(),
     cuenta_consignacion: "",
     referencia_pago: "",
     nota: "",
@@ -178,7 +176,7 @@ export default function NuevoReciboPagoContent() {
             }
 
             // Cargar fechas desde el último recibo de la propiedad
-            await cargarUltimoRecibo(propiedadIdParam)
+            await cargarUltimoRecibo(propiedadIdParam, "arriendo")
           }
         } else if (!isAdmin) {
           // Si no hay propiedad seleccionada y es propietario, cargar sus datos
@@ -206,6 +204,7 @@ export default function NuevoReciboPagoContent() {
   }
 
   const handlePropiedadChange = async (propiedadId: string) => {
+    const tipoActual = formData.tipo_pago
     setFormData((prev) => ({
       ...prev,
       propiedad_id: propiedadId,
@@ -213,13 +212,20 @@ export default function NuevoReciboPagoContent() {
       fecha_fin_periodo: "",
     }))
     if (propiedadId) {
-      await cargarUltimoRecibo(propiedadId)
+      await cargarUltimoRecibo(propiedadId, tipoActual)
     }
   }
 
   const handleSave = async () => {
     if (!formData.propiedad_id || !formData.arrendador_nombre || !formData.valor_arriendo) {
       setError("Por favor completa los campos obligatorios")
+      return
+    }
+    if (
+      formData.tipo_pago === "arriendo" &&
+      (!formData.fecha_inicio_periodo || !formData.fecha_fin_periodo)
+    ) {
+      setError("Para canon de arriendo indica la fecha de inicio y fin del período.")
       return
     }
 
@@ -457,24 +463,35 @@ export default function NuevoReciboPagoContent() {
               </div>
             </div>
 
-            {/* Período */}
+            {/* Período (obligatorio solo para arriendo) */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium mb-1">Fecha Inicio Período *</label>
+                <label className="block text-sm font-medium mb-1">
+                  Fecha inicio período{formData.tipo_pago === "arriendo" ? " *" : ""}
+                </label>
                 <Input
                   type="date"
                   value={formData.fecha_inicio_periodo}
                   onChange={(e) => handleChange("fecha_inicio_periodo", e.target.value)}
+                  disabled={formData.tipo_pago !== "arriendo"}
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1">Fecha Fin Período *</label>
+                <label className="block text-sm font-medium mb-1">
+                  Fecha fin período{formData.tipo_pago === "arriendo" ? " *" : ""}
+                </label>
                 <Input
                   type="date"
                   value={formData.fecha_fin_periodo}
                   onChange={(e) => handleChange("fecha_fin_periodo", e.target.value)}
+                  disabled={formData.tipo_pago !== "arriendo"}
                 />
               </div>
+              <p className="text-xs text-muted-foreground md:col-span-2">
+                {formData.tipo_pago === "arriendo"
+                  ? "Período de canon que cubre este pago."
+                  : "No aplica a este tipo de pago (depósito, servicios u otro): las fechas de período están desactivadas."}
+              </p>
             </div>
 
             {/* Tipo de Pago y Fecha del Recibo */}
@@ -483,7 +500,20 @@ export default function NuevoReciboPagoContent() {
                 <label className="block text-sm font-medium mb-1">Tipo de Pago *</label>
                 <select
                   value={formData.tipo_pago}
-                  onChange={(e) => handleChange("tipo_pago", e.target.value)}
+                  onChange={(e) => {
+                    const v = e.target.value
+                    const propId = formData.propiedad_id
+                    setFormData((prev) => ({
+                      ...prev,
+                      tipo_pago: v,
+                      ...(v !== "arriendo"
+                        ? { fecha_inicio_periodo: "", fecha_fin_periodo: "" }
+                        : {}),
+                    }))
+                    if (v === "arriendo" && propId) {
+                      void cargarUltimoRecibo(propId, "arriendo")
+                    }
+                  }}
                   className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                 >
                   <option value="arriendo">Arriendo</option>

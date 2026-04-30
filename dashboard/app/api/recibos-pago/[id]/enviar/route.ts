@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { getUserRole } from "@/lib/auth/role"
 import { Resend } from 'resend'
+import { formatCalendarDateEs } from "@/lib/utils/calendar-date"
 
 const resend = new Resend(process.env.RESEND_API_KEY)
 
@@ -108,9 +109,9 @@ export async function POST(
       <div class="details">
         <h3>Detalles del Recibo</h3>
         <p><strong>Número:</strong> ${recibo.numero_recibo || 'N/A'}</p>
-        <p><strong>Fecha:</strong> ${new Date(recibo.fecha_recibo).toLocaleDateString('es-CO')}</p>
+        <p><strong>Fecha:</strong> ${formatCalendarDateEs(recibo.fecha_recibo, 'N/A')}</p>
         <p><strong>Inmueble:</strong> ${propMail?.direccion || 'N/A'}, ${propMail?.ciudad || 'N/A'}</p>
-        <p><strong>Período:</strong> ${recibo.fecha_inicio_periodo ? new Date(recibo.fecha_inicio_periodo).toLocaleDateString('es-CO') : 'N/A'} - ${recibo.fecha_fin_periodo ? new Date(recibo.fecha_fin_periodo).toLocaleDateString('es-CO') : 'N/A'}</p>
+        <p><strong>Período:</strong> ${recibo.fecha_inicio_periodo ? formatCalendarDateEs(recibo.fecha_inicio_periodo, 'N/A') : 'N/A'} - ${recibo.fecha_fin_periodo ? formatCalendarDateEs(recibo.fecha_fin_periodo, 'N/A') : 'N/A'}</p>
       </div>
 
       <div class="amount">

@@ -7,6 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input"
 import { ArrowLeft, Send, X, Printer, Loader2 } from "lucide-react"
 import Link from "next/link"
+import { formatCalendarDateEs } from "@/lib/utils/calendar-date"
 
 export default function VistaPreviaReciboContent() {
   const router = useRouter()
@@ -481,7 +482,7 @@ export default function VistaPreviaReciboContent() {
               <span className="font-semibold">Recibo No:</span> {recibo.numero_recibo || "N/A"}
             </p>
             <p className="text-sm text-gray-600">
-              <span className="font-semibold">Fecha:</span> {new Date(recibo.fecha_recibo).toLocaleDateString("es-CO")}
+              <span className="font-semibold">Fecha:</span> {formatCalendarDateEs(recibo.fecha_recibo, "N/A")}
             </p>
           </div>
         </div>
@@ -525,13 +526,19 @@ export default function VistaPreviaReciboContent() {
               <tr className="border-b">
                 <td className="py-3 font-bold text-sm w-2/5">Concepto de Pago:</td>
                 <td className="py-3 text-sm">
-                  {recibo.tipo_pago === "arriendo" ? "Canon de Arrendamiento" : recibo.tipo_pago === "servicios" ? "Servicios Públicos" : recibo.tipo_pago || "N/A"}
+                  {recibo.tipo_pago === "arriendo"
+                    ? "Canon de Arrendamiento"
+                    : recibo.tipo_pago === "deposito"
+                      ? "Depósito"
+                      : recibo.tipo_pago === "servicios"
+                        ? "Servicios Públicos"
+                        : recibo.tipo_pago || "N/A"}
                 </td>
               </tr>
               <tr className="border-b">
                 <td className="py-3 font-bold text-sm">Período Cancelado:</td>
                 <td className="py-3 text-sm">
-                  Del {recibo.fecha_inicio_periodo ? new Date(recibo.fecha_inicio_periodo).toLocaleDateString("es-CO") : "N/A"} al {recibo.fecha_fin_periodo ? new Date(recibo.fecha_fin_periodo).toLocaleDateString("es-CO") : "N/A"}
+                  Del {recibo.fecha_inicio_periodo ? formatCalendarDateEs(recibo.fecha_inicio_periodo, "N/A") : "N/A"} al {recibo.fecha_fin_periodo ? formatCalendarDateEs(recibo.fecha_fin_periodo, "N/A") : "N/A"}
                 </td>
               </tr>
               {recibo.cuenta_consignacion && (

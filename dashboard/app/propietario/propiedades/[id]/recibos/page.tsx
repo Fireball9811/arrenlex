@@ -6,6 +6,7 @@ import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { ArrowLeft, Receipt, Plus, Eye, Edit2, Trash2, FileText } from "lucide-react"
+import { formatCalendarDateEs } from "@/lib/utils/calendar-date"
 
 interface ReciboPago {
   id: string
@@ -71,12 +72,6 @@ export default function RecibosDePropiedad() {
     } catch {
       alert("No se pudo eliminar el recibo")
     }
-  }
-
-  const formatDate = (dateStr: string) => {
-    if (!dateStr) return "—"
-    const [year, month, day] = dateStr.split("T")[0].split("-")
-    return `${day}/${month}/${year}`
   }
 
   const getEstadoColor = (estado: string) => {
@@ -171,14 +166,14 @@ export default function RecibosDePropiedad() {
                       <div>
                         <p className="text-xs">Período</p>
                         <p className="font-medium">
-                          {formatDate(recibo.fecha_inicio_periodo)} -{" "}
-                          {formatDate(recibo.fecha_fin_periodo)}
+                          {formatCalendarDateEs(recibo.fecha_inicio_periodo)} -{" "}
+                          {formatCalendarDateEs(recibo.fecha_fin_periodo)}
                         </p>
                       </div>
                       <div>
                         <p className="text-xs">Fecha Recibo</p>
                         <p className="font-medium">
-                          {formatDate(recibo.fecha_recibo)}
+                          {formatCalendarDateEs(recibo.fecha_recibo)}
                         </p>
                       </div>
                     </div>

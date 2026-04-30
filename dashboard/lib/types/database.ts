@@ -418,9 +418,9 @@ export type ReciboPago = {
   propietario_cedula: string
   valor_arriendo: number
   valor_arriendo_letras: string
-  fecha_inicio_periodo: string
-  fecha_fin_periodo: string
-  tipo_pago: "arriendo" | "servicios" | "otro"
+  fecha_inicio_periodo: string | null
+  fecha_fin_periodo: string | null
+  tipo_pago: "arriendo" | "servicios" | "otro" | "deposito"
   fecha_recibo: string
   numero_recibo: string | null
   numero_matricula: string | null

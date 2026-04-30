@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { useParams, useRouter } from "next/navigation"
+import { formatCalendarDateEs } from "@/lib/utils/calendar-date"
 
 type Recibo = {
   id: string
@@ -105,7 +106,7 @@ export default function ImprimirReciboPage() {
             <div style={{ textAlign: "right" }}>
               <p style={{ fontSize: "14px", margin: "0 0 4px 0", color: "#4b5563" }}>Recibo No:</p>
               <p style={{ fontSize: "20px", fontWeight: "bold", margin: "0 0 4px 0", color: "#1f2937" }}>{recibo.numero_recibo || "N/A"}</p>
-              <p style={{ fontSize: "14px", margin: 0, color: "#6b7280" }}>{new Date(recibo.fecha_recibo).toLocaleDateString("es-CO")}</p>
+              <p style={{ fontSize: "14px", margin: 0, color: "#6b7280" }}>{formatCalendarDateEs(recibo.fecha_recibo, "N/A")}</p>
             </div>
           </div>
 
@@ -154,7 +155,7 @@ export default function ImprimirReciboPage() {
                 <tr style={{ borderBottom: "1px solid #e5e7eb" }}>
                   <td style={{ padding: "12px 8px", fontWeight: "bold", fontSize: "14px" }}>Período Cancelado:</td>
                   <td style={{ padding: "12px 8px", fontSize: "14px" }}>
-                    Del {recibo.fecha_inicio_periodo ? new Date(recibo.fecha_inicio_periodo).toLocaleDateString("es-CO") : "N/A"} al {recibo.fecha_fin_periodo ? new Date(recibo.fecha_fin_periodo).toLocaleDateString("es-CO") : "N/A"}
+                    Del {recibo.fecha_inicio_periodo ? formatCalendarDateEs(recibo.fecha_inicio_periodo, "N/A") : "N/A"} al {recibo.fecha_fin_periodo ? formatCalendarDateEs(recibo.fecha_fin_periodo, "N/A") : "N/A"}
                   </td>
                 </tr>
                 {recibo.cuenta_consignacion && (
