@@ -16,6 +16,7 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import { useLang } from "@/lib/i18n/context"
+import { createAdminClient } from "@/lib/supabase/admin"
 
 function LoginContent() {
   const { t, lang, setLang } = useLang()
@@ -39,68 +40,81 @@ function LoginContent() {
       return
     }
 
-    const supabase = createClient()
-    const { data, error: signInError } = await supabase.auth.signInWithPassword({
-      email: usuario.trim(),
-      password: contrasena,
-    })
+    try {
+      const supabase = createClient()
+      let emailToUse = usuario.trim()
 
-    if (signInError) {
-      // #region agent log
-      fetch("http://127.0.0.1:7242/ingest/ff442eb1-c8fb-4919-a950-d18bdf14310b", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          location: "login/page.tsx:signInError",
-          message: "Error en login",
-          data: {
-            errorMessage: signInError.message,
-            email: usuario.trim().toLowerCase(),
-            hypothesisId: "H2",
-          },
-          timestamp: Date.now(),
-        }),
-      }).catch(() => {})
-      // #endregion
-      setError(signInError.message === "Invalid login credentials"
-        ? t.auth.errorCredenciales
-        : signInError.message)
-      setLoading(false)
-      return
-    }
+      // Si no tiene @, es un username - buscar el email correspondiente
+      if (!emailToUse.includes("@")) {
+        const response = await fetch("/api/lookup-username", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ username: emailToUse }),
+        })
 
-    if (data.user) {
-      const metadata = data.user.user_metadata ?? {}
-      const mustChange = metadata.must_change_password === true
-      const expiresAt = metadata.temp_password_expires_at as number | undefined
+        const data = await response.json()
 
-      if (mustChange && expiresAt && Date.now() > expiresAt) {
-        await supabase.auth.signOut()
-        setError(t.auth.errorContrasenaExpirada)
+        if (!response.ok || !data.email) {
+          setError(t.auth.errorCredenciales)
+          setLoading(false)
+          return
+        }
+
+        emailToUse = data.email
+      }
+
+      // Hacer login con Supabase Auth
+      const { data, error: signInError } = await supabase.auth.signInWithPassword({
+        email: emailToUse,
+        password: contrasena,
+      })
+
+      if (signInError) {
+        setError(signInError.message === "Invalid login credentials"
+          ? t.auth.errorCredenciales
+          : signInError.message)
         setLoading(false)
         return
       }
 
-      if (mustChange) {
-        const next = searchParams.get("next")
-        const nextPath = next && next.startsWith("/") ? next : "/inquilino/dashboard"
-        router.push(`/cambio-contrasena?next=${encodeURIComponent(nextPath)}`)
+      if (data.user) {
+        const metadata = data.user.user_metadata ?? {}
+        const mustChange = metadata.must_change_password === true
+        const expiresAt = metadata.temp_password_expires_at as number | undefined
+
+        if (mustChange && expiresAt && Date.now() > expiresAt) {
+          await supabase.auth.signOut()
+          setError(t.auth.errorContrasenaExpirada)
+          setLoading(false)
+          return
+        }
+
+        if (mustChange) {
+          const next = searchParams.get("next")
+          const nextPath = next && next.startsWith("/") ? next : "/inquilino/dashboard"
+          router.push(`/cambio-contrasena?next=${encodeURIComponent(nextPath)}`)
+          router.refresh()
+          setLoading(false)
+          return
+        }
+
+        // Redirigir según rol o parámetro
+        const explicitRedirect = searchParams.get("redirect")
+        if (explicitRedirect && explicitRedirect.startsWith("/")) {
+          router.push(explicitRedirect)
+        } else {
+          const res = await fetch("/api/auth/dashboard")
+          const json = await res.json().catch(() => ({}))
+          router.push(json.redirect || "/propietario/dashboard")
+        }
         router.refresh()
-        setLoading(false)
-        return
       }
-
-      const explicitRedirect = searchParams.get("redirect")
-      if (explicitRedirect && explicitRedirect.startsWith("/")) {
-        router.push(explicitRedirect)
-      } else {
-        const res = await fetch("/api/auth/dashboard")
-        const json = await res.json().catch(() => ({}))
-        router.push(json.redirect || "/inquilino/dashboard")
-      }
-      router.refresh()
+      setLoading(false)
+    } catch (err) {
+      console.error("Error en login:", err)
+      setError("Error al iniciar sesión")
+      setLoading(false)
     }
-    setLoading(false)
   }
 
   return (
@@ -132,12 +146,12 @@ function LoginContent() {
             )}
             <div>
               <label htmlFor="usuario" className="block text-sm font-medium mb-1">
-                {t.auth.usuarioOCorreo}
+                Email o nombre de usuario
               </label>
               <Input
                 id="usuario"
                 type="text"
-                placeholder="Ej: admin@arrenlex.com"
+                placeholder="Email o usuario (ej: Luis o tu@email.com)"
                 value={usuario}
                 onChange={(e) => setUsuario(e.target.value)}
                 autoComplete="username"

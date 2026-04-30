@@ -5,17 +5,22 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { User, Pencil, Mail, Phone, MapPin, Building2, Key, Loader2, CheckCircle } from "lucide-react"
+import { User, Phone, MapPin, Building2, Key, Loader2 } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
+import { GestionCredenciales } from "@/components/auth/gestion-credenciales"
+import { GestionUsername } from "@/components/auth/gestion-username"
+
+type Message = { type: "success" | "error"; text: string }
 
 export default function PerfilPropietarioPage() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
-  const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null)
+  const [message, setMessage] = useState<Message | null>(null)
 
   const [formData, setFormData] = useState({
     nombre: "",
     email: "",
+    username: null as string | null,
     cedula: "",
     celular: "",
     cedula_lugar_expedicion: "",
@@ -61,6 +66,7 @@ export default function PerfilPropietarioPage() {
       setFormData({
         nombre: perfil.nombre || "",
         email: perfil.email || "",
+        username: perfil.username || null,
         cedula: perfil.cedula || "",
         celular: perfil.celular || "",
         cedula_lugar_expedicion: perfil.cedula_lugar_expedicion || "",
@@ -184,8 +190,8 @@ export default function PerfilPropietarioPage() {
             </CardTitle>
           </CardHeader>
           <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <Label>Correo electrónico</Label>
+            <div className="md:col-span-2">
+              <Label>Correo electrónico actual</Label>
               <Input type="email" disabled value={formData.email} className="bg-muted" />
             </div>
             <div>
@@ -355,13 +361,25 @@ export default function PerfilPropietarioPage() {
           </Card>
         )}
 
-        {/* Botones */}
+        {/* Botones del formulario principal */}
         <div className="flex gap-4">
           <Button type="submit" disabled={saving}>
-            {saving ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Guardando...</> : "Guardar Cambios"}
+            {saving ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Guardando...</> : "Guardar Cambios Personales"}
           </Button>
         </div>
       </form>
+
+      {/* Separación visual */}
+      <div className="border-t my-8"></div>
+
+      {/* Gestión de Username (Nombre de Usuario / Alias) */}
+      <GestionUsername currentUsername={formData.username} />
+
+      {/* Separación visual */}
+      <div className="border-t my-8"></div>
+
+      {/* Gestión de Credenciales (Email y Contraseña) */}
+      <GestionCredenciales currentEmail={formData.email} />
     </div>
   )
 }

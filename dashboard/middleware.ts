@@ -23,6 +23,7 @@ const PUBLIC_PATHS = [
   "/api/intake/tokens/publico",
   "/api/solicitudes-visita",
   "/api/contacto",
+  "/api/lookup-username",
 ]
 
 const PUBLIC_PATH_PATTERNS = [
