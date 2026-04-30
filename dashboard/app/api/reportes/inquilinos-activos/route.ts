@@ -31,6 +31,17 @@ export async function GET() {
   }
 
   try {
+    // Si es propietario, primero obtener sus propiedades
+    let propiedadIds: string[] = []
+    if (role === "propietario") {
+      const { data: props } = await admin
+        .from("propiedades")
+        .select("id")
+        .eq("user_id", user.id)
+      propiedadIds = props?.map(p => p.id) || []
+      console.log("✓ Propiedades del propietario:", propiedadIds.length)
+    }
+
     // Construir query según el rol
     let query = admin
       .from("contratos")
@@ -45,10 +56,13 @@ export async function GET() {
       `)
       .in("estado", ["activo", "borrador"])
 
-    // Si es propietario, filtrar solo sus contratos
-    if (role === "propietario") {
-      query = query.eq("user_id", user.id)
-      console.log("✓ Filtrando contratos por propietario:", user.id)
+    // Si es propietario, filtrar por sus propiedades
+    if (role === "propietario" && propiedadIds.length > 0) {
+      query = query.in("propiedad_id", propiedadIds)
+      console.log("✓ Filtrando contratos por propiedades del propietario")
+    } else if (role === "propietario") {
+      console.log("⚠️ Propietario sin propiedades")
+      return NextResponse.json([])
     } else {
       console.log("✓ Admin: mostrando todos los contratos activos")
     }
@@ -211,7 +225,13 @@ export async function GET() {
 
     console.log("✓ Total inquilinos activos (con contrato):", inquilinosActivos.length)
 
-    return NextResponse.json(inquilinosActivos)
+    // Eliminar duplicados por arrendatarioId (usar el primer contrato encontrado)
+    const uniqueInquilinos = Array.from(
+      new Map(inquilinosActivos.map(i => [i.arrendatarioId, i])).values()
+    )
+    console.log("✓ Total inquilinos únicos:", uniqueInquilinos.length)
+
+    return NextResponse.json(uniqueInquilinos)
 
   } catch (error: any) {
     console.error("❌ Error obteniendo inquilinos activos:", error)

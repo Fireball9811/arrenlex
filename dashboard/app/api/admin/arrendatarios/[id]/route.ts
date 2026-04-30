@@ -47,24 +47,27 @@ export async function GET(
   }
 
   if (role === "propietario") {
-    // Propietario solo puede ver arrendatarios con contrato en sus propiedades
-    // Primero verificar que el arrendatario tiene un contrato con una propiedad del propietario
-    const { data: contrato, error: contratoError } = await admin
+    // Obtener todos los contratos del arrendatario
+    const { data: contratos, error: errorContratos } = await admin
       .from("contratos")
-      .select(`
-        *,
-        propiedad:propiedades (
-          id,
-          direccion,
-          user_id
-        )
-      `)
+      .select("propiedad_id")
       .eq("arrendatario_id", id)
-      .eq("user_id", user.id)
-      .single()
 
-    if (contratoError || !contrato) {
-      return NextResponse.json({ error: "No tienes permiso para ver este arrendatario. Solo puedes ver arrendatarios con contrato activo en tus propiedades." }, { status: 403 })
+    if (errorContratos || !contratos || contratos.length === 0) {
+      return NextResponse.json({ error: "No tienes permiso para ver este arrendatario. Solo puedes ver arrendatarios con contrato en tus propiedades." }, { status: 403 })
+    }
+
+    // Verificar si ALGÚN contrato tiene una propiedad del propietario
+    const propiedadIds = contratos.map(c => c.propiedad_id)
+    const { data: propiedad, error: errorPropiedad } = await admin
+      .from("propiedades")
+      .select("id")
+      .in("id", propiedadIds)
+      .eq("user_id", user.id)
+      .maybeSingle()
+
+    if (errorPropiedad || !propiedad) {
+      return NextResponse.json({ error: "No tienes permiso para ver este arrendatario. Solo puedes ver arrendatarios con contrato en tus propiedades." }, { status: 403 })
     }
 
     // Obtener datos del arrendatario
@@ -116,16 +119,27 @@ export async function PUT(
     // Admin puede editar cualquier arrendatario
     // Continuar con la actualización
   } else if (role === "propietario") {
-    // Propietario solo puede editar arrendatarios con contrato en sus propiedades
-    const { data: contrato } = await admin
+    // Obtener todos los contratos del arrendatario
+    const { data: contratos } = await admin
       .from("contratos")
-      .select("id")
+      .select("propiedad_id")
       .eq("arrendatario_id", id)
-      .eq("user_id", user.id)
-      .single()
 
-    if (!contrato) {
-      return NextResponse.json({ error: "No tienes permiso para editar este arrendatario. Solo puedes editar arrendatarios con contrato activo en tus propiedades." }, { status: 403 })
+    if (!contratos || contratos.length === 0) {
+      return NextResponse.json({ error: "No tienes permiso para editar este arrendatario. Solo puedes editar arrendatarios con contrato en tus propiedades." }, { status: 403 })
+    }
+
+    // Verificar si ALGÚN contrato tiene una propiedad del propietario
+    const propiedadIds = contratos.map(c => c.propiedad_id)
+    const { data: propiedad } = await admin
+      .from("propiedades")
+      .select("id")
+      .in("id", propiedadIds)
+      .eq("user_id", user.id)
+      .maybeSingle()
+
+    if (!propiedad) {
+      return NextResponse.json({ error: "No tienes permiso para editar este arrendatario. Solo puedes editar arrendatarios con contrato en tus propiedades." }, { status: 403 })
     }
   } else {
     return NextResponse.json({ error: "No tienes permiso para realizar esta acción" }, { status: 403 })
@@ -225,14 +239,25 @@ export async function DELETE(
 
   // Propietario: verificar que tiene un contrato con este arrendatario
   if (role === "propietario") {
-    const { data: contrato } = await admin
+    const { data: contratos } = await admin
       .from("contratos")
-      .select("id")
+      .select("propiedad_id")
       .eq("arrendatario_id", id)
+
+    if (!contratos || contratos.length === 0) {
+      return NextResponse.json({ error: "No tienes permiso para eliminar este arrendatario" }, { status: 403 })
+    }
+
+    // Verificar si ALGÚN contrato tiene una propiedad del propietario
+    const propiedadIds = contratos.map(c => c.propiedad_id)
+    const { data: propiedad } = await admin
+      .from("propiedades")
+      .select("id")
+      .in("id", propiedadIds)
       .eq("user_id", user.id)
       .maybeSingle()
 
-    if (!contrato) {
+    if (!propiedad) {
       return NextResponse.json({ error: "No tienes permiso para eliminar este arrendatario" }, { status: 403 })
     }
   }
