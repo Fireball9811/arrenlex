@@ -1,6 +1,7 @@
 "use client"
 
-import { useEffect, useState, useCallback } from "react"
+import { useEffect, useState, Suspense } from "react"
+
 import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -15,7 +16,7 @@ type Proveedor = {
   correo_electronico: string | null
 }
 
-export default function NuevoOtroGastoPage() {
+function NuevoOtroGastoContent() {
   const { t } = useLang()
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -350,5 +351,13 @@ export default function NuevoOtroGastoPage() {
         </CardContent>
       </Card>
     </div>
+  )
+}
+
+export default function NuevoOtroGastoPage() {
+  return (
+    <Suspense fallback={<p className="text-muted-foreground">Cargando...</p>}>
+      <NuevoOtroGastoContent />
+    </Suspense>
   )
 }
