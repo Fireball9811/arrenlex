@@ -6,7 +6,7 @@ import Link from "next/link"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { ArrowLeft, FileText, Download } from "lucide-react"
+import { ArrowLeft, FileText, Download, Pencil, Printer } from "lucide-react"
 import { useLang } from "@/lib/i18n/context"
 
 type GastoHistorial = {
@@ -82,6 +82,10 @@ export default function PropietarioOtrosGastosPropiedadPage() {
     }).format(val)
   }
 
+  const openReciboPdf = (gastoId: string) => {
+    window.open(`/api/otros-gastos/${gastoId}/pdf`, "_blank", "noopener,noreferrer")
+  }
+
   const exportToExcel = () => {
     if (!data) return
 
@@ -123,7 +127,7 @@ export default function PropietarioOtrosGastosPropiedadPage() {
 
   return (
     <div>
-      <div className="mb-6 flex items-center justify-between">
+      <div className="mb-6 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
         <div className="flex items-center gap-4">
           <Button variant="ghost" size="sm" onClick={() => router.back()}>
             <ArrowLeft className="mr-2 h-4 w-4" />
@@ -134,12 +138,17 @@ export default function PropietarioOtrosGastosPropiedadPage() {
             <p className="text-sm text-muted-foreground">{[propiedad.direccion, propiedad.ciudad].filter(Boolean).join(", ")}</p>
           </div>
         </div>
-        {gastos.length > 0 && (
-          <Button variant="outline" size="sm" onClick={exportToExcel}>
-            <Download className="mr-2 h-4 w-4" />
-            {t.otrosGastos.historialPropiedad.exportarExcel}
+        <div className="flex flex-wrap items-center gap-2">
+          <Button variant="outline" size="sm" asChild>
+            <Link href="/propietario/otros-gastos">{t.otrosGastos.verHistoricoCompleto}</Link>
           </Button>
-        )}
+          {gastos.length > 0 && (
+            <Button variant="outline" size="sm" onClick={exportToExcel}>
+              <Download className="mr-2 h-4 w-4" />
+              {t.otrosGastos.historialPropiedad.exportarExcel}
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* Resumen */}
@@ -233,12 +242,30 @@ export default function PropietarioOtrosGastosPropiedadPage() {
                         </Badge>
                       </td>
                       <td className="p-2">
-                        <Link
-                          href={`/propietario/otros-gastos/${g.id}`}
-                          className="inline-flex items-center rounded border px-2 py-1 text-xs font-medium hover:bg-muted transition-colors"
-                        >
-                          <FileText className="h-3 w-3" />
-                        </Link>
+                        <div className="flex flex-wrap gap-1">
+                          <Link
+                            href={`/propietario/otros-gastos/${g.id}`}
+                            className="inline-flex items-center rounded border px-2 py-1 text-xs font-medium hover:bg-muted transition-colors"
+                            title={t.otrosGastos.verRecibo}
+                          >
+                            <FileText className="h-3 w-3" />
+                          </Link>
+                          <Link
+                            href={`/propietario/otros-gastos/${g.id}/editar`}
+                            className="inline-flex items-center rounded border px-2 py-1 text-xs font-medium hover:bg-muted transition-colors"
+                            title={t.comun.editar}
+                          >
+                            <Pencil className="h-3 w-3" />
+                          </Link>
+                          <button
+                            type="button"
+                            className="inline-flex items-center rounded border px-2 py-1 text-xs font-medium hover:bg-muted transition-colors"
+                            title={t.otrosGastos.descargarPDF}
+                            onClick={() => openReciboPdf(g.id)}
+                          >
+                            <Printer className="h-3 w-3" />
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))}

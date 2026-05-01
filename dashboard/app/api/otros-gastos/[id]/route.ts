@@ -2,12 +2,13 @@ import { NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { getUserRole } from "@/lib/auth/role"
+import { fetchOtrosGastoCompleto } from "@/lib/otros-gastos/fetch-completo"
 
 /**
  * GET - Obtiene un gasto específico por ID
  */
 export async function GET(
-  request: Request,
+  _request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const supabase = await createClient()
@@ -27,46 +28,16 @@ export async function GET(
   const { id } = await params
   const admin = createAdminClient()
 
-  let query = admin
-    .from("otros_gastos")
-    .select(
-      `
-      id,
-      propiedad_id,
-      user_id,
-      nombre_completo,
-      cedula,
-      tarjeta_profesional,
-      correo_electronico,
-      motivo_pago,
-      descripcion_trabajo,
-      fecha_realizacion,
-      valor,
-      banco,
-      referencia_pago,
-      numero_recibo,
-      fecha_emision,
-      estado,
-      created_at,
-      updated_at,
-      propiedades ( id, direccion, ciudad, barrio, titulo ),
-      users ( email, nombre )
-      `
-    )
-    .eq("id", id)
-
-  if (role === "propietario") {
-    query = query.eq("user_id", user.id)
-  }
-
-  const { data, error } = await query.single()
-
-  if (error) {
-    console.error("[otros-gastos GET by id]", error)
+  const completo = await fetchOtrosGastoCompleto(admin, id)
+  if (!completo) {
     return NextResponse.json({ error: "Gasto no encontrado" }, { status: 404 })
   }
 
-  return NextResponse.json(data)
+  if (role === "propietario" && completo.user_id !== user.id) {
+    return NextResponse.json({ error: "Gasto no encontrado" }, { status: 404 })
+  }
+
+  return NextResponse.json(completo)
 }
 
 /**
@@ -101,7 +72,6 @@ export async function PATCH(
 
   const admin = createAdminClient()
 
-  // Verificar que el gasto existe y el usuario tiene acceso
   const { data: existing, error: errExists } = await admin
     .from("otros_gastos")
     .select("id, user_id, estado")
@@ -116,7 +86,6 @@ export async function PATCH(
     return NextResponse.json({ error: "No autorizado" }, { status: 403 })
   }
 
-  // Preparar actualización
   const updateData: Record<string, unknown> = {}
   const allowedFields = [
     "nombre_completo",
@@ -147,31 +116,38 @@ export async function PATCH(
     }
   }
 
-  // Validar valor si se está actualizando
   if ("valor" in updateData && typeof updateData.valor === "number" && updateData.valor <= 0) {
     return NextResponse.json({ error: "El valor debe ser mayor a cero" }, { status: 400 })
   }
 
-  const { data: updated, error: errUpdate } = await admin
-    .from("otros_gastos")
-    .update(updateData)
-    .eq("id", id)
-    .select()
-    .single()
+  if (Object.keys(updateData).length === 0) {
+    const completoVacio = await fetchOtrosGastoCompleto(admin, id)
+    if (!completoVacio) {
+      return NextResponse.json({ error: "Gasto no encontrado" }, { status: 404 })
+    }
+    return NextResponse.json(completoVacio)
+  }
+
+  const { error: errUpdate } = await admin.from("otros_gastos").update(updateData).eq("id", id)
 
   if (errUpdate) {
     console.error("[otros-gastos PATCH]", errUpdate)
     return NextResponse.json({ error: "Error al actualizar el gasto" }, { status: 500 })
   }
 
-  return NextResponse.json(updated)
+  const completo = await fetchOtrosGastoCompleto(admin, id)
+  if (!completo) {
+    return NextResponse.json({ error: "Gasto no encontrado" }, { status: 404 })
+  }
+
+  return NextResponse.json(completo)
 }
 
 /**
  * DELETE - Elimina un gasto (solo si está en estado pendiente)
  */
 export async function DELETE(
-  request: Request,
+  _request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const supabase = await createClient()
@@ -191,7 +167,6 @@ export async function DELETE(
   const { id } = await params
   const admin = createAdminClient()
 
-  // Verificar que el gasto existe y el usuario tiene acceso
   const { data: existing, error: errExists } = await admin
     .from("otros_gastos")
     .select("id, user_id, estado")
@@ -206,7 +181,6 @@ export async function DELETE(
     return NextResponse.json({ error: "No autorizado" }, { status: 403 })
   }
 
-  // Solo permitir eliminar si está pendiente
   if (existing.estado !== "pendiente") {
     return NextResponse.json(
       { error: "Solo se pueden eliminar gastos en estado pendiente" },
@@ -214,10 +188,7 @@ export async function DELETE(
     )
   }
 
-  const { error: errDelete } = await admin
-    .from("otros_gastos")
-    .delete()
-    .eq("id", id)
+  const { error: errDelete } = await admin.from("otros_gastos").delete().eq("id", id)
 
   if (errDelete) {
     console.error("[otros-gastos DELETE]", errDelete)

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { getUserRole } from "@/lib/auth/role"
+import { attachPropietariosList } from "@/lib/otros-gastos/fetch-completo"
 
 /**
  * GET - Lista gastos diversos.
@@ -48,8 +49,7 @@ export async function GET() {
         estado,
         created_at,
         updated_at,
-        propiedades ( id, direccion, ciudad, barrio, titulo ),
-        users ( email )
+        propiedades ( id, direccion, ciudad, barrio, titulo )
         `
       )
       .order("fecha_emision", { ascending: false })
@@ -58,7 +58,8 @@ export async function GET() {
       console.error("[otros-gastos GET]", error)
       return NextResponse.json({ error: "Error al listar gastos" }, { status: 500 })
     }
-    return NextResponse.json(data ?? [])
+    const withProp = await attachPropietariosList(admin, data ?? [])
+    return NextResponse.json(withProp)
   }
 
   // propietario: solo sus propios registros
@@ -84,8 +85,7 @@ export async function GET() {
       estado,
       created_at,
       updated_at,
-      propiedades ( id, direccion, ciudad, barrio, titulo ),
-      users ( email )
+      propiedades ( id, direccion, ciudad, barrio, titulo )
       `
     )
     .eq("user_id", user.id)
@@ -95,7 +95,8 @@ export async function GET() {
     console.error("[otros-gastos GET]", error)
     return NextResponse.json({ error: "Error al listar gastos" }, { status: 500 })
   }
-  return NextResponse.json(data ?? [])
+  const withProp = await attachPropietariosList(admin, data ?? [])
+  return NextResponse.json(withProp)
 }
 
 /**
@@ -208,7 +209,7 @@ export async function POST(request: Request) {
       valor,
       banco: typeof banco === "string" ? banco.trim() : null,
       referencia_pago: typeof referencia_pago === "string" ? referencia_pago.trim() : null,
-      estado: "pendiente",
+      estado: "emitido",
     })
     .select(`
       id,

@@ -3,11 +3,19 @@ import { createClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { getUserRole } from "@/lib/auth/role"
 import { Resend } from "resend"
+import { fetchOtrosGastoCompleto } from "@/lib/otros-gastos/fetch-completo"
+import { buildOtrosGastoReciboHtml, escapeHtml } from "@/lib/otros-gastos/recibo-html"
+import { formatCalendarDateEs } from "@/lib/utils/calendar-date"
 
 const resend = new Resend(process.env.RESEND_API_KEY)
 
+function unwrapPropiedad<T extends Record<string, unknown>>(row: T | T[] | null | undefined): T | null {
+  if (row == null) return null
+  return Array.isArray(row) ? row[0] ?? null : row
+}
+
 /**
- * POST - Envía el recibo por correo electrónico
+ * POST - Envía el recibo por correo electrónico (resumen + enlace al PDF/HTML imprimible).
  */
 export async function POST(
   request: Request,
@@ -44,182 +52,97 @@ export async function POST(
 
   const admin = createAdminClient()
 
-  // Obtener el gasto
-  const { data: gasto, error: errGasto } = await admin
-    .from("otros_gastos")
-    .select(`
-      id,
-      propiedad_id,
-      numero_recibo,
-      fecha_emision,
-      nombre_completo,
-      cedula,
-      tarjeta_profesional,
-      motivo_pago,
-      descripcion_trabajo,
-      fecha_realizacion,
-      valor,
-      banco,
-      referencia_pago,
-      correo_electronico,
-      propiedades ( direccion, ciudad, barrio, titulo ),
-      users ( email, nombre )
-    `)
-    .eq("id", id)
-    .single()
-
-  if (errGasto || !gasto) {
+  const completo = await fetchOtrosGastoCompleto(admin, id)
+  if (!completo) {
     return NextResponse.json({ error: "Gasto no encontrado" }, { status: 404 })
   }
 
-  // Verificar permisos
-  const gastoUsers = gasto.users as any
-  const gastoUserEmail = Array.isArray(gastoUsers) ? gastoUsers[0]?.email : gastoUsers?.email
-
-  if (role === "propietario" && gastoUserEmail !== user.email) {
-    return NextResponse.json({ error: "No autorizado" }, { status: 403 })
+  if (role === "propietario" && completo.user_id !== user.id) {
+    return NextResponse.json({ error: "No tienes permiso para enviar este recibo" }, { status: 403 })
   }
 
-  const propiedadData = gasto.propiedades as any
-  const propiedad = Array.isArray(propiedadData) ? propiedadData[0] : propiedadData
-  const userData = gasto.users as any
-  const propietario = Array.isArray(userData) ? userData[0] : userData
-
-  const formatValor = (val: number) => {
-    return new Intl.NumberFormat("es-CO", {
-      style: "currency",
-      currency: "COP",
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(val)
+  if (completo.estado === "cancelado") {
+    return NextResponse.json({ error: "No se puede enviar un recibo cancelado" }, { status: 400 })
   }
 
-  const formatDate = (dateStr: string) => {
-    try {
-      return new Date(dateStr).toLocaleDateString("es-CO", {
-        day: "2-digit",
-        month: "long",
-        year: "numeric",
-      })
-    } catch {
-      return dateStr
-    }
-  }
+  const propiedad = unwrapPropiedad(completo.propiedades as Record<string, unknown> | Record<string, unknown>[] | null)
+  const dirProp = [propiedad?.titulo, propiedad?.direccion, propiedad?.ciudad].filter(Boolean).join(", ") || completo.propiedad_id
 
-  // Generar HTML del recibo
-  const reciboHTML = `
+  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://arrenlex.com"
+  const pdfUrl = `${baseUrl}/api/otros-gastos/${id}/pdf`
+
+  const reciboDetalleHtml = buildOtrosGastoReciboHtml(
+    {
+      numero_recibo: completo.numero_recibo,
+      fecha_emision: completo.fecha_emision,
+      nombre_completo: completo.nombre_completo,
+      cedula: completo.cedula,
+      tarjeta_profesional: completo.tarjeta_profesional,
+      correo_electronico: completo.correo_electronico,
+      motivo_pago: completo.motivo_pago,
+      descripcion_trabajo: completo.descripcion_trabajo,
+      fecha_realizacion: completo.fecha_realizacion,
+      valor: Number(completo.valor),
+      banco: completo.banco,
+      referencia_pago: completo.referencia_pago,
+      estado: completo.estado,
+    },
+    propiedad,
+    completo.propietario,
+    completo.propiedad_id
+  )
+
+  const valorFmt = new Intl.NumberFormat("es-CO", {
+    style: "currency",
+    currency: "COP",
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(Number(completo.valor))
+
+  const emailHtml = `
 <!DOCTYPE html>
 <html lang="es">
 <head>
   <meta charset="UTF-8">
   <style>
-    body { font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; }
-    .header { display: flex; justify-content: space-between; align-items: start; border-bottom: 2px solid #0f766e; padding-bottom: 20px; margin-bottom: 30px; }
-    .logo { height: 80px; }
-    .titulo { color: #0f766e; font-size: 24px; font-weight: bold; margin: 0; }
-    .info-recibo { text-align: right; }
-    .numero-recibo { font-size: 20px; font-weight: bold; font-family: monospace; }
-    .seccion { margin-bottom: 30px; }
-    .label { color: #6b7280; font-size: 14px; margin-bottom: 5px; }
-    .valor { font-size: 18px; font-weight: bold; }
-    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; }
-    .caja-gris { background: #f3f4f6; padding: 15px; border-radius: 8px; }
-    .valor-grande { font-size: 32px; font-weight: bold; color: #0f766e; }
-    .firmas { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; margin-top: 40px; }
-    .firma { text-align: center; }
-    .linea-firma { border-bottom: 1px dashed #6b7280; margin-bottom: 10px; }
-    .estado { display: inline-block; padding: 8px 16px; border-radius: 20px; font-size: 14px; font-weight: bold; background: #0f766e; color: white; }
+    body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+    .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+    .header { background: #0f766e; color: white; padding: 20px; text-align: center; border-radius: 5px 5px 0 0; }
+    .content { background: #f7fafc; padding: 30px 20px; border: 1px solid #e2e8f0; }
+    .details { background: white; padding: 20px; margin: 20px 0; border-radius: 5px; border: 1px solid #e2e8f0; }
+    .amount { font-size: 22px; font-weight: bold; color: #0f766e; text-align: center; margin: 20px 0; }
+    .button { display: inline-block; background: #0f766e; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; margin: 20px 0; font-weight: 600; }
+    .footer { text-align: center; padding: 20px; font-size: 12px; color: #718096; }
   </style>
 </head>
 <body>
-  <div class="header">
-    <div>
-      <h1 class="titulo">ARRENLEX</h1>
-      <p style="margin: 5px 0 0 0; color: #6b7280; font-size: 14px;">Gestión de Arrendamientos</p>
+  <div class="container">
+    <div class="header">
+      <h1>Recibo de otro gasto</h1>
     </div>
-    <div class="info-recibo">
-      <p class="label">Recibo No.</p>
-      <p class="numero-recibo">${gasto.numero_recibo}</p>
-      <p class="label" style="margin-top: 10px;">Fecha de emisión</p>
-      <p class="valor">${formatDate(gasto.fecha_emision)}</p>
-    </div>
-  </div>
-
-  <div class="grid-2 seccion">
-    <div>
-      <p class="label">Pagado a</p>
-      <p class="valor">${gasto.nombre_completo}</p>
-      <p style="margin: 5px 0; font-size: 14px;">Cédula: ${gasto.cedula}</p>
-      ${gasto.tarjeta_profesional ? `<p style="margin: 5px 0; font-size: 14px;">T.P.: ${gasto.tarjeta_profesional}</p>` : ""}
-      ${gasto.correo_electronico ? `<p style="margin: 5px 0; font-size: 14px;">${gasto.correo_electronico}</p>` : ""}
-    </div>
-    <div>
-      <p class="label">Emitido por</p>
-      <p class="valor">${propietario?.nombre || propietario?.email || "Propietario"}</p>
-      ${propietario?.email ? `<p style="margin: 5px 0; font-size: 14px;">${propietario.email}</p>` : ""}
-    </div>
-  </div>
-
-  <div class="seccion">
-    <p class="label">Por concepto de</p>
-    <p class="valor" style="font-size: 20px; margin-bottom: 10px;">${gasto.motivo_pago}</p>
-    <p style="color: #6b7280;">${gasto.descripcion_trabajo}</p>
-  </div>
-
-  <div class="caja-gris seccion">
-    <div class="grid-2">
-      <div>
-        <p class="label">Propiedad</p>
-        <p style="font-weight: 500;">${propiedad?.titulo || `${propiedad?.direccion}, ${propiedad?.ciudad}` || gasto.propiedad_id}</p>
+    <div class="content">
+      <p>Hola, <strong>${escapeHtml(completo.nombre_completo)}</strong>,</p>
+      <p>Adjuntamos la información del recibo de pago por servicios / proveedor registrado en Arrenlex.</p>
+      <div class="details">
+        <p><strong>Número:</strong> ${escapeHtml(String(completo.numero_recibo ?? "N/A"))}</p>
+        <p><strong>Fecha emisión:</strong> ${escapeHtml(formatCalendarDateEs(completo.fecha_emision, "N/A"))}</p>
+        <p><strong>Propiedad:</strong> ${escapeHtml(dirProp)}</p>
+        <p><strong>Concepto:</strong> ${escapeHtml(completo.motivo_pago)}</p>
       </div>
-      <div>
-        <p class="label">Realizado el</p>
-        <p style="font-weight: 500;">${formatDate(gasto.fecha_realizacion)}</p>
+      <div class="amount">${valorFmt}</div>
+      <div style="text-align: center;">
+        <p><strong>Ver recibo completo (imprimir o guardar como PDF desde el navegador):</strong></p>
+        <a href="${pdfUrl}" class="button">Abrir recibo</a>
       </div>
+      <p style="font-size: 13px; color: #64748b;">En el navegador puedes usar <em>Imprimir → Guardar como PDF</em> para obtener el archivo PDF.</p>
     </div>
-  </div>
-
-  <div style="border-top: 1px solid #e5e7eb; padding-top: 20px;" class="seccion">
-    <div style="display: flex; justify-content: space-between; align-items: end;">
-      <div>
-        <p class="label">Valor</p>
-        <p class="valor-grande">${formatValor(gasto.valor)}</p>
-      </div>
-      ${gasto.banco ? `
-      <div style="text-align: right;">
-        <p class="label">Banco consignación</p>
-        <p style="font-weight: 500;">${gasto.banco}</p>
-        ${gasto.referencia_pago ? `<p class="label" style="margin-top: 5px;">Referencia</p><p style="font-family: monospace; font-weight: 500;">${gasto.referencia_pago}</p>` : ""}
-      </div>
-      ` : ""}
+    <div class="footer">
+      <p>Este es un correo automático de Arrenlex.</p>
     </div>
-  </div>
-
-  <div style="border-top: 1px solid #e5e7eb; padding-top: 20px;" class="seccion">
-    <p class="label">Valor en letras:</p>
-    <p style="font-style: italic; font-weight: 500;">${gasto.valor} pesos colombianos</p>
-  </div>
-
-  <div class="firmas">
-    <div class="firma">
-      <div class="linea-firma"></div>
-      <p style="font-weight: 500;">Quien recibe el pago</p>
-      <p style="font-size: 12px; color: #6b7280;">${gasto.nombre_completo}</p>
-      <p style="font-size: 12px; color: #6b7280;">C.C. ${gasto.cedula}</p>
-    </div>
-    <div class="firma">
-      <div class="linea-firma"></div>
-      <p style="font-weight: 500;">Quien hace el pago</p>
-      <p style="font-size: 12px; color: #6b7280;">${propietario?.nombre || propietario?.email || "Propietario"}</p>
-    </div>
-  </div>
-
-  <div style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e7eb;">
-    <span class="estado">Estado: EMITIDO</span>
   </div>
 </body>
 </html>
-  `
+`
 
   try {
     const emailFrom = process.env.EMAIL_FROM || "Arrenlex <ceo@arrenlex.com>"
@@ -227,13 +150,24 @@ export async function POST(
     const { data, error } = await resend.emails.send({
       from: emailFrom,
       to: correo.trim(),
-      subject: `Recibo de Pago ${gasto.numero_recibo} - Arrenlex`,
-      html: reciboHTML,
+      subject: `Recibo ${completo.numero_recibo ?? id} - Otros gastos - Arrenlex`,
+      html: emailHtml,
+      attachments: [
+        {
+          filename: `Recibo_${String(completo.numero_recibo || id).replace(/[^\w.-]+/g, "_")}.html`,
+          content: Buffer.from(reciboDetalleHtml, "utf-8"),
+          contentType: "text/html; charset=utf-8",
+        },
+      ],
     })
 
     if (error) {
       console.error("[otros-gastos enviar-recibo]", error)
       return NextResponse.json({ error: "Error al enviar el correo" }, { status: 500 })
+    }
+
+    if (completo.estado === "pendiente") {
+      await admin.from("otros_gastos").update({ estado: "emitido" }).eq("id", id)
     }
 
     return NextResponse.json({

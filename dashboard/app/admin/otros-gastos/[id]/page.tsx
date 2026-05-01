@@ -2,10 +2,11 @@
 
 import { useEffect, useState } from "react"
 import { useParams, useRouter } from "next/navigation"
+import Link from "next/link"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { ArrowLeft, Download, Mail, Printer } from "lucide-react"
+import { ArrowLeft, Download, Mail, Pencil, Printer } from "lucide-react"
 import { useLang } from "@/lib/i18n/context"
 
 type OtroGastoDetalle = {
@@ -33,8 +34,8 @@ type OtroGastoDetalle = {
     barrio: string
     titulo: string
   } | null
-  users: {
-    email: string
+  propietario: {
+    email: string | null
     nombre: string | null
   } | null
 }
@@ -64,6 +65,11 @@ export default function AdminOtrosGastoDetallePage() {
     window.print()
   }
 
+  const handleOpenPdf = () => {
+    if (!gasto) return
+    window.open(`/api/otros-gastos/${gasto.id}/pdf`, "_blank", "noopener,noreferrer")
+  }
+
   const handleChangeState = async (newState: string) => {
     if (!gasto) return
     setUpdating(true)
@@ -74,7 +80,7 @@ export default function AdminOtrosGastoDetallePage() {
         body: JSON.stringify({ estado: newState }),
       })
       if (res.ok) {
-        const data = await res.json()
+        const data = (await res.json()) as OtroGastoDetalle
         setGasto(data)
       }
     } finally {
@@ -152,7 +158,7 @@ export default function AdminOtrosGastoDetallePage() {
   }
 
   const propiedad = gasto.propiedades
-  const propietario = gasto.users
+  const propietario = gasto.propietario
 
   return (
     <div>
@@ -167,7 +173,7 @@ export default function AdminOtrosGastoDetallePage() {
             <p className="text-sm text-muted-foreground">{gasto.numero_recibo}</p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <select
             value={gasto.estado}
             onChange={(e) => handleChangeState(e.target.value)}
@@ -178,15 +184,24 @@ export default function AdminOtrosGastoDetallePage() {
             <option value="emitido">{t.otrosGastos.estados.emitido}</option>
             <option value="cancelado">{t.otrosGastos.estados.cancelado}</option>
           </select>
+          <Button variant="outline" size="sm" asChild>
+            <Link href={`/admin/otros-gastos/${gasto.id}/editar`}>
+              <Pencil className="mr-2 h-4 w-4" />
+              {t.comun.editar}
+            </Link>
+          </Button>
+          <Button variant="outline" size="sm" asChild>
+            <Link href="/admin/otros-gastos">{t.otrosGastos.verHistoricoCompleto}</Link>
+          </Button>
           <Button variant="outline" size="sm" onClick={handlePrint}>
             <Printer className="mr-2 h-4 w-4" />
             Imprimir
           </Button>
-          <Button variant="outline" size="sm" onClick={handlePrint}>
+          <Button variant="outline" size="sm" onClick={handleOpenPdf}>
             <Download className="mr-2 h-4 w-4" />
             PDF
           </Button>
-          {gasto.correo_electronico && gasto.estado === "emitido" && (
+          {gasto.correo_electronico && gasto.estado !== "cancelado" && (
             <Button variant="default" size="sm" onClick={handleSendEmail} disabled={sending}>
               <Mail className="mr-2 h-4 w-4" />
               {sending ? "Enviando..." : t.otrosGastos.enviarRecibo}

@@ -144,17 +144,22 @@ function NuevoOtroGastoContent() {
 
   return (
     <div>
-      <div className="mb-6 flex items-center gap-4">
-        <Button variant="ghost" size="sm" onClick={() => router.back()}>
-          <ArrowLeft className="mr-2 h-4 w-4" />
-          {t.comun.volver}
-        </Button>
-        <div>
-          <h1 className="text-2xl font-bold">{t.otrosGastos.nuevoGasto}</h1>
-          <p className="text-sm text-muted-foreground">
-            Propiedad: <span className="font-medium text-green-700">{propiedadTitulo || propiedadId}</span>
-          </p>
+      <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-center gap-4">
+          <Button variant="ghost" size="sm" onClick={() => router.back()}>
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            {t.comun.volver}
+          </Button>
+          <div>
+            <h1 className="text-2xl font-bold">{t.otrosGastos.nuevoGasto}</h1>
+            <p className="text-sm text-muted-foreground">
+              Propiedad: <span className="font-medium text-green-700">{propiedadTitulo || propiedadId}</span>
+            </p>
+          </div>
         </div>
+        <Button variant="outline" size="sm" asChild>
+          <Link href="/propietario/otros-gastos">{t.otrosGastos.verHistoricoCompleto}</Link>
+        </Button>
       </div>
 
       <Card className="max-w-2xl mx-auto">

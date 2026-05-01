@@ -524,6 +524,10 @@ export const translations = {
     otrosGastos: {
       titulo: "Otros Gastos",
       descripcion: "Registro de pagos a proveedores por servicios diversos. Genera recibos y lleva la contabilidad por propiedad.",
+      historicoCardTitulo: "Histórico de pagos",
+      historicoCardDesc: "Aquí ves todos los recibos: abre el detalle, edita datos, reimprime el PDF o reenvía por correo.",
+      editarRegistro: "Editar pago y recibo",
+      verHistoricoCompleto: "Ver todos los otros gastos",
       nuevoGasto: "Nuevo Pago a Proveedor",
       cardTitulo: "Registrar Nuevo Pago",
       cardDesc: "Completa la información para generar un recibo de pago a un proveedor o trabajador.",
@@ -1476,6 +1480,10 @@ export const translations = {
     otrosGastos: {
       titulo: "Other Expenses",
       descripcion: "Register payments to providers for various services. Generate receipts and keep property accounting.",
+      historicoCardTitulo: "Payment history",
+      historicoCardDesc: "All receipts are listed here: open details, edit, reprint PDF, or resend by email.",
+      editarRegistro: "Edit payment and receipt",
+      verHistoricoCompleto: "View all other expenses",
       nuevoGasto: "New Provider Payment",
       cardTitulo: "Register New Payment",
       cardDesc: "Complete the information to generate a payment receipt for a provider or worker.",
