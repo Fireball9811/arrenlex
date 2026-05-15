@@ -18,6 +18,7 @@ const PUBLIC_PATHS = [
   "/registrar-inquilino",
   "/catalogo",
   "/politica-datos",
+  "/politica-tratamiento-datos",
   "/api/propiedades/ciudades",
   "/api/propiedades/public",
   "/api/propiedades/banner",

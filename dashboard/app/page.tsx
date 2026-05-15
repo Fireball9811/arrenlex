@@ -79,7 +79,7 @@ export default function HomePage() {
 
             {/* Correo */}
             <a
-              href="mailto:ceo@arrenlex.com"
+              href="mailto:habeasdata@arrenlex.com"
               className="group flex flex-col items-center gap-3 rounded-2xl border border-teal-200 bg-teal-50/80 px-6 py-8 text-center transition hover:border-teal-400 hover:bg-teal-100"
             >
               <div className="flex h-14 w-14 items-center justify-center rounded-full bg-teal-100 transition group-hover:bg-teal-200">
@@ -89,7 +89,7 @@ export default function HomePage() {
                 <p className="text-xs font-semibold uppercase tracking-widest text-teal-600">
                   {c.correoLabel}
                 </p>
-                <p className="mt-1.5 text-base font-medium text-slate-800">ceo@arrenlex.com</p>
+                <p className="mt-1.5 text-base font-medium text-slate-800">habeasdata@arrenlex.com</p>
               </div>
             </a>
 

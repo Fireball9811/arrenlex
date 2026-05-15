@@ -39,7 +39,7 @@ type FormData = {
   personas_trabajan: string
   negocio: string
   fecha_ingreso_deseada: string
-  autorizacion: string
+  autorizacion_aceptada: boolean
 }
 
 const INITIAL_FORM: FormData = {
@@ -58,7 +58,7 @@ const INITIAL_FORM: FormData = {
   personas_trabajan: "",
   negocio: "",
   fecha_ingreso_deseada: "",
-  autorizacion: "",
+  autorizacion_aceptada: false,
 }
 
 const TOTAL_STEPS = 3
@@ -466,8 +466,18 @@ const OPCIONES_CANTIDAD = ["1", "2", "3", "4", "5 o más"].map((v) => ({ value: 
 const OPCIONES_0_4 = ["0", "1", "2", "3", "4 o más"].map((v) => ({ value: v, label: v }))
 const OPCIONES_PERSONAS_TRABAJAN = ["0", "1", "2", "3", "4 o más"].map((v) => ({ value: v, label: v }))
 
-const TEXTO_AUTORIZACION =
-  "Autorizo de manera expresa a Arrenlex SAS, identificada con NIT 902036870-9, como responsable del tratamiento de datos, y/o a quien esta designe como encargado, para recolectar, almacenar, usar, consultar, actualizar, transmitir y conservar mis datos personales con la finalidad de evaluar mi solicitud de arrendamiento, verificar mi identidad, validar la información suministrada, analizar mi capacidad económica, gestionar comunicaciones relacionadas con el inmueble, preparar documentos contractuales y cumplir obligaciones legales o contractuales. Declaro que la información suministrada es veraz y autorizo su validación únicamente con el propósito de evaluar mi aplicación de arrendamiento. Entiendo que mis datos serán tratados de manera confidencial y conforme a la normativa vigente en materia de protección de datos personales."
+const TEXTO_AUTORIZACION = `Autorizo de manera previa, expresa e informada a Arrenlex SAS, identificada con NIT 902036870-9, como responsable del tratamiento de mis datos personales, para recolectar, almacenar, usar, consultar, actualizar, transmitir, conservar y validar la información que suministre en esta solicitud.
+
+La finalidad del tratamiento será evaluar mi solicitud de arrendamiento, verificar mi identidad, validar la información suministrada, analizar mi capacidad económica, contactar referencias autorizadas por mí, gestionar comunicaciones relacionadas con el inmueble, preparar documentos contractuales y cumplir obligaciones legales o contractuales.
+
+Entiendo que Arrenlex SAS podrá apoyarse en proveedores o plataformas autorizadas para validar información en fuentes permitidas por la ley, únicamente para el estudio de esta solicitud de arrendamiento.
+
+Declaro que la información suministrada es veraz. También declaro que conozco mis derechos a conocer, actualizar, rectificar, solicitar prueba de la autorización, ser informado sobre el uso de mis datos, revocar la autorización y solicitar la supresión de mis datos cuando proceda.
+
+Confirmo que he leído y acepto la Política de Tratamiento de Datos Personales de Arrenlex SAS.`
+
+const ETIQUETA_CHECKBOX_AUTORIZACION =
+  "Confirmo que he leído y acepto la Política de Tratamiento de Datos Personales de Arrenlex SAS y autorizo el tratamiento de mis datos personales para el estudio de mi solicitud de arrendamiento."
 
 function Paso3({
   form,
@@ -567,42 +577,37 @@ function Paso3({
 
       {/* Autorización de tratamiento de datos */}
       <div className="rounded-lg border border-gray-200 bg-gray-50 p-4 mt-2">
-        <p className="text-xs text-gray-600 leading-relaxed mb-3">{TEXTO_AUTORIZACION}</p>
-        <div className="flex gap-3">
-          {[{ value: "Si", label: "Sí, autorizo" }, { value: "No", label: "No autorizo" }].map(
-            (opt) => (
-              <label
-                key={opt.value}
-                className={`flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-md border px-3 py-2 text-sm font-medium transition-colors ${
-                  form.autorizacion === opt.value
-                    ? opt.value === "Si"
-                      ? "border-cyan-500 bg-cyan-50 text-cyan-700"
-                      : "border-red-400 bg-red-50 text-red-700"
-                    : "border-gray-300 bg-white text-gray-600 hover:bg-gray-100"
-                } ${disabled ? "cursor-not-allowed opacity-50" : ""}`}
-              >
-                <input
-                  type="radio"
-                  name="autorizacion"
-                  value={opt.value}
-                  checked={form.autorizacion === opt.value}
-                  onChange={() => onChange("autorizacion", opt.value)}
-                  disabled={disabled}
-                  className="sr-only"
-                />
-                {opt.label}
-              </label>
-            )
-          )}
-        </div>
-        {form.autorizacion === "No" && (
-          <p className="text-xs text-red-600 mt-2">
-            Debes autorizar el tratamiento de datos para enviar la solicitud.
-          </p>
-        )}
-        {!form.autorizacion && (
+        <p className="text-xs text-gray-600 leading-relaxed mb-3 whitespace-pre-line">{TEXTO_AUTORIZACION}</p>
+        <p className="mb-3">
+          <Link
+            href="/politica-tratamiento-datos"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-xs font-medium text-cyan-700 underline hover:text-cyan-800"
+          >
+            Ver Política de Tratamiento de Datos Personales
+          </Link>
+        </p>
+        <label
+          htmlFor="autorizacion_politica"
+          className={`flex cursor-pointer items-start gap-2.5 rounded-md border border-gray-200 bg-white p-3 text-xs text-gray-700 leading-relaxed ${
+            disabled ? "cursor-not-allowed opacity-50" : ""
+          }`}
+        >
+          <input
+            id="autorizacion_politica"
+            type="checkbox"
+            checked={form.autorizacion_aceptada}
+            onChange={(e) => onChange("autorizacion_aceptada", e.target.checked)}
+            disabled={disabled}
+            required
+            className="mt-0.5 h-4 w-4 shrink-0 rounded border-gray-300 text-cyan-600 focus:ring-cyan-500"
+          />
+          <span>{ETIQUETA_CHECKBOX_AUTORIZACION}</span>
+        </label>
+        {!form.autorizacion_aceptada && (
           <p className="text-xs text-amber-600 mt-2">
-            Por favor indica si autorizas el tratamiento de datos.
+            Debes marcar la casilla para enviar la solicitud.
           </p>
         )}
       </div>
@@ -715,7 +720,7 @@ export default function AplicacionPage() {
   }
 
   const canSubmit =
-    form.autorizacion === "Si" &&
+    form.autorizacion_aceptada &&
     form.personas !== "" &&
     form.ninos !== "" &&
     form.mascotas !== "" &&
@@ -802,7 +807,7 @@ export default function AplicacionPage() {
           ...form,
           propiedad_id: propiedadId,
           token,
-          autorizacion_aceptada: true,
+          autorizacion: "Si",
         }),
       })
       const data = await res.json().catch(() => ({}))

@@ -9,10 +9,17 @@ import { sendWhatsAppCEO, buildAplicacionWhatsAppText } from "@/lib/whatsapp/sen
 // porque el formulario puede ser saltado (curl, JS deshabilitado, etc.).
 const SALARIO_MINIMO = 1_000_000
 
-const AUTORIZACION_VERSION = "2025.01"
+const AUTORIZACION_VERSION = "2026.03"
 
-const AUTORIZACION_TEXTO =
-  "Autorizo de manera expresa a Arrenlex SAS, identificada con NIT 902036870-9, como responsable del tratamiento de datos, y/o a quien esta designe como encargado, para recolectar, almacenar, usar, consultar, actualizar, transmitir y conservar mis datos personales con la finalidad de evaluar mi solicitud de arrendamiento, verificar mi identidad, validar la información suministrada, analizar mi capacidad económica, gestionar comunicaciones relacionadas con el inmueble, preparar documentos contractuales y cumplir obligaciones legales o contractuales. Declaro que la información suministrada es veraz y autorizo su validación únicamente con el propósito de evaluar mi aplicación de arrendamiento. Entiendo que mis datos serán tratados de manera confidencial y conforme a la normativa vigente en materia de protección de datos personales."
+const AUTORIZACION_TEXTO = `Autorizo de manera previa, expresa e informada a Arrenlex SAS, identificada con NIT 902036870-9, como responsable del tratamiento de mis datos personales, para recolectar, almacenar, usar, consultar, actualizar, transmitir, conservar y validar la información que suministre en esta solicitud.
+
+La finalidad del tratamiento será evaluar mi solicitud de arrendamiento, verificar mi identidad, validar la información suministrada, analizar mi capacidad económica, contactar referencias autorizadas por mí, gestionar comunicaciones relacionadas con el inmueble, preparar documentos contractuales y cumplir obligaciones legales o contractuales.
+
+Entiendo que Arrenlex SAS podrá apoyarse en proveedores o plataformas autorizadas para validar información en fuentes permitidas por la ley, únicamente para el estudio de esta solicitud de arrendamiento.
+
+Declaro que la información suministrada es veraz. También declaro que conozco mis derechos a conocer, actualizar, rectificar, solicitar prueba de la autorización, ser informado sobre el uso de mis datos, revocar la autorización y solicitar la supresión de mis datos cuando proceda.
+
+Confirmo que he leído y acepto la Política de Tratamiento de Datos Personales de Arrenlex SAS.`
 
 const toNullableText = (v: unknown) =>
   typeof v === "string" && v.trim() !== "" ? v.trim() : null
