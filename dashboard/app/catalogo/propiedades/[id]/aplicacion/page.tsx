@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { useParams, useRouter, useSearchParams } from "next/navigation"
+import { useParams, useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -15,6 +15,9 @@ type PropiedadInfo = {
   area: number
   valor_arriendo: number
   descripcion: string | null
+  /** Metadatos del token (respuesta aplicacion-info) */
+  grupo_solicitud_id?: string | null
+  tipo_solicitante?: "arrendatario_principal" | "coarrendatario"
 }
 
 type FormData = {
@@ -24,22 +27,12 @@ type FormData = {
   cedula: string
   fecha_expedicion_cedula: string
   telefono: string
-  unico_arrendatario: boolean
   // Paso 2 — Laboral arrendatario
   empresa_arrendatario: string
   antiguedad_meses: string
   salario: string
   ingresos: string
-  // Paso 3 — Coarrendatario
-  nombre_coarrendatario: string
-  email_coarrendatario: string
-  cedula_coarrendatario: string
-  fecha_expedicion_cedula_coarrendatario: string
-  empresa_coarrendatario: string
-  antiguedad_meses_2: string
-  salario_2: string
-  telefono_coarrendatario: string
-  // Paso 4 — Hogar y autorización
+  // Paso 3 — Hogar y autorización
   personas: string
   ninos: string
   mascotas: string
@@ -55,19 +48,10 @@ const INITIAL_FORM: FormData = {
   cedula: "",
   fecha_expedicion_cedula: "",
   telefono: "",
-  unico_arrendatario: false,
   empresa_arrendatario: "",
   antiguedad_meses: "",
   salario: "",
   ingresos: "",
-  nombre_coarrendatario: "",
-  email_coarrendatario: "",
-  cedula_coarrendatario: "",
-  fecha_expedicion_cedula_coarrendatario: "",
-  empresa_coarrendatario: "",
-  antiguedad_meses_2: "",
-  salario_2: "",
-  telefono_coarrendatario: "",
   personas: "",
   ninos: "",
   mascotas: "",
@@ -77,14 +61,9 @@ const INITIAL_FORM: FormData = {
   autorizacion: "",
 }
 
-const TOTAL_STEPS = 4
+const TOTAL_STEPS = 3
 
-const PASO_TITULOS = [
-  "Información personal",
-  "Situación laboral",
-  "Coarrendatario",
-  "Tu hogar",
-]
+const PASO_TITULOS = ["Información personal", "Situación laboral", "Tu hogar"]
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -276,25 +255,17 @@ function SelectGroup({
 
 // ─── Barra de progreso ────────────────────────────────────────────────────────
 
-function ProgressBar({ step, skipStep3 }: { step: number; skipStep3?: boolean }) {
+function ProgressBar({ step }: { step: number }) {
   return (
     <div className="flex gap-1.5 mb-1">
-      {Array.from({ length: TOTAL_STEPS }).map((_, i) => {
-        const isStep3 = i === 2
-        const skipped = skipStep3 && isStep3
-        return (
-          <div
-            key={i}
-            className={`h-1.5 flex-1 rounded-full transition-colors duration-300 ${
-              skipped
-                ? "bg-gray-300 opacity-60"
-                : i < step
-                ? "bg-cyan-500"
-                : "bg-gray-200"
-            }`}
-          />
-        )
-      })}
+      {Array.from({ length: TOTAL_STEPS }).map((_, i) => (
+        <div
+          key={i}
+          className={`h-1.5 flex-1 rounded-full transition-colors duration-300 ${
+            i < step ? "bg-cyan-500" : "bg-gray-200"
+          }`}
+        />
+      ))}
     </div>
   )
 }
@@ -332,10 +303,10 @@ function Paso1({
 }) {
   const emailError = form.email && !isEmailValido(form.email)
   const telefonoError = form.telefono && !isTelefonoValido(form.telefono)
-  
+
   return (
     <div className="space-y-4">
-      <p className="text-sm text-gray-500 -mt-1 mb-2">Datos del arrendatario principal</p>
+      <p className="text-sm text-gray-500 -mt-1 mb-2">Tus datos personales</p>
       <div>
         <FieldLabel htmlFor="nombre" required>Nombre completo</FieldLabel>
         <Input
@@ -406,30 +377,6 @@ function Paso1({
           </p>
         )}
       </div>
-
-      <div className="rounded-lg border border-gray-200 bg-gray-50 p-3 mt-2">
-        <label
-          className={`flex items-start gap-2 cursor-pointer text-sm text-gray-700 ${disabled ? "cursor-not-allowed opacity-50" : ""}`}
-        >
-          <input
-            type="checkbox"
-            checked={form.unico_arrendatario}
-            onChange={(e) => onChange("unico_arrendatario", e.target.checked)}
-            disabled={disabled}
-            className="mt-0.5 h-4 w-4 rounded border-gray-300 text-cyan-600 focus:ring-cyan-500"
-          />
-          <span>
-            <span className="font-medium">Soy el único arrendatario.</span>{" "}
-            Viviré solo en el inmueble y no tengo coarrendatario.
-          </span>
-        </label>
-        {form.unico_arrendatario && (
-          <p className="text-xs text-amber-700 mt-2 pl-6">
-            Se omitirá el paso del coarrendatario. Este dato se reportará como motivo de estudio
-            en la revisión de tu solicitud.
-          </p>
-        )}
-      </div>
     </div>
   )
 }
@@ -451,7 +398,7 @@ function Paso2({
 
   return (
     <div className="space-y-4">
-      <p className="text-sm text-gray-500 -mt-1 mb-2">Información laboral del arrendatario</p>
+      <p className="text-sm text-gray-500 -mt-1 mb-2">Tu situación laboral e ingresos</p>
       <div>
         <FieldLabel htmlFor="empresa_arrendatario" required>Empresa donde labora</FieldLabel>
         <Input
@@ -504,172 +451,7 @@ function Paso2({
           <div className="text-xs text-red-700 leading-relaxed">
             <p className="font-semibold">Salario insuficiente</p>
             <p>
-              El salario mensual del arrendatario debe ser de{" "}
-              <strong>al menos $1.000.000</strong>. No podemos aceptar solicitudes
-              con un valor menor al mínimo requerido.
-            </p>
-          </div>
-        </div>
-      )}
-    </div>
-  )
-}
-
-function Paso3({
-  form,
-  onChange,
-  disabled,
-  intentoAvanzar,
-}: {
-  form: FormData
-  onChange: OnChange
-  disabled: boolean
-  intentoAvanzar: boolean
-}) {
-  const salarioVacio = form.salario_2.trim() === ""
-  const salarioInvalido = !salarioVacio && !isSalarioValido(form.salario_2)
-  const mostrarErrorSalario = salarioInvalido || (intentoAvanzar && salarioVacio)
-  const telefonoError = form.telefono_coarrendatario && !isTelefonoValido(form.telefono_coarrendatario)
-  const emailError = form.email_coarrendatario && !isEmailValido(form.email_coarrendatario)
-  const cedulaDuplicada =
-    form.cedula_coarrendatario.trim() !== "" &&
-    form.cedula.trim() !== "" &&
-    form.cedula.trim() === form.cedula_coarrendatario.trim()
-  
-  return (
-    <div className="space-y-4">
-      <p className="text-sm text-gray-500 -mt-1 mb-2">Datos del coarrendatario</p>
-      <div>
-        <FieldLabel htmlFor="nombre_coarrendatario" required>Nombre completo</FieldLabel>
-        <Input
-          id="nombre_coarrendatario"
-          value={form.nombre_coarrendatario}
-          onChange={(e) => onChange("nombre_coarrendatario", e.target.value)}
-          placeholder=""
-          required
-          disabled={disabled}
-        />
-      </div>
-      <div>
-        <FieldLabel htmlFor="email_coarrendatario" required>Correo electrónico</FieldLabel>
-        <Input
-          id="email_coarrendatario"
-          type="email"
-          value={form.email_coarrendatario}
-          onChange={(e) => onChange("email_coarrendatario", e.target.value)}
-          placeholder=""
-          required
-          disabled={disabled}
-          aria-invalid={!!emailError || undefined}
-          className={`${emailError ? "border-red-500 focus:ring-red-500" : ""}`}
-        />
-        {emailError && (
-          <p className="text-xs text-red-600 mt-1">
-            Ingresa un correo electrónico válido (ej. nombre@dominio.com).
-          </p>
-        )}
-      </div>
-      <div className="grid grid-cols-2 gap-3">
-        <div>
-          <FieldLabel htmlFor="cedula_coarrendatario" required>Cédula</FieldLabel>
-          <Input
-            id="cedula_coarrendatario"
-            value={form.cedula_coarrendatario}
-            onChange={(e) => onChange("cedula_coarrendatario", e.target.value)}
-            placeholder=""
-            required
-            disabled={disabled}
-            aria-invalid={cedulaDuplicada || undefined}
-            className={`${cedulaDuplicada ? "border-red-500 focus:ring-red-500" : ""}`}
-          />
-          {cedulaDuplicada && (
-            <p className="text-xs text-red-600 mt-1">
-              La cédula del coarrendatario no puede ser la misma que la del arrendatario principal.
-            </p>
-          )}
-        </div>
-        <div>
-          <FieldLabel htmlFor="fecha_expedicion_cedula_coarrendatario" required>Fecha de expedición</FieldLabel>
-          <DateDMY
-            id="fecha_expedicion_cedula_coarrendatario"
-            value={form.fecha_expedicion_cedula_coarrendatario}
-            onChange={(iso) => onChange("fecha_expedicion_cedula_coarrendatario", iso)}
-            required
-            disabled={disabled}
-          />
-        </div>
-      </div>
-      <div>
-        <FieldLabel htmlFor="empresa_coarrendatario" required>Empresa donde labora</FieldLabel>
-        <Input
-          id="empresa_coarrendatario"
-          value={form.empresa_coarrendatario}
-          onChange={(e) => onChange("empresa_coarrendatario", e.target.value)}
-          placeholder=""
-          required
-          disabled={disabled}
-        />
-      </div>
-      <div className="grid grid-cols-3 gap-3">
-        <div>
-          <FieldLabel htmlFor="antiguedad_meses_2" required>Antigüedad (meses)</FieldLabel>
-          <Input
-            id="antiguedad_meses_2"
-            type="number"
-            min="0"
-            value={form.antiguedad_meses_2}
-            onChange={(e) => onChange("antiguedad_meses_2", e.target.value)}
-            placeholder=""
-            required
-            disabled={disabled}
-          />
-        </div>
-        <div>
-          <FieldLabel htmlFor="salario_2" required>Salario mensual</FieldLabel>
-          <Input
-            id="salario_2"
-            type="number"
-            min="0"
-            value={form.salario_2}
-            onChange={(e) => onChange("salario_2", e.target.value)}
-            placeholder=""
-            required
-            disabled={disabled}
-            aria-invalid={mostrarErrorSalario || undefined}
-            aria-describedby={mostrarErrorSalario ? "salario-2-error" : undefined}
-            className={`${mostrarErrorSalario ? "border-red-500 focus:ring-red-500" : ""}`}
-          />
-        </div>
-        <div>
-          <FieldLabel htmlFor="telefono_coarrendatario" required>Teléfono</FieldLabel>
-          <Input
-            id="telefono_coarrendatario"
-            type="tel"
-            value={form.telefono_coarrendatario}
-            onChange={(e) => onChange("telefono_coarrendatario", e.target.value)}
-            placeholder=""
-            required
-            disabled={disabled}
-            className={`${telefonoError ? "border-red-500 focus:ring-red-500" : ""}`}
-          />
-          {telefonoError && (
-            <p className="text-xs text-red-600 mt-1">
-              El teléfono debe tener al menos 10 dígitos.
-            </p>
-          )}
-        </div>
-      </div>
-      {mostrarErrorSalario && (
-        <div
-          id="salario-2-error"
-          role="alert"
-          className="flex items-start gap-2 rounded-md border border-red-300 border-l-4 border-l-red-500 bg-red-50 px-3 py-2"
-        >
-          <AlertCircle className="h-4 w-4 text-red-600 mt-0.5 shrink-0" />
-          <div className="text-xs text-red-700 leading-relaxed">
-            <p className="font-semibold">Salario insuficiente</p>
-            <p>
-              El salario mensual del coarrendatario debe ser de{" "}
+              Tu salario mensual debe ser de{" "}
               <strong>al menos $1.000.000</strong>. No podemos aceptar solicitudes
               con un valor menor al mínimo requerido.
             </p>
@@ -685,9 +467,9 @@ const OPCIONES_0_4 = ["0", "1", "2", "3", "4 o más"].map((v) => ({ value: v, la
 const OPCIONES_PERSONAS_TRABAJAN = ["0", "1", "2", "3", "4 o más"].map((v) => ({ value: v, label: v }))
 
 const TEXTO_AUTORIZACION =
-  "Autorizo de manera expresa a Arrenlex SAS, identificada con NIT 9 0 2 0 3 6 8 7 0 - 9, como responsable del tratamiento de datos, y/o a quien esta designe como encargado, para verificar la información suministrada en la presente solicitud, incluyendo datos laborales, ingresos, referencias personales y comerciales, historial de arrendamiento y, de ser necesario, consultas en centrales de riesgo, bases de datos financieras y antecedentes, a través de operadores o plataformas legalmente autorizadas. Declaro que la información suministrada es veraz y autorizo su validación únicamente con el propósito de evaluar mi aplicación de arrendamiento. Entiendo que mis datos serán tratados de manera confidencial y conforme a la normativa vigente en materia de protección de datos personales."
+  "Autorizo de manera expresa a Arrenlex SAS, identificada con NIT 902036870-9, como responsable del tratamiento de datos, y/o a quien esta designe como encargado, para recolectar, almacenar, usar, consultar, actualizar, transmitir y conservar mis datos personales con la finalidad de evaluar mi solicitud de arrendamiento, verificar mi identidad, validar la información suministrada, analizar mi capacidad económica, gestionar comunicaciones relacionadas con el inmueble, preparar documentos contractuales y cumplir obligaciones legales o contractuales. Declaro que la información suministrada es veraz y autorizo su validación únicamente con el propósito de evaluar mi aplicación de arrendamiento. Entiendo que mis datos serán tratados de manera confidencial y conforme a la normativa vigente en materia de protección de datos personales."
 
-function Paso4({
+function Paso3({
   form,
   onChange,
   disabled,
@@ -699,7 +481,7 @@ function Paso4({
   return (
     <div className="space-y-4">
       <p className="text-sm text-gray-500 -mt-1 mb-2">
-        Cuéntanos sobre quienes vivirán en la propiedad
+        Composición del hogar (quienes vivirán contigo en el inmueble)
       </p>
       <div className="grid grid-cols-2 gap-3">
         <div>
@@ -839,6 +621,7 @@ function PantallaExito({ propiedadId }: { propiedadId: string }) {
         Hemos recibido tu aplicación de arrendamiento. Nuestro equipo la revisará y se pondrá en
         contacto contigo a la brevedad.
       </p>
+
       <div className="flex flex-col gap-2 w-full max-w-xs">
         <Button asChild className="w-full">
           <Link href={`/catalogo/propiedades/${propiedadId}`}>Ver la propiedad</Link>
@@ -855,10 +638,9 @@ function PantallaExito({ propiedadId }: { propiedadId: string }) {
 
 export default function AplicacionPage() {
   const params = useParams()
-  const router = useRouter()
   const searchParams = useSearchParams()
   const propiedadId = params.id as string
-  const token = searchParams.get("token") ?? ""
+  const token = searchParams.get("token")?.trim() ?? ""
 
   const [propiedadInfo, setPropiedadInfo] = useState<PropiedadInfo | null>(null)
   const [loadingInfo, setLoadingInfo] = useState(true)
@@ -870,16 +652,20 @@ export default function AplicacionPage() {
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
-  // Se enciende cuando el usuario intenta avanzar con datos inválidos en el paso
-  // actual. Permite que los pasos muestren errores incluso para campos vacíos
-  // (ej. salario insuficiente). Se reinicia al cambiar de paso.
   const [intentoAvanzar, setIntentoAvanzar] = useState(false)
 
-  // Cargar info de la propiedad al montar — el token se pasa al API
   useEffect(() => {
-    const url = token
-      ? `/api/propiedades/${propiedadId}/aplicacion-info?token=${encodeURIComponent(token)}`
-      : `/api/propiedades/${propiedadId}/aplicacion-info`
+    if (!token) {
+      setTokenErrorMsg("Se requiere un enlace de invitación válido para acceder.")
+      setLoadingInfo(false)
+      return
+    }
+
+    setLoadingInfo(true)
+    setPropiedadError(false)
+    setTokenErrorMsg(null)
+
+    const url = `/api/propiedades/${propiedadId}/aplicacion-info?token=${encodeURIComponent(token)}`
 
     fetch(url)
       .then(async (res) => {
@@ -905,7 +691,6 @@ export default function AplicacionPage() {
     setForm((prev) => ({ ...prev, [field]: value }))
   }
 
-  // Validaciones por paso para habilitar "Siguiente"
   const canAdvance = (): boolean => {
     if (step === 1) {
       return (
@@ -926,31 +711,9 @@ export default function AplicacionPage() {
         isSalarioValido(form.salario)
       )
     }
-    if (step === 3) {
-      // Si declaró que es único arrendatario, este paso se omite (no debería poder llegar aquí)
-      if (form.unico_arrendatario) return true
-      const cedulasIguales =
-        form.cedula.trim() !== "" &&
-        form.cedula.trim() === form.cedula_coarrendatario.trim()
-      return (
-        form.nombre_coarrendatario.trim() !== "" &&
-        form.cedula_coarrendatario.trim() !== "" &&
-        !cedulasIguales &&
-        form.fecha_expedicion_cedula_coarrendatario !== "" &&
-        form.email_coarrendatario.trim() !== "" &&
-        isEmailValido(form.email_coarrendatario) &&
-        form.empresa_coarrendatario.trim() !== "" &&
-        form.antiguedad_meses_2.trim() !== "" &&
-        form.salario_2.trim() !== "" &&
-        isSalarioValido(form.salario_2) &&
-        form.telefono_coarrendatario.trim() !== "" &&
-        isTelefonoValido(form.telefono_coarrendatario)
-      )
-    }
     return false
   }
 
-  // El botón de enviar solo se habilita si autorizacion === "Si" y campos del paso 4 completos
   const canSubmit =
     form.autorizacion === "Si" &&
     form.personas !== "" &&
@@ -960,10 +723,6 @@ export default function AplicacionPage() {
     form.negocio !== "" &&
     form.fecha_ingreso_deseada !== ""
 
-  // Devuelve un mensaje corto explicando por qué no se puede avanzar al
-  // siguiente paso. Si todo está OK devuelve `null`. Se usa como `title`
-  // (tooltip) del botón "Siguiente" cuando está bloqueado y como guía
-  // para el scroll-to-error.
   const motivoBloqueo = (): { mensaje: string; idCampo?: string } | null => {
     if (step === 1) {
       if (!form.nombre.trim()) return { mensaje: "Ingresa el nombre completo.", idCampo: "nombre" }
@@ -983,51 +742,8 @@ export default function AplicacionPage() {
         return { mensaje: "Ingresa la antigüedad en meses.", idCampo: "antiguedad_meses" }
       if (!form.salario.trim() || !isSalarioValido(form.salario))
         return {
-          mensaje: "El salario mensual debe ser de al menos $1.000.000.",
+          mensaje: "Tu salario mensual debe ser de al menos $1.000.000.",
           idCampo: "salario",
-        }
-      return null
-    }
-    if (step === 3) {
-      if (form.unico_arrendatario) return null
-      if (!form.nombre_coarrendatario.trim())
-        return { mensaje: "Ingresa el nombre del coarrendatario.", idCampo: "nombre_coarrendatario" }
-      if (!form.email_coarrendatario.trim() || !isEmailValido(form.email_coarrendatario))
-        return {
-          mensaje: "Ingresa un correo válido del coarrendatario.",
-          idCampo: "email_coarrendatario",
-        }
-      if (!form.cedula_coarrendatario.trim())
-        return { mensaje: "Ingresa la cédula del coarrendatario.", idCampo: "cedula_coarrendatario" }
-      if (form.cedula.trim() === form.cedula_coarrendatario.trim())
-        return {
-          mensaje: "La cédula del coarrendatario no puede ser igual a la del arrendatario.",
-          idCampo: "cedula_coarrendatario",
-        }
-      if (!form.fecha_expedicion_cedula_coarrendatario)
-        return {
-          mensaje: "Ingresa la fecha de expedición del coarrendatario.",
-          idCampo: "fecha_expedicion_cedula_coarrendatario",
-        }
-      if (!form.empresa_coarrendatario.trim())
-        return {
-          mensaje: "Ingresa la empresa del coarrendatario.",
-          idCampo: "empresa_coarrendatario",
-        }
-      if (!form.antiguedad_meses_2.trim())
-        return {
-          mensaje: "Ingresa la antigüedad del coarrendatario.",
-          idCampo: "antiguedad_meses_2",
-        }
-      if (!form.salario_2.trim() || !isSalarioValido(form.salario_2))
-        return {
-          mensaje: "El salario del coarrendatario debe ser de al menos $1.000.000.",
-          idCampo: "salario_2",
-        }
-      if (!form.telefono_coarrendatario.trim() || !isTelefonoValido(form.telefono_coarrendatario))
-        return {
-          mensaje: "El teléfono del coarrendatario debe tener al menos 10 dígitos.",
-          idCampo: "telefono_coarrendatario",
         }
       return null
     }
@@ -1035,9 +751,6 @@ export default function AplicacionPage() {
   }
 
   const handleNext = () => {
-    // Si la validación del paso falla, en vez de no hacer nada, marcar el
-    // intento para que los pasos muestren los mensajes de error y mover el
-    // foco al primer campo inválido.
     if (!canAdvance()) {
       setIntentoAvanzar(true)
       const motivo = motivoBloqueo()
@@ -1045,7 +758,6 @@ export default function AplicacionPage() {
         const target = document.getElementById(motivo.idCampo)
         if (target) {
           target.scrollIntoView({ behavior: "smooth", block: "center" })
-          // Pequeño delay para no pelear con el scroll antes de enfocar
           setTimeout(() => {
             try {
               target.focus({ preventScroll: true })
@@ -1059,23 +771,14 @@ export default function AplicacionPage() {
     }
 
     if (step < TOTAL_STEPS) {
-      // Si es único arrendatario, saltar el paso 3 (coarrendatario)
-      if (step === 2 && form.unico_arrendatario) {
-        setStep(4)
-      } else {
-        setStep((s) => s + 1)
-      }
+      setStep((s) => s + 1)
       setIntentoAvanzar(false)
     }
   }
 
   const handleBack = () => {
     if (step > 1) {
-      if (step === 4 && form.unico_arrendatario) {
-        setStep(2)
-      } else {
-        setStep((s) => s - 1)
-      }
+      setStep((s) => s - 1)
       setIntentoAvanzar(false)
     }
   }
@@ -1083,34 +786,30 @@ export default function AplicacionPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!canSubmit || submitting) return
+    if (!token) {
+      setSubmitError("Falta el enlace de invitación. Abre la página desde el enlace que te compartieron.")
+      return
+    }
 
     setSubmitting(true)
     setSubmitError(null)
-
-    // Si es único arrendatario, limpiar campos del coarrendatario antes de enviar
-    const payload = form.unico_arrendatario
-      ? {
-          ...form,
-          nombre_coarrendatario: "",
-          email_coarrendatario: "",
-          cedula_coarrendatario: "",
-          fecha_expedicion_cedula_coarrendatario: "",
-          empresa_coarrendatario: "",
-          antiguedad_meses_2: "",
-          salario_2: "",
-          telefono_coarrendatario: "",
-        }
-      : form
 
     try {
       const res = await fetch("/api/intake/aplicacion", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...payload, propiedad_id: propiedadId, token }),
+        body: JSON.stringify({
+          ...form,
+          propiedad_id: propiedadId,
+          token,
+          autorizacion_aceptada: true,
+        }),
       })
       const data = await res.json().catch(() => ({}))
       if (!res.ok) {
-        setSubmitError(data.error ?? "Error al enviar la solicitud. Intenta nuevamente.")
+        setSubmitError(
+          (data as { error?: string }).error ?? "Error al enviar la solicitud. Intenta nuevamente."
+        )
         return
       }
       setSuccess(true)
@@ -1118,8 +817,6 @@ export default function AplicacionPage() {
       setSubmitting(false)
     }
   }
-
-  // ── Estados de carga / error ──────────────────────────────────────────────
 
   if (loadingInfo) {
     return (
@@ -1159,8 +856,6 @@ export default function AplicacionPage() {
     )
   }
 
-  // ── Pantalla de éxito ─────────────────────────────────────────────────────
-
   if (success) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
@@ -1171,13 +866,9 @@ export default function AplicacionPage() {
     )
   }
 
-  // ── Wizard ────────────────────────────────────────────────────────────────
-
   return (
     <div className="min-h-screen bg-gray-50 py-8 px-4">
       <div className="mx-auto w-full max-w-lg">
-
-        {/* Volver */}
         <Button variant="ghost" size="sm" className="-ml-2 mb-4 text-gray-500" asChild>
           <Link href={`/catalogo/propiedades/${propiedadId}`}>
             <ArrowLeft className="mr-1 h-4 w-4" />
@@ -1186,12 +877,10 @@ export default function AplicacionPage() {
         </Button>
 
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-
-          {/* Cabecera */}
           <div className="bg-gradient-to-r from-cyan-600 to-cyan-500 px-6 pt-6 pb-5 text-white">
             <div className="flex items-center gap-2 mb-1">
               <ClipboardList className="h-5 w-5 opacity-80" />
-              <h1 className="text-lg font-semibold">Aplicación de Arrendamiento</h1>
+              <h1 className="text-lg font-semibold">Aplicación de arrendamiento</h1>
             </div>
             <div className="flex flex-wrap items-center gap-x-3 text-cyan-100 text-sm">
               <span>
@@ -1205,25 +894,31 @@ export default function AplicacionPage() {
                   {formatCOP(propiedadInfo.valor_arriendo)}/mes
                 </span>
               </span>
+              <span className="text-cyan-100/90 text-xs w-full mt-1 basis-full">
+                Completa solo tus datos; este formulario es para una persona.
+              </span>
             </div>
           </div>
 
-          {/* Progreso */}
           <div className="px-6 pt-4 pb-1">
-            <ProgressBar step={step} skipStep3={form.unico_arrendatario} />
+            <ProgressBar step={step} />
             <div className="flex justify-between items-center mt-1.5">
               <p className="text-xs text-gray-400">
                 Paso {step} de {TOTAL_STEPS}
-                {form.unico_arrendatario && " (paso 3 omitido)"}
               </p>
               <p className="text-xs font-medium text-gray-600">{PASO_TITULOS[step - 1]}</p>
             </div>
           </div>
 
-          {/* Cuerpo del paso */}
           <form onSubmit={handleSubmit}>
             <div className="px-6 py-5">
-              {step === 1 && <Paso1 form={form} onChange={handleChange} disabled={submitting} />}
+              {step === 1 && (
+                <Paso1
+                  form={form}
+                  onChange={handleChange}
+                  disabled={submitting}
+                />
+              )}
               {step === 2 && (
                 <Paso2
                   form={form}
@@ -1232,15 +927,7 @@ export default function AplicacionPage() {
                   intentoAvanzar={intentoAvanzar}
                 />
               )}
-              {step === 3 && (
-                <Paso3
-                  form={form}
-                  onChange={handleChange}
-                  disabled={submitting}
-                  intentoAvanzar={intentoAvanzar}
-                />
-              )}
-              {step === 4 && <Paso4 form={form} onChange={handleChange} disabled={submitting} />}
+              {step === 3 && <Paso3 form={form} onChange={handleChange} disabled={submitting} />}
 
               {submitError && (
                 <p className="text-sm text-red-600 mt-4 rounded-md bg-red-50 border border-red-200 px-3 py-2">
@@ -1249,7 +936,6 @@ export default function AplicacionPage() {
               )}
             </div>
 
-            {/* Navegación */}
             <div className="flex justify-between items-center px-6 pb-6 pt-2 border-t border-gray-100">
               <Button
                 type="button"
@@ -1299,7 +985,6 @@ export default function AplicacionPage() {
           </form>
         </div>
 
-        {/* Nota de privacidad */}
         <p className="text-center text-xs text-gray-400 mt-4">
           Tus datos son tratados con confidencialidad conforme a la normativa colombiana de protección de datos.
         </p>

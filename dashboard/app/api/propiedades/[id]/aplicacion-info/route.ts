@@ -3,9 +3,8 @@ import { createAdminClient } from "@/lib/supabase/admin"
 
 /**
  * GET - Info pública de una propiedad para el formulario de aplicación.
- * Requiere un token de un solo uso válido (?token=...).
- * Devuelve 410 Gone si el token no existe, ya fue usado o expiró.
- * Devuelve 404 si la propiedad no existe o no está disponible.
+ * Requiere ?token=... válido (no usado, no expirado, propiedad disponible).
+ * Incluye en la respuesta tipo_solicitante y grupo_solicitud_id asociados al token.
  */
 export async function GET(
   request: Request,
@@ -24,18 +23,14 @@ export async function GET(
 
   const admin = createAdminClient()
 
-  // Validar el token: debe existir, pertenecer a esta propiedad, no estar usado y no haber expirado
   const { data: tokenData, error: errToken } = await admin
     .from("aplicacion_tokens")
-    .select("id, usado, expira_en, propiedad_id")
+    .select("id, usado, expira_en, propiedad_id, grupo_solicitud_id, tipo_solicitante")
     .eq("token", token.trim())
     .single()
 
   if (errToken || !tokenData) {
-    return NextResponse.json(
-      { error: "Este enlace no es válido." },
-      { status: 410 }
-    )
+    return NextResponse.json({ error: "Este enlace no es válido." }, { status: 410 })
   }
 
   if (tokenData.propiedad_id !== id) {
@@ -59,7 +54,6 @@ export async function GET(
     )
   }
 
-  // Token válido — devolver info de la propiedad
   const { data, error } = await admin
     .from("propiedades")
     .select("id, ciudad, area, valor_arriendo, descripcion")
@@ -74,5 +68,15 @@ export async function GET(
     )
   }
 
-  return NextResponse.json(data)
+  const tipo =
+    typeof tokenData.tipo_solicitante === "string" &&
+    tokenData.tipo_solicitante.trim().toLowerCase() === "coarrendatario"
+      ? "coarrendatario"
+      : "arrendatario_principal"
+
+  return NextResponse.json({
+    ...data,
+    grupo_solicitud_id: tokenData.grupo_solicitud_id ?? null,
+    tipo_solicitante: tipo,
+  })
 }

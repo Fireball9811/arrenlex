@@ -1,3 +1,4 @@
+import { randomUUID } from "crypto"
 import { NextResponse } from "next/server"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { sendAplicacionEmail } from "@/lib/email/send-aplicacion"
@@ -7,6 +8,11 @@ import { sendWhatsAppCEO, buildAplicacionWhatsAppText } from "@/lib/whatsapp/sen
 // arrendamiento. El cliente ya valida esto, pero lo replicamos en el servidor
 // porque el formulario puede ser saltado (curl, JS deshabilitado, etc.).
 const SALARIO_MINIMO = 1_000_000
+
+const AUTORIZACION_VERSION = "2025.01"
+
+const AUTORIZACION_TEXTO =
+  "Autorizo de manera expresa a Arrenlex SAS, identificada con NIT 902036870-9, como responsable del tratamiento de datos, y/o a quien esta designe como encargado, para recolectar, almacenar, usar, consultar, actualizar, transmitir y conservar mis datos personales con la finalidad de evaluar mi solicitud de arrendamiento, verificar mi identidad, validar la información suministrada, analizar mi capacidad económica, gestionar comunicaciones relacionadas con el inmueble, preparar documentos contractuales y cumplir obligaciones legales o contractuales. Declaro que la información suministrada es veraz y autorizo su validación únicamente con el propósito de evaluar mi aplicación de arrendamiento. Entiendo que mis datos serán tratados de manera confidencial y conforme a la normativa vigente en materia de protección de datos personales."
 
 const toNullableText = (v: unknown) =>
   typeof v === "string" && v.trim() !== "" ? v.trim() : null
@@ -29,6 +35,18 @@ const toNullableNum = (v: unknown) => {
   return null
 }
 
+function normalizeTipoSolicitante(raw: unknown): "arrendatario_principal" | "coarrendatario" {
+  if (typeof raw !== "string") return "arrendatario_principal"
+  const t = raw.trim().toLowerCase()
+  return t === "coarrendatario" ? "coarrendatario" : "arrendatario_principal"
+}
+
+function clientIp(request: Request): string | null {
+  const xff = request.headers.get("x-forwarded-for")
+  const first = xff?.split(",")[0]?.trim()
+  return first || null
+}
+
 /**
  * POST /api/intake/aplicacion
  *
@@ -36,10 +54,12 @@ const toNullableNum = (v: unknown) => {
  * enviado desde el wizard del catálogo.
  *
  * Valida:
- *  - autorizacion === "Si" (obligatorio)
+ *  - autorizacion === "Si" y autorizacion_aceptada === true
  *  - propiedad_id existe y está disponible
- *  - campos requeridos del arrendatario
- *  - salario del arrendatario (y coarrendatario si aplica) >= SALARIO_MINIMO
+ *  - campos requeridos del solicitante (una persona por envío)
+ *  - salario del solicitante >= SALARIO_MINIMO
+ *  - token de invitación válido (un solo uso, 24 h); el tipo de solicitante y el
+ *    grupo se toman del registro del token, no del cuerpo de la petición
  */
 export async function POST(request: Request) {
   let body: Record<string, unknown>
@@ -52,28 +72,18 @@ export async function POST(request: Request) {
   const {
     propiedad_id,
     token,
-    // Paso 1 — Arrendatario
+    // Paso 1 — Solicitante
     nombre,
     email,
     cedula,
     fecha_expedicion_cedula,
     telefono,
-    unico_arrendatario,
-    // Paso 2 — Laboral arrendatario
+    // Paso 2 — Laboral
     empresa_arrendatario,
     antiguedad_meses,
     salario,
     ingresos,
-    // Paso 3 — Coarrendatario (todos opcionales cuando unico_arrendatario === true)
-    nombre_coarrendatario,
-    email_coarrendatario,
-    cedula_coarrendatario,
-    fecha_expedicion_cedula_coarrendatario,
-    empresa_coarrendatario,
-    antiguedad_meses_2,
-    salario_2,
-    telefono_coarrendatario,
-    // Paso 4 — Hogar y autorización
+    // Hogar y autorización
     personas,
     ninos,
     mascotas,
@@ -81,19 +91,17 @@ export async function POST(request: Request) {
     negocio,
     fecha_ingreso_deseada,
     autorizacion,
+    autorizacion_aceptada,
   } = body as Record<string, unknown>
 
-  const esUnicoArrendatario = unico_arrendatario === true
-
-  // Validar autorización — bloquear si no es "Si"
-  if (autorizacion !== "Si") {
+  if (autorizacion !== "Si" || autorizacion_aceptada !== true) {
     return NextResponse.json(
-      { error: "Debes autorizar el tratamiento de datos para enviar la solicitud" },
+      { error: "Debe autorizar el tratamiento de datos personales para enviar la solicitud." },
       { status: 400 }
     )
   }
 
-  // Validar campos requeridos del arrendatario
+  // Validar campos requeridos del solicitante
   if (
     typeof propiedad_id !== "string" ||
     typeof nombre !== "string" ||
@@ -118,14 +126,18 @@ export async function POST(request: Request) {
     )
   }
 
+  if (typeof token !== "string" || !token.trim()) {
+    return NextResponse.json(
+      { error: "Se requiere un enlace de invitación válido." },
+      { status: 400 }
+    )
+  }
+
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
   if (!emailRegex.test(emailTrim)) {
     return NextResponse.json({ error: "Formato de correo electrónico inválido" }, { status: 400 })
   }
 
-  // Validar salario mínimo del arrendatario principal — replica la regla del
-  // wizard (isSalarioValido) para evitar que solicitudes con valores irrisorios
-  // (ej. $2) entren a la base si alguien salta la UI.
   const salarioMinFmt = `$${SALARIO_MINIMO.toLocaleString("es-CO")}`
   const salarioNum = toNullableNum(salario)
   if (salarioNum == null || salarioNum < SALARIO_MINIMO) {
@@ -135,38 +147,6 @@ export async function POST(request: Request) {
       },
       { status: 400 }
     )
-  }
-
-  // Validaciones específicas del coarrendatario cuando NO es único arrendatario
-  const cedulaCoarrendatarioTrim =
-    typeof cedula_coarrendatario === "string" ? cedula_coarrendatario.trim() : ""
-  const emailCoarrendatarioTrim =
-    typeof email_coarrendatario === "string" ? email_coarrendatario.trim().toLowerCase() : ""
-
-  if (!esUnicoArrendatario) {
-    if (cedulaCoarrendatarioTrim && cedulaCoarrendatarioTrim === cedulaTrim) {
-      return NextResponse.json(
-        { error: "La cédula del coarrendatario no puede ser la misma que la del arrendatario principal" },
-        { status: 400 }
-      )
-    }
-
-    if (emailCoarrendatarioTrim && !emailRegex.test(emailCoarrendatarioTrim)) {
-      return NextResponse.json(
-        { error: "Formato de correo electrónico del coarrendatario inválido" },
-        { status: 400 }
-      )
-    }
-
-    const salario2Num = toNullableNum(salario_2)
-    if (salario2Num == null || salario2Num < SALARIO_MINIMO) {
-      return NextResponse.json(
-        {
-          error: `El salario del coarrendatario debe ser de al menos ${salarioMinFmt}. No se aceptan solicitudes con un valor menor.`,
-        },
-        { status: 400 }
-      )
-    }
   }
 
   const admin = createAdminClient()
@@ -189,73 +169,57 @@ export async function POST(request: Request) {
     )
   }
 
-  // Validar token de un solo uso — requerido y debe estar vigente
-  if (typeof token !== "string" || !token.trim()) {
-    return NextResponse.json(
-      { error: "Se requiere un enlace de invitación válido." },
-      { status: 400 }
-    )
-  }
-
-  const { data: tokenData, error: errToken } = await admin
+  const { data: td, error: errToken } = await admin
     .from("aplicacion_tokens")
-    .select("id, usado, expira_en, propiedad_id")
+    .select("id, usado, expira_en, propiedad_id, grupo_solicitud_id, tipo_solicitante")
     .eq("token", token.trim())
     .single()
 
-  if (errToken || !tokenData) {
+  if (errToken || !td) {
     return NextResponse.json({ error: "Enlace no válido." }, { status: 400 })
   }
 
-  if (tokenData.propiedad_id !== propiedadIdTrim) {
+  if (td.propiedad_id !== propiedadIdTrim) {
     return NextResponse.json({ error: "El enlace no corresponde a esta propiedad." }, { status: 400 })
   }
 
-  if (tokenData.usado) {
+  if (td.usado) {
     return NextResponse.json(
       { error: "Este enlace ya fue utilizado. La aplicación ya fue enviada." },
       { status: 400 }
     )
   }
 
-  if (new Date(tokenData.expira_en) < new Date()) {
+  if (new Date(td.expira_en) < new Date()) {
     return NextResponse.json(
       { error: "Este enlace ha expirado. Solicita un nuevo enlace al arrendador." },
       { status: 400 }
     )
   }
 
-  // Si el aplicante es único arrendatario, forzar a null todos los campos del coarrendatario
-  const coarrendatarioPayload = esUnicoArrendatario
-    ? {
-        coarrendatario_nombre: null,
-        coarrendatario_email: null,
-        coarrendatario_cedula: null,
-        coarrendatario_cedula_expedicion: null,
-        empresa_secundaria: null,
-        tiempo_servicio_secundario_meses: null,
-        salario_secundario: null,
-        coarrendatario_telefono: null,
-      }
-    : {
-        coarrendatario_nombre: toNullableText(nombre_coarrendatario),
-        coarrendatario_email: emailCoarrendatarioTrim || null,
-        coarrendatario_cedula: toNullableText(cedula_coarrendatario),
-        coarrendatario_cedula_expedicion: toNullableText(fecha_expedicion_cedula_coarrendatario),
-        empresa_secundaria: toNullableText(empresa_coarrendatario),
-        tiempo_servicio_secundario_meses: toNullableInt(antiguedad_meses_2),
-        salario_secundario: toNullableNum(salario_2),
-        coarrendatario_telefono: toNullableText(telefono_coarrendatario),
-      }
+  const tipoSolicitante = normalizeTipoSolicitante(td.tipo_solicitante)
+  const enlaceDelPar: 1 | 2 = tipoSolicitante === "coarrendatario" ? 2 : 1
+  const grupoSolicitudId =
+    typeof td.grupo_solicitud_id === "string" && td.grupo_solicitud_id.trim() !== ""
+      ? td.grupo_solicitud_id.trim()
+      : randomUUID()
+
+  const tokenRowId = td.id
+
+  // Flujo con dos enlaces: cada quien envía solo sus datos; no hay bandera "único arrendatario".
+
+  const authFecha = new Date().toISOString()
+  const userAgent = request.headers.get("user-agent") || null
 
   const { data: inserted, error: errInsert } = await admin
     .from("arrenlex_form_intake")
     .insert({
       propiedad_id: propiedadIdTrim,
+      grupo_solicitud_id: grupoSolicitudId,
+      tipo_solicitante: tipoSolicitante,
       nombre: nombreTrim,
       email: emailTrim,
       cedula: cedulaTrim,
-      // Nuevos nombres de columnas (unificados con arrendatarios)
       cedula_ciudad_expedicion: toNullableText(fecha_expedicion_cedula),
       telefono: toNullableText(telefono),
       adultos_habitantes: toNullableInt(personas),
@@ -265,13 +229,18 @@ export async function POST(request: Request) {
       ingresos: toNullableNum(ingresos),
       empresa_principal: toNullableText(empresa_arrendatario),
       tiempo_servicio_principal_meses: toNullableInt(antiguedad_meses),
-      ...coarrendatarioPayload,
       personas_trabajan: toNullableInt(personas_trabajan),
       negocio: toNullableText(negocio),
       fecha_ingreso_deseada: toNullableText(fecha_ingreso_deseada),
       autorizacion: "Si",
-      unico_arrendatario: esUnicoArrendatario,
-      fecha_envio: new Date().toISOString(),
+      autorizacion_aceptada: true,
+      autorizacion_fecha: authFecha,
+      autorizacion_version: AUTORIZACION_VERSION,
+      autorizacion_texto: AUTORIZACION_TEXTO,
+      autorizacion_ip: clientIp(request),
+      autorizacion_user_agent: userAgent,
+      unico_arrendatario: false,
+      fecha_envio: authFecha,
       gestionado: false,
     })
     .select("id")
@@ -282,11 +251,10 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Error al guardar la solicitud" }, { status: 500 })
   }
 
-  // Marcar token como usado
   await admin
     .from("aplicacion_tokens")
     .update({ usado: true, usado_en: new Date().toISOString(), intake_id: inserted?.id ?? null })
-    .eq("id", tokenData.id)
+    .eq("id", tokenRowId)
 
   // ── Notificaciones post-INSERT (no bloquean la respuesta) ─────────────────
 
@@ -294,7 +262,6 @@ export async function POST(request: Request) {
     .filter(Boolean)
     .join(" · ") || propiedadIdTrim
 
-  // Obtener email y nombre del propietario
   let propietarioEmail: string | undefined
   let propietarioNombre: string | undefined
 
@@ -313,7 +280,6 @@ export async function POST(request: Request) {
     console.warn("[intake/aplicacion] No se pudo obtener datos del propietario:", err)
   }
 
-  // Enviar correos (CEO + propietario)
   sendAplicacionEmail({
     propiedadId: propiedadIdTrim,
     propiedadRef,
@@ -327,25 +293,25 @@ export async function POST(request: Request) {
     antiguedadMeses: toNullableInt(antiguedad_meses),
     salario: toNullableNum(salario),
     ingresos: toNullableNum(ingresos),
-    nombreCoarrendatario: esUnicoArrendatario ? null : toNullableText(nombre_coarrendatario),
-    emailCoarrendatario: esUnicoArrendatario ? null : (emailCoarrendatarioTrim || null),
-    cedulaCoarrendatario: esUnicoArrendatario ? null : toNullableText(cedula_coarrendatario),
-    fechaExpedicionCedulaCoarrendatario: esUnicoArrendatario ? null : toNullableText(fecha_expedicion_cedula_coarrendatario),
-    empresaCoarrendatario: esUnicoArrendatario ? null : toNullableText(empresa_coarrendatario),
-    antiguedadMeses2: esUnicoArrendatario ? null : toNullableInt(antiguedad_meses_2),
-    salario2: esUnicoArrendatario ? null : toNullableNum(salario_2),
-    telefonoCoarrendatario: esUnicoArrendatario ? null : toNullableText(telefono_coarrendatario),
+    nombreCoarrendatario: null,
+    emailCoarrendatario: null,
+    cedulaCoarrendatario: null,
+    fechaExpedicionCedulaCoarrendatario: null,
+    empresaCoarrendatario: null,
+    antiguedadMeses2: null,
+    salario2: null,
+    telefonoCoarrendatario: null,
     personas: toNullableInt(personas),
     ninos: toNullableInt(ninos),
     mascotas: toNullableInt(mascotas),
     personasTrabajan: toNullableInt(personas_trabajan),
     negocio: toNullableText(negocio),
-    unicoArrendatario: esUnicoArrendatario,
+    unicoArrendatario: false,
+    enlaceDelPar,
     propietarioEmail,
     propietarioNombre,
   }).catch((err) => console.error("[intake/aplicacion] Error enviando emails:", err))
 
-  // Enviar WhatsApp al CEO
   const waResult = await sendWhatsAppCEO(
     buildAplicacionWhatsAppText({
       propiedadRef,
@@ -354,13 +320,14 @@ export async function POST(request: Request) {
       cedula: cedulaTrim,
       telefono: toNullableText(telefono),
       salario: toNullableNum(salario),
-      salario2: esUnicoArrendatario ? null : toNullableNum(salario_2),
+      salario2: null,
       ingresos: toNullableNum(ingresos),
       personas: toNullableInt(personas),
       ninos: toNullableInt(ninos),
       mascotas: toNullableInt(mascotas),
       negocio: toNullableText(negocio),
-      unicoArrendatario: esUnicoArrendatario,
+      unicoArrendatario: false,
+      enlaceDelPar,
     })
   ).catch((err) => {
     console.error("[intake/aplicacion] Error enviando WhatsApp:", err)
@@ -368,5 +335,8 @@ export async function POST(request: Request) {
   })
   console.log("[intake/aplicacion] WhatsApp result:", JSON.stringify(waResult))
 
-  return NextResponse.json({ id: inserted?.id, ok: true }, { status: 201 })
+  return NextResponse.json(
+    { id: inserted?.id, ok: true, grupo_solicitud_id: grupoSolicitudId },
+    { status: 201 }
+  )
 }

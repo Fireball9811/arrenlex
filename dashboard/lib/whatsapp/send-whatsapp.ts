@@ -102,6 +102,8 @@ export function buildAplicacionWhatsAppText(params: {
   mascotas: number | null
   negocio: string | null
   unicoArrendatario?: boolean
+  /** Par de enlaces del catálogo: 1 o 2 */
+  enlaceDelPar?: 1 | 2
 }): string {
   const cop = (val: number | null) => {
     if (!val) return "—"
@@ -117,20 +119,25 @@ export function buildAplicacionWhatsAppText(params: {
     val !== null && val !== undefined && val !== "" ? String(val) : "—"
 
   const esUnico = params.unicoArrendatario === true
+  const notaPar =
+    params.enlaceDelPar === 1 || params.enlaceDelPar === 2
+      ? `🔖 *Un formulario por persona:* solicitud del *enlace ${params.enlaceDelPar} de 2* (cada quien envía solo sus datos).`
+      : null
 
   const lines = [
     "📋 *Nueva aplicación de arrendamiento*",
     "",
     `🏠 Propiedad: ${params.propiedadRef}${params.canonArriendo ? ` · Canon: ${cop(params.canonArriendo)}/mes` : ""}`,
     "",
+    ...(notaPar ? [notaPar, ""] : []),
     ...(esUnico
       ? ["⚠️ *Motivo de estudio:* el aplicante declara que será el _único arrendatario_ (vivirá solo, sin coarrendatario).", ""]
       : []),
-    `👤 Arrendatario: ${params.nombre}`,
+    `👤 Solicitante: ${params.nombre}`,
     `🪪 Cédula: ${v(params.cedula)}`,
     `📞 Teléfono: ${v(params.telefono)}`,
-    `💼 Salario arrendatario: ${cop(params.salario)}`,
-    ...(!esUnico && params.salario2 ? [`💼 Salario coarrendatario: ${cop(params.salario2)}`] : []),
+    `💼 Salario mensual: ${cop(params.salario)}`,
+    ...(!esUnico && params.salario2 ? [`💼 Otros ingresos laborales (segundo solicitante, mismo envío): ${cop(params.salario2)}`] : []),
     `💰 Ingresos grupales: ${cop(params.ingresos)}`,
     "",
     `👥 Adultos: ${v(params.personas)}  ·  Niños: ${v(params.ninos)}  ·  Mascotas: ${v(params.mascotas)}`,

@@ -6,6 +6,8 @@ import { createServerClient } from "@supabase/ssr"
 const PUBLIC_PATHS = [
   "/",
   "/login",
+  "/forgot-password", // Versión en inglés de recuperar-contrasena
+  "/reset-password",  // Versión en inglés de restablecer-contrasena
   "/recuperar-contrasena",
   "/restablecer-contrasena",
   "/auth/callback",
@@ -109,7 +111,43 @@ export async function middleware(request: NextRequest) {
     }
   }
 
-  // 6. Agregar headers de seguridad
+  // 6. Rutas de dashboard general — requieren autenticación (cualquier rol)
+  if (path.startsWith("/dashboard")) {
+    // Ya verificamos que role existe arriba, así que solo permitimos pasar
+    // El dashboard interno maneja la redirección según rol
+    if (!role) {
+      const loginUrl = new URL("/login", request.url)
+      loginUrl.searchParams.set("redirect", path)
+      return NextResponse.redirect(loginUrl, 302)
+    }
+  }
+
+  // 7. Rutas de imprimir recibos — requieren autenticación
+  if (path.startsWith("/imprimir-recibo")) {
+    if (!role) {
+      const loginUrl = new URL("/login", request.url)
+      loginUrl.searchParams.set("redirect", path)
+      return NextResponse.redirect(loginUrl, 302)
+    }
+  }
+
+  // 8. Rutas de mis contratos — requieren autenticación
+  if (path.startsWith("/mis-contratos")) {
+    if (!role) {
+      const loginUrl = new URL("/login", request.url)
+      loginUrl.searchParams.set("redirect", path)
+      return NextResponse.redirect(loginUrl, 302)
+    }
+  }
+
+  // 9. Ruta de test-username — solo admin (página de desarrollo)
+  if (path.startsWith("/test-username")) {
+    if (role !== "admin") {
+      return NextResponse.redirect(new URL("/login?unauthorized=1", request.url), 302)
+    }
+  }
+
+  // 10. Agregar headers de seguridad
   const response = NextResponse.next()
   response.headers.set("X-Frame-Options", "DENY")
   response.headers.set("X-Content-Type-Options", "nosniff")

@@ -1,16 +1,19 @@
+import { randomUUID } from "crypto"
 import { NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { getUserRole } from "@/lib/auth/role"
+import { insertarParAplicacionTokens } from "@/lib/intake/aplicacion-par-tokens"
+import { respuestaErrorGeneracionTokens } from "@/lib/intake/tokens-error-response"
 
 /**
  * POST /api/intake/tokens
  *
- * Genera un token de aplicación de un solo uso (válido 24 h) para una propiedad.
- * Solo accesible por admin o propietario de la propiedad.
+ * Genera dos tokens de aplicación (principal y coarrendatario), mismo grupo,
+ * válidos 24 h y de un solo uso cada uno.
  *
  * Body: { propiedad_id: string }
- * Response: { token: string, url: string, expira_en: string }
+ * Response: { grupo_solicitud_id, expira_en, principal: { token, url }, coarrendatario: { token, url } }
  */
 export async function POST(request: Request) {
   const supabase = await createClient()
@@ -57,23 +60,38 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "No tienes acceso a esta propiedad" }, { status: 403 })
   }
 
-  // Insertar token — la BD genera el valor aleatorio y expira_en automáticamente
-  const { data: tokenData, error: errInsert } = await admin
-    .from("aplicacion_tokens")
-    .insert({ propiedad_id: propiedadIdTrim })
-    .select("token, expira_en")
-    .single()
+  const expiraEn = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
+  const grupoSolicitudId = randomUUID()
 
-  if (errInsert || !tokenData) {
-    console.error("[intake/tokens POST]", errInsert)
-    return NextResponse.json({ error: "Error al generar el token" }, { status: 500 })
+  const par = await insertarParAplicacionTokens(admin, {
+    propiedadId: propiedadIdTrim,
+    grupoSolicitudId: grupoSolicitudId,
+    expiraEn,
+  })
+
+  if (!par.ok) {
+    return respuestaErrorGeneracionTokens(
+      "[intake/tokens POST]",
+      par.error,
+      "Error al generar los enlaces"
+    )
   }
 
+  const { principal, coarrendatario } = par
+
   const baseUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.arrenlex.com"
-  const url = `${baseUrl}/catalogo/propiedades/${propiedadIdTrim}/aplicacion?token=${tokenData.token}`
+  const urlPrincipal = `${baseUrl}/catalogo/propiedades/${propiedadIdTrim}/aplicacion?token=${principal.token}`
+  const urlCoarrendatario = `${baseUrl}/catalogo/propiedades/${propiedadIdTrim}/aplicacion?token=${coarrendatario.token}`
 
   return NextResponse.json(
-    { token: tokenData.token, url, expira_en: tokenData.expira_en },
+    {
+      grupo_solicitud_id: grupoSolicitudId,
+      expira_en: principal.expira_en,
+      principal: { token: principal.token, url: urlPrincipal },
+      coarrendatario: { token: coarrendatario.token, url: urlCoarrendatario },
+      token: principal.token,
+      url: urlPrincipal,
+    },
     { status: 201 }
   )
 }

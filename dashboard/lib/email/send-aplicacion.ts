@@ -38,6 +38,8 @@ export type SendAplicacionParams = {
   // Propietario
   propietarioEmail?: string
   propietarioNombre?: string
+  /** Si la aplicación viene del par de enlaces: 1 o 2 (solo rotulado, sin pedir datos de otra persona en el mismo formulario). */
+  enlaceDelPar?: 1 | 2
 }
 
 export async function sendAplicacionEmail(
@@ -169,7 +171,14 @@ function buildBody(params: SendAplicacionParams, baseUrl: string): string {
       </div>`
     : ""
 
-  const secArrendatario = section("1. Arrendatario", [
+  const notaPar =
+    params.enlaceDelPar === 1 || params.enlaceDelPar === 2
+      ? `<div style="margin-bottom: 20px; border: 1px solid #0e7490; background: #ecfeff; border-radius: 8px; padding: 12px 16px; color: #164e63; font-size: 0.875rem;">
+        <strong>Dos enlaces, un formulario por persona:</strong> esta solicitud se recibió desde el <strong>enlace ${params.enlaceDelPar} de 2</strong>. Solo figuran los datos de quien la envió; no se piden ni se mezclan datos de otra persona en este mismo envío.
+      </div>`
+      : ""
+
+  const secArrendatario = section("1. Solicitante", [
     row("Nombre completo", params.nombre),
     row("Cédula", params.cedula),
     row("Fecha exp. cédula", params.fechaExpedicionCedula),
@@ -185,7 +194,7 @@ function buildBody(params: SendAplicacionParams, baseUrl: string): string {
   ].join(""))
 
   const secCoarrendatario = tieneCoarrendatario
-    ? section("3. Coarrendatario", [
+    ? section("3. Segundo solicitante (mismo envío)", [
         row("Nombre completo", params.nombreCoarrendatario),
         row("Correo electrónico", params.emailCoarrendatario),
         row("Cédula", params.cedulaCoarrendatario),
@@ -209,7 +218,7 @@ function buildBody(params: SendAplicacionParams, baseUrl: string): string {
     ? `<p style="margin: 16px 0 0;"><a href="${baseUrl}/mensajes" style="display: inline-block; background: #4f46e5; color: #fff; text-decoration: none; padding: 10px 20px; border-radius: 6px; font-size: 0.875rem; font-weight: 600;">Ver detalle en el panel de Arrenlex</a></p>`
     : ""
 
-  return `${avisoUnico}${secArrendatario}${secLaboral}${secCoarrendatario}${secHogar}${linkPanel}`
+  return `${notaPar}${avisoUnico}${secArrendatario}${secLaboral}${secCoarrendatario}${secHogar}${linkPanel}`
 }
 
 function buildHtmlCEO(params: SendAplicacionParams, baseUrl: string): string {

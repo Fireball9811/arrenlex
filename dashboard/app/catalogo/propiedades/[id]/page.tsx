@@ -22,14 +22,16 @@ import {
   ArrowLeft,
   Bath,
   Bed,
+  Building2,
   Calendar,
+  Car,
+  Check,
   ClipboardList,
+  Copy,
   Map as MapIcon,
   MapPin,
   Package,
   Ruler,
-  Car,
-  Building2,
 } from "lucide-react"
 
 const TIPO_LABELS: Record<string, string> = {
@@ -127,6 +129,12 @@ export default function PropiedadDetallePage() {
   // Estado para generación de token de aplicación
   const [generandoToken, setGenerandoToken] = useState(false)
   const [errorToken, setErrorToken] = useState<string | null>(null)
+  const [enlacesAplicacion, setEnlacesAplicacion] = useState<{
+    principal: { url: string }
+    coarrendatario: { url: string }
+    expira_en?: string
+  } | null>(null)
+  const [copiadoEnlace, setCopiadoEnlace] = useState<"principal" | "coarrendatario" | null>(null)
 
   useEffect(() => {
     fetch(`/api/propiedades/${params.id}/public`)
@@ -144,6 +152,7 @@ export default function PropiedadDetallePage() {
   async function handleDiligenciarAplicacion() {
     setGenerandoToken(true)
     setErrorToken(null)
+    setEnlacesAplicacion(null)
     try {
       const res = await fetch("/api/intake/tokens/publico", {
         method: "POST",
@@ -155,12 +164,31 @@ export default function PropiedadDetallePage() {
         setErrorToken(data.error ?? "No se pudo iniciar la aplicación. Intenta de nuevo.")
         return
       }
-      // Redirigir directo al formulario con el token
-      window.location.href = `/catalogo/propiedades/${params.id}/aplicacion?token=${data.token}`
+      const principal = data.principal as { url?: string } | undefined
+      const coarrendatario = data.coarrendatario as { url?: string } | undefined
+      if (!principal?.url || !coarrendatario?.url) {
+        setErrorToken("Respuesta inválida del servidor. Intenta de nuevo.")
+        return
+      }
+      setEnlacesAplicacion({
+        principal: { url: principal.url },
+        coarrendatario: { url: coarrendatario.url },
+        expira_en: data.expira_en as string | undefined,
+      })
     } catch {
       setErrorToken("Error de conexión. Verifica tu internet e intenta de nuevo.")
     } finally {
       setGenerandoToken(false)
+    }
+  }
+
+  async function copiarEnlaceCatalogo(tipo: "principal" | "coarrendatario", url: string) {
+    try {
+      await navigator.clipboard.writeText(url)
+      setCopiadoEnlace(tipo)
+      setTimeout(() => setCopiadoEnlace(null), 2000)
+    } catch {
+      setErrorToken("No se pudo copiar al portapapeles.")
     }
   }
 
@@ -383,6 +411,54 @@ export default function PropiedadDetallePage() {
               {generandoToken ? "Preparando formulario…" : "Diligenciar Aplicación"}
             </Button>
           </div>
+
+          {enlacesAplicacion && (
+            <div className="rounded-lg border border-cyan-200 bg-cyan-50/60 p-4 space-y-3">
+              <p className="text-sm font-medium text-cyan-900">
+                Tienes dos enlaces: uno por persona. Cada uno vale 24 horas y solo se puede usar una vez.
+              </p>
+              {enlacesAplicacion.expira_en && (
+                <p className="text-xs text-cyan-800">
+                  Vencen aproximadamente el{" "}
+                  {new Date(enlacesAplicacion.expira_en).toLocaleString("es-CO", {
+                    dateStyle: "short",
+                    timeStyle: "short",
+                  })}
+                  .
+                </p>
+              )}
+              <div className="space-y-2">
+                <p className="text-xs font-semibold text-cyan-900">Enlace 1 — una persona</p>
+                <p className="text-[11px] text-cyan-800/90">
+                  Solo quien use este enlace llena el formulario con sus datos (no pide datos de otra persona).
+                </p>
+                <div className="flex gap-2 items-center">
+                  <Input readOnly className="text-xs font-mono h-9 flex-1" value={enlacesAplicacion.principal.url} />
+                  <Button type="button" variant="outline" size="icon" onClick={() => copiarEnlaceCatalogo("principal", enlacesAplicacion.principal.url)}>
+                    {copiadoEnlace === "principal" ? <Check className="h-4 w-4 text-green-600" /> : <Copy className="h-4 w-4" />}
+                  </Button>
+                </div>
+                <Button className="w-full" asChild size="sm">
+                  <Link href={enlacesAplicacion.principal.url}>Abrir formulario (enlace 1)</Link>
+                </Button>
+              </div>
+              <div className="space-y-2 pt-2 border-t border-cyan-200/80">
+                <p className="text-xs font-semibold text-cyan-900">Enlace 2 — otra persona</p>
+                <p className="text-[11px] text-cyan-800/90">
+                  Mismo trámite: solo sus propios datos, con su propio enlace.
+                </p>
+                <div className="flex gap-2 items-center">
+                  <Input readOnly className="text-xs font-mono h-9 flex-1" value={enlacesAplicacion.coarrendatario.url} />
+                  <Button type="button" variant="outline" size="icon" onClick={() => copiarEnlaceCatalogo("coarrendatario", enlacesAplicacion.coarrendatario.url)}>
+                    {copiadoEnlace === "coarrendatario" ? <Check className="h-4 w-4 text-green-600" /> : <Copy className="h-4 w-4" />}
+                  </Button>
+                </div>
+                <Button variant="outline" className="w-full border-cyan-600 text-cyan-800" asChild size="sm">
+                  <Link href={enlacesAplicacion.coarrendatario.url}>Abrir formulario (enlace 2)</Link>
+                </Button>
+              </div>
+            </div>
+          )}
 
           {errorToken && (
             <p className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-md px-3 py-2">

@@ -25,6 +25,12 @@ interface Propiedad {
   parqueaderos?: number
 }
 
+type EnlacesAplicacionPar = {
+  principal: string
+  coarrendatario: string
+  expira_en?: string
+}
+
 export default function PropietarioPropiedadesPage() {
   const router = useRouter()
   const { t } = useLang()
@@ -37,7 +43,7 @@ export default function PropietarioPropiedadesPage() {
   const [ciudadFiltro, setCiudadFiltro] = useState("")
   const [ciudades, setCiudades] = useState<string[]>([])
   const [generandoTokenId, setGenerandoTokenId] = useState<string | null>(null)
-  const [enlaceGenerado, setEnlaceGenerado] = useState<Record<string, string>>({})
+  const [enlaceGenerado, setEnlaceGenerado] = useState<Record<string, EnlacesAplicacionPar>>({})
   const [copiadoId, setCopiadoId] = useState<string | null>(null)
 
   function buildUrl(ciudad: string, cursor?: string) {
@@ -116,7 +122,13 @@ export default function PropietarioPropiedadesPage() {
       })
       const data = await res.json()
       if (!res.ok) { alert(data.error ?? "Error al generar el enlace"); return }
-      setEnlaceGenerado((prev) => ({ ...prev, [propiedadId]: data.url }))
+      const p = data.principal?.url as string | undefined
+      const c = data.coarrendatario?.url as string | undefined
+      if (!p || !c) { alert("Error al generar los enlaces"); return }
+      setEnlaceGenerado((prev) => ({
+        ...prev,
+        [propiedadId]: { principal: p, coarrendatario: c, expira_en: data.expira_en as string | undefined },
+      }))
     } catch {
       alert("Error al generar el enlace de aplicación")
     } finally {
@@ -124,11 +136,11 @@ export default function PropietarioPropiedadesPage() {
     }
   }
 
-  async function handleCopiarEnlace(propiedadId: string, url: string) {
+  async function handleCopiarEnlace(propiedadId: string, url: string, copiaKey: string) {
     try {
       await navigator.clipboard.writeText(url)
-      setCopiadoId(propiedadId)
-      setTimeout(() => setCopiadoId((prev) => (prev === propiedadId ? null : prev)), 2000)
+      setCopiadoId(copiaKey)
+      setTimeout(() => setCopiadoId((prev) => (prev === copiaKey ? null : prev)), 2000)
     } catch {
       alert("No se pudo copiar. Copia manualmente: " + url)
     }
@@ -346,26 +358,55 @@ export default function PropietarioPropiedadesPage() {
                         </Button>
 
                         {enlaceGenerado[propiedad.id] && (
-                          <div className="mt-2 rounded-lg border border-cyan-200 bg-cyan-50 p-3 space-y-1.5">
+                          <div className="mt-2 rounded-lg border border-cyan-200 bg-cyan-50 p-3 space-y-3">
                             <p className="text-xs font-medium text-cyan-800">
-                              Enlace listo — válido 24 h, un solo uso
+                              Dos enlaces — cada uno válido 24 h, un solo uso. Mismo plazo para ambos.
                             </p>
-                            <div className="flex items-center gap-2">
-                              <p className="text-xs text-cyan-700 font-mono truncate flex-1 bg-white border border-cyan-100 rounded px-2 py-1">
-                                {enlaceGenerado[propiedad.id]}
+                            {enlaceGenerado[propiedad.id].expira_en && (
+                              <p className="text-xs text-cyan-700">
+                                Vencen ~{" "}
+                                {new Date(enlaceGenerado[propiedad.id].expira_en!).toLocaleString("es-CO", {
+                                  dateStyle: "short",
+                                  timeStyle: "short",
+                                })}
                               </p>
-                              <button
-                                onClick={() => handleCopiarEnlace(propiedad.id, enlaceGenerado[propiedad.id])}
-                                className="shrink-0 text-cyan-600 hover:text-cyan-900 transition"
-                                title="Copiar enlace"
-                              >
-                                {copiadoId === propiedad.id
-                                  ? <Check className="h-4 w-4 text-green-600" />
-                                  : <Copy className="h-4 w-4" />}
-                              </button>
+                            )}
+                            <div className="space-y-1">
+                              <p className="text-xs font-semibold text-cyan-900">Enlace 1</p>
+                              <div className="flex items-center gap-2">
+                                <p className="text-xs text-cyan-700 font-mono truncate flex-1 bg-white border border-cyan-100 rounded px-2 py-1">
+                                  {enlaceGenerado[propiedad.id].principal}
+                                </p>
+                                <button
+                                  onClick={() => handleCopiarEnlace(propiedad.id, enlaceGenerado[propiedad.id].principal, `${propiedad.id}-p`)}
+                                  className="shrink-0 text-cyan-600 hover:text-cyan-900 transition"
+                                  title="Copiar"
+                                >
+                                  {copiadoId === `${propiedad.id}-p`
+                                    ? <Check className="h-4 w-4 text-green-600" />
+                                    : <Copy className="h-4 w-4" />}
+                                </button>
+                              </div>
+                            </div>
+                            <div className="space-y-1 pt-1 border-t border-cyan-200/80">
+                              <p className="text-xs font-semibold text-cyan-900">Enlace 2</p>
+                              <div className="flex items-center gap-2">
+                                <p className="text-xs text-cyan-700 font-mono truncate flex-1 bg-white border border-cyan-100 rounded px-2 py-1">
+                                  {enlaceGenerado[propiedad.id].coarrendatario}
+                                </p>
+                                <button
+                                  onClick={() => handleCopiarEnlace(propiedad.id, enlaceGenerado[propiedad.id].coarrendatario, `${propiedad.id}-c`)}
+                                  className="shrink-0 text-cyan-600 hover:text-cyan-900 transition"
+                                  title="Copiar"
+                                >
+                                  {copiadoId === `${propiedad.id}-c`
+                                    ? <Check className="h-4 w-4 text-green-600" />
+                                    : <Copy className="h-4 w-4" />}
+                                </button>
+                              </div>
                             </div>
                             <p className="text-xs text-cyan-600">
-                              Envía este enlace al interesado por WhatsApp o correo.
+                              Envía cada enlace a la persona correspondiente (WhatsApp, correo, etc.).
                             </p>
                           </div>
                         )}
