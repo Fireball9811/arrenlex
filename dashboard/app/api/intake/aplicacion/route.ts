@@ -48,12 +48,6 @@ function normalizeTipoSolicitante(raw: unknown): "arrendatario_principal" | "coa
   return t === "coarrendatario" ? "coarrendatario" : "arrendatario_principal"
 }
 
-function clientIp(request: Request): string | null {
-  const xff = request.headers.get("x-forwarded-for")
-  const first = xff?.split(",")[0]?.trim()
-  return first || null
-}
-
 /**
  * POST /api/intake/aplicacion
  *
@@ -244,7 +238,8 @@ export async function POST(request: Request) {
       autorizacion_fecha: authFecha,
       autorizacion_version: AUTORIZACION_VERSION,
       autorizacion_texto: AUTORIZACION_TEXTO,
-      autorizacion_ip: clientIp(request),
+      autorizacion_ip:
+        request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || null,
       autorizacion_user_agent: userAgent,
       unico_arrendatario: false,
       fecha_envio: authFecha,
