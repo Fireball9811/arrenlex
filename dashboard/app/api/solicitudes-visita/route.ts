@@ -1,8 +1,10 @@
 import { NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin"
+import { requireAdminOrPropietarioRole } from "@/lib/auth/resource-access"
 import { getUserRole } from "@/lib/auth/role"
 import { sendSolicitudVisitaEmail } from "@/lib/email/send-solicitud-visita"
+import { rateLimitMiddleware, RateLimitPresets, getRateLimitHeaders } from "@/lib/rate-limit"
 
 /**
  * GET - Lista solicitudes de visita.
@@ -20,9 +22,8 @@ export async function GET() {
   }
 
   const role = await getUserRole(supabase, user)
-  if (role === "inquilino") {
-    return NextResponse.json({ error: "No autorizado para ver mensajes" }, { status: 403 })
-  }
+  const roleDenied = requireAdminOrPropietarioRole(role)
+  if (roleDenied) return roleDenied
 
   const admin = createAdminClient()
 
@@ -92,6 +93,15 @@ export async function GET() {
  * Body: nombre_completo, celular, email, propiedad_id, nota (opcional).
  */
 export async function POST(request: Request) {
+  const rateLimitResult = rateLimitMiddleware(request, RateLimitPresets.publicForm)
+
+  if (!rateLimitResult.success) {
+    return NextResponse.json(
+      { error: "Demasiadas solicitudes. Intenta más tarde." },
+      { status: 429, headers: getRateLimitHeaders(rateLimitResult) }
+    )
+  }
+
   let body: unknown
   try {
     body = await request.json()

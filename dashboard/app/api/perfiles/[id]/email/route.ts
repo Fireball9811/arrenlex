@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin"
+import { canReadPerfilById } from "@/lib/auth/perfil-access"
 import { getUserRole } from "@/lib/auth/role"
 
 /**
@@ -26,6 +27,11 @@ export async function GET(
   }
 
   const { id } = await params
+
+  if (!canReadPerfilById(role, user.id, id)) {
+    return NextResponse.json({ error: "No tienes permiso para ver este correo" }, { status: 403 })
+  }
+
   const admin = createAdminClient()
 
   const { data, error } = await admin

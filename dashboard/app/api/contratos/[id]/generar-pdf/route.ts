@@ -1,5 +1,8 @@
 import { NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
+import { createAdminClient } from "@/lib/supabase/admin"
+import { loadContratoWithAccess } from "@/lib/auth/resource-access"
+import { getUserRole } from "@/lib/auth/role"
 import jsPDF from "jspdf"
 import { llenarPlantillaContrato } from "@/lib/utils/contrato-template"
 import fs from "fs"
@@ -23,6 +26,10 @@ export async function GET(request: Request, context: RouteContext) {
   }
 
   const { id } = await context.params
+  const role = await getUserRole(supabase, user)
+  const admin = createAdminClient()
+  const access = await loadContratoWithAccess(admin, role, user.id, id, "id, user_id")
+  if ("response" in access) return access.response
 
   // Obtener datos del contrato desde la función de Supabase
   const { data: contratoData, error } = await supabase

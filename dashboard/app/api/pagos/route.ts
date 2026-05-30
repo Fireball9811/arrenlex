@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin"
+import { loadContratoWithAccess } from "@/lib/auth/resource-access"
 import { getUserRole } from "@/lib/auth/role"
 import { handleSupabaseError } from "@/lib/api-error"
 
@@ -22,11 +23,8 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Sin permiso" }, { status: 403 })
   }
 
-  const client = role === "admin" ? createAdminClient() : supabase
-
-  const { data, error } = await client
-    .from("pagos")
-    .select(
+  const admin = createAdminClient()
+  let pagosQuery = admin.from("pagos").select(
       `
       id,
       contrato_id,
@@ -46,8 +44,22 @@ export async function GET(request: Request) {
         user_id
       )
     `
-    )
-    .order("created_at", { ascending: false })
+  )
+
+  if (role === "propietario") {
+    const { data: misContratos } = await admin
+      .from("contratos")
+      .select("id")
+      .eq("user_id", user.id)
+
+    const contratoIds = (misContratos ?? []).map((c) => c.id)
+    if (contratoIds.length === 0) {
+      return NextResponse.json([])
+    }
+    pagosQuery = pagosQuery.in("contrato_id", contratoIds)
+  }
+
+  const { data, error } = await pagosQuery.order("created_at", { ascending: false })
 
   if (error) {
     return handleSupabaseError("pagos GET", error)
@@ -100,7 +112,7 @@ export async function GET(request: Request) {
   const userIds = [...new Set(normalized.map((p) => p.contrato?.user_id).filter(Boolean) as string[])]
   const perfilesRes =
     userIds.length > 0
-      ? await client.from("perfiles").select("id, nombre").in("id", userIds)
+      ? await admin.from("perfiles").select("id, nombre").in("id", userIds)
       : { data: [] as Array<{ id: string; nombre: string | null }> }
   const perfilesMap = new Map(
     (perfilesRes.data ?? []).map((p) => [p.id, p.nombre ?? "Propietario"])
@@ -172,6 +184,16 @@ export async function POST(request: Request) {
   }
 
   const referencia = referencia_bancaria != null ? String(referencia_bancaria).trim() : ""
+
+  const admin = createAdminClient()
+  const access = await loadContratoWithAccess(
+    admin,
+    "propietario",
+    user.id,
+    String(contrato_id),
+    "id, user_id"
+  )
+  if ("response" in access) return access.response
 
   const insert = {
     contrato_id,

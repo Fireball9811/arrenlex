@@ -21,7 +21,7 @@ export async function GET(
   }
 
   const role = await getUserRole(supabase, user)
-  if (role === "inquilino") {
+  if (role !== "admin" && role !== "propietario") {
     return NextResponse.json({ error: "No autorizado" }, { status: 403 })
   }
 

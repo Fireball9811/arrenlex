@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin"
+import { requireAdminOrPropietarioRole } from "@/lib/auth/resource-access"
 import { getUserRole } from "@/lib/auth/role"
 
 const VALID_STATUSES = ["pendiente", "contestado", "esperando"] as const
@@ -25,9 +26,8 @@ export async function PATCH(
   }
 
   const role = await getUserRole(supabase, user)
-  if (role === "inquilino") {
-    return NextResponse.json({ error: "No autorizado" }, { status: 403 })
-  }
+  const roleDenied = requireAdminOrPropietarioRole(role)
+  if (roleDenied) return roleDenied
 
   let body: unknown
   try {

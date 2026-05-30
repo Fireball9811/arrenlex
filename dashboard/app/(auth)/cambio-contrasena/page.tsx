@@ -46,21 +46,6 @@ function CambioContrasenaContent() {
     const supabase = createClient()
 
     async function checkSession() {
-      // #region agent log
-      const href = typeof window !== "undefined" ? window.location.href : ""
-      fetch("http://127.0.0.1:7242/ingest/ff442eb1-c8fb-4919-a950-d18bdf14310b", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          location: "cambio-contrasena:before_getUser",
-          message: "checkSession started",
-          data: { href },
-          timestamp: Date.now(),
-          hypothesisId: "H3",
-        }),
-      }).catch(() => {})
-      // #endregion
-
       const timeoutPromise = new Promise<never>((_, reject) =>
         setTimeout(() => reject(new Error("timeout")), CHECK_SESSION_TIMEOUT_MS)
       )
@@ -70,20 +55,6 @@ function CambioContrasenaContent() {
           supabase.auth.getUser(),
           timeoutPromise,
         ])
-
-        // #region agent log
-        fetch("http://127.0.0.1:7242/ingest/ff442eb1-c8fb-4919-a950-d18bdf14310b", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            location: "cambio-contrasena:after_getUser",
-            message: "getUser response",
-            data: { hasUser: !!user },
-            timestamp: Date.now(),
-            hypothesisId: "H3",
-          }),
-        }).catch(() => {})
-        // #endregion
 
         if (!mountedRef.current) return
 

@@ -26,6 +26,7 @@ const PUBLIC_PATHS = [
   "/api/intake/tokens/publico",
   "/api/solicitudes-visita",
   "/api/contacto",
+  "/api/intake/google-forms",
 ]
 
 const PUBLIC_PATH_PATTERNS = [
@@ -83,6 +84,9 @@ export async function middleware(request: NextRequest) {
   const role = await getSessionRole(request)
 
   if (!role) {
+    if (path.startsWith("/api/")) {
+      return NextResponse.json({ error: "No autorizado" }, { status: 401 })
+    }
     const loginUrl = new URL("/login", request.url)
     loginUrl.searchParams.set("redirect", path)
     return NextResponse.redirect(loginUrl, 302)

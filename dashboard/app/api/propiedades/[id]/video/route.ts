@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin"
+import { assertPropiedadAccess } from "@/lib/auth/resource-access"
 import { getUserRole } from "@/lib/auth/role"
 
 interface RouteContext {
@@ -10,7 +11,20 @@ interface RouteContext {
 // GET - Obtener el video actual de una propiedad
 export async function GET(_request: Request, context: RouteContext) {
   const { id } = await context.params
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user) {
+    return NextResponse.json({ error: "No autorizado" }, { status: 401 })
+  }
+
+  const role = await getUserRole(supabase, user)
   const adminClient = createAdminClient()
+
+  const denied = await assertPropiedadAccess(adminClient, role, user.id, id, "id, user_id")
+  if (denied) return denied
 
   const { data, error } = await adminClient
     .from("propiedades_videos")

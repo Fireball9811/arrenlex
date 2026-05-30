@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin"
+import { assertPropiedadAccess } from "@/lib/auth/resource-access"
 import { getUserRole } from "@/lib/auth/role"
 
 /**
@@ -21,14 +22,22 @@ export async function GET(
   }
 
   const role = await getUserRole(supabase, user)
-  if (role === "inquilino") {
+  if (role !== "admin" && role !== "propietario") {
     return NextResponse.json({ error: "No autorizado" }, { status: 403 })
   }
 
   const { propiedadId } = await params
   const admin = createAdminClient()
 
-  // Primero verificar que la propiedad existe y el usuario tiene acceso
+  const denied = await assertPropiedadAccess(
+    admin,
+    role,
+    user.id,
+    propiedadId,
+    "id, user_id, direccion, ciudad, titulo"
+  )
+  if (denied) return denied
+
   const { data: propiedad, error: errProp } = await admin
     .from("propiedades")
     .select("id, user_id, direccion, ciudad, titulo")
@@ -37,10 +46,6 @@ export async function GET(
 
   if (errProp || !propiedad) {
     return NextResponse.json({ error: "Propiedad no encontrada" }, { status: 404 })
-  }
-
-  if (role === "propietario" && propiedad.user_id !== user.id) {
-    return NextResponse.json({ error: "No autorizado" }, { status: 403 })
   }
 
   // Obtener todos los gastos de la propiedad

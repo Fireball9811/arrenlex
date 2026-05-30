@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin"
+import { buscarPerfilPorNombre } from "@/lib/auth/perfil-access"
 import { getUserRole } from "@/lib/auth/role"
 
 /**
@@ -31,21 +32,11 @@ export async function GET(request: Request) {
   }
 
   const admin = createAdminClient()
+  const perfil = await buscarPerfilPorNombre(admin, role, user.id, nombre)
 
-  // Buscar perfil por nombre
-  const { data, error } = await admin
-    .from("perfiles")
-    .select("id, email, nombre, cedula")
-    .ilike("nombre", `%${nombre.trim()}%`)
-    .limit(1)
-
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 })
-  }
-
-  if (!data || data.length === 0) {
+  if (!perfil) {
     return NextResponse.json({ email: null })
   }
 
-  return NextResponse.json({ email: data[0].email, perfil: data[0] })
+  return NextResponse.json({ email: perfil.email, perfil })
 }

@@ -8,6 +8,10 @@ import { getUserRole } from "@/lib/auth/role"
  * Test endpoint para depurar
  */
 export async function GET(request: Request) {
+  if (process.env.NODE_ENV === "production") {
+    return NextResponse.json({ error: "Not found" }, { status: 404 })
+  }
+
   console.log("[API Finanzas Test] Iniciando...")
 
   try {
@@ -97,14 +101,10 @@ export async function GET(request: Request) {
       message: "No hay propiedades"
     })
 
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error("[API Finanzas Test] ERROR:", err)
     return NextResponse.json(
-      {
-        error: err?.message || "Error desconocido",
-        stack: err?.stack || "",
-        details: String(err)
-      },
+      { error: err instanceof Error ? err.message : "Error desconocido" },
       { status: 500 }
     )
   }
