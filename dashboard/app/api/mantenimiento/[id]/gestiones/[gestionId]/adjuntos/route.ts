@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { getUserRole } from "@/lib/auth/role"
+import { loadMantenimientoSolicitudForAccess } from "@/lib/auth/resource-access"
 import { handleSupabaseError } from "@/lib/api-error"
 
 const BUCKET = "mantenimiento-adjuntos"
@@ -26,22 +27,17 @@ export async function POST(
 
   const admin = createAdminClient()
 
-  // Verificar que la gestión pertenece a la solicitud y al propietario
+  const access = await loadMantenimientoSolicitudForAccess(admin, role, user.id, id)
+  if ("response" in access) return access.response
+
   const { data: gestion, error: errG } = await admin
     .from("mantenimiento_gestiones")
-    .select("id, solicitud_id, solicitudes_mantenimiento ( propiedades ( user_id ) )")
+    .select("id, solicitud_id")
     .eq("id", gestionId)
     .eq("solicitud_id", id)
     .single()
 
   if (errG || !gestion) return NextResponse.json({ error: "Not found" }, { status: 404 })
-
-  const solicitud = (gestion.solicitudes_mantenimiento as unknown) as {
-    propiedades: { user_id?: string } | null
-  } | null
-  if (role === "propietario" && solicitud?.propiedades?.user_id !== user.id) {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 })
-  }
 
   const formData = await request.formData()
   const file = formData.get("file") as File | null

@@ -5,46 +5,45 @@ import { getUserRole } from "@/lib/auth/role"
 
 /**
  * GET /api/mantenimiento/proveedores
- * Devuelve la lista de proveedores únicos ya usados en gestiones
- * de las propiedades del usuario (propietario) o de todas (admin).
- * Ordenados por frecuencia de uso descendente.
+ * Proveedores usados en gestiones del alcance del usuario.
  */
 export async function GET() {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
 
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 
   const role = await getUserRole(supabase, user)
-  if (role === "inquilino") return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+  if (role === "inquilino") {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+  }
 
   const admin = createAdminClient()
 
-  // Obtener IDs de propiedades del usuario (propietario) o todas (admin)
-  let propiedadIds: string[] | null = null
+  let solicitudesQuery = admin.from("solicitudes_mantenimiento").select("id")
+
   if (role === "propietario") {
     const { data: props } = await admin
       .from("propiedades")
       .select("id")
       .eq("user_id", user.id)
-    propiedadIds = (props ?? []).map((p) => p.id)
+
+    const propiedadIds = props?.map((p) => p.id) ?? []
     if (propiedadIds.length === 0) return NextResponse.json([])
-  }
 
-  // Obtener solicitudes de esas propiedades
-  let solicitudesQuery = admin
-    .from("solicitudes_mantenimiento")
-    .select("id")
-
-  if (propiedadIds) {
     solicitudesQuery = solicitudesQuery.in("propiedad_id", propiedadIds)
+  } else if (role === "maintenance_special") {
+    solicitudesQuery = solicitudesQuery.eq("assigned_to", user.id)
+  } else if (role !== "admin") {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 })
   }
 
   const { data: solicitudes } = await solicitudesQuery
   const solicitudIds = (solicitudes ?? []).map((s) => s.id)
   if (solicitudIds.length === 0) return NextResponse.json([])
 
-  // Obtener todos los proveedores no nulos de esas gestiones
   const { data: gestiones } = await admin
     .from("mantenimiento_gestiones")
     .select("proveedor")
@@ -53,7 +52,6 @@ export async function GET() {
 
   if (!gestiones?.length) return NextResponse.json([])
 
-  // Contar frecuencia y deduplicar (case-insensitive)
   const conteo = new Map<string, { nombre: string; count: number }>()
   for (const g of gestiones) {
     const nombre = (g.proveedor as string).trim()
@@ -66,7 +64,6 @@ export async function GET() {
     }
   }
 
-  // Ordenar por frecuencia descendente, luego alfabético
   const result = Array.from(conteo.values())
     .sort((a, b) => b.count - a.count || a.nombre.localeCompare(b.nombre))
     .map((v) => v.nombre)
