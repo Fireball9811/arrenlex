@@ -8,7 +8,7 @@ import {
 } from "@/lib/auth/password-reset-service"
 import { sendPasswordResetEmail } from "@/lib/email/send-reset"
 import { rateLimitMiddleware, RateLimitPresets, getRateLimitHeaders } from "@/lib/rate-limit"
-import { passwordResetRequestSchema } from "@/lib/validation/schemas"
+import { formatZodError, passwordResetRequestSchema } from "@/lib/validation/schemas"
 import { secureLog } from "@/lib/logging/secure-logger"
 
 const RESET_TOKEN_EXPIRY_MINUTES = 60
@@ -41,7 +41,7 @@ export async function POST(request: Request) {
     const validationResult = passwordResetRequestSchema.safeParse(body)
 
     if (!validationResult.success) {
-      const errors = validationResult.error.errors.map((e) => e.message).join(". ")
+      const errors = formatZodError(validationResult.error)
       return NextResponse.json(
         { error: errors },
         { status: 400 }

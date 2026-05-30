@@ -3,7 +3,7 @@ import { createClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { constantDelay } from "@/lib/auth/security"
 import { rateLimitMiddleware, RateLimitPresets, getRateLimitHeaders } from "@/lib/rate-limit"
-import { loginSchema } from "@/lib/validation/schemas"
+import { formatZodError, loginSchema } from "@/lib/validation/schemas"
 import { secureLog } from "@/lib/logging/secure-logger"
 import type { UserRole } from "@/lib/auth/role"
 
@@ -43,7 +43,7 @@ export async function POST(request: Request) {
     const validationResult = loginSchema.safeParse(body)
 
     if (!validationResult.success) {
-      const errors = validationResult.error.errors.map((e) => e.message).join(". ")
+      const errors = formatZodError(validationResult.error)
       return NextResponse.json(
         { error: errors },
         { status: 400 }

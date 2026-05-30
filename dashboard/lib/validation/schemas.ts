@@ -1,9 +1,14 @@
-import { z } from "zod"
+import { z, type ZodError } from "zod"
 
 /**
  * Schemas de validación compartidos para toda la aplicación.
  * Usa Zod para validar inputs de forma segura y consistente.
  */
+
+/** Zod 4 expone los fallos en `.issues` (ya no en `.errors`). */
+export function formatZodError(error: ZodError): string {
+  return error.issues.map((issue) => issue.message).join(". ")
+}
 
 /**
  * Email validation schema - RFC 5322 compliant pero práctico
@@ -12,10 +17,7 @@ import { z } from "zod"
  * Rechaza espacios, caracteres inválidos, y requiere al menos un @ y un dominio válido.
  */
 export const emailSchema = z
-  .string({
-    required_error: "El correo electrónico es requerido",
-    invalid_type_error: "El correo electrónico debe ser un texto",
-  })
+  .string()
   .min(1, "El correo electrónico es requerido")
   .max(254, "El correo electrónico es demasiado largo") // RFC 5321
   .email("Formato de correo electrónico inválido")
@@ -30,9 +32,7 @@ export const emailSchema = z
  * - No puede empezar o terminar con guion
  */
 export const usernameSchema = z
-  .string({
-    required_error: "El nombre de usuario es requerido",
-  })
+  .string()
   .min(3, "El nombre de usuario debe tener al menos 3 caracteres")
   .max(30, "El nombre de usuario no puede exceder 30 caracteres")
   .regex(
@@ -47,9 +47,7 @@ export const usernameSchema = z
  * - Recomendación: usar regex más estricto según requisitos
  */
 export const passwordSchema = z
-  .string({
-    required_error: "La contraseña es requerida",
-  })
+  .string()
   .min(8, "La contraseña debe tener al menos 8 caracteres")
   .max(128, "La contraseña es demasiado larga")
 
@@ -63,9 +61,7 @@ export const passwordSchema = z
  * - Al menos un carácter especial
  */
 export const strongPasswordSchema = z
-  .string({
-    required_error: "La contraseña es requerida",
-  })
+  .string()
   .min(8, "La contraseña debe tener al menos 8 caracteres")
   .max(128, "La contraseña es demasiado larga")
   .regex(/[A-Z]/, "La contraseña debe contener al menos una mayúscula")
@@ -155,7 +151,7 @@ export const contactFormSchema = z.object({
   celular: phoneSchema,
   email: emailSchema,
   tipo: z.enum(["propietario", "arrendatario"], {
-    errorMap: () => ({ message: "El tipo debe ser 'propietario' o 'arrendatario'" }),
+    message: "El tipo debe ser 'propietario' o 'arrendatario'",
   }),
 })
 
@@ -170,7 +166,7 @@ export const roleSchema = z.enum([
   "insurance_special",
   "lawyer_special",
 ], {
-  errorMap: () => ({ message: "Rol no válido" }),
+  message: "Rol no válido",
 })
 
 /**
@@ -201,20 +197,14 @@ export const dateSchema = z
  * Positive number schema (for prices, quantities, etc.)
  */
 export const positiveNumberSchema = z
-  .number({
-    required_error: "Este campo es requerido",
-    invalid_type_error: "Debe ser un número",
-  })
+  .number({ message: "Debe ser un número" })
   .positive("Debe ser mayor a 0")
 
 /**
  * Non-negative integer schema
  */
 export const nonNegativeIntegerSchema = z
-  .number({
-    required_error: "Este campo es requerido",
-    invalid_type_error: "Debe ser un número",
-  })
+  .number({ message: "Debe ser un número" })
   .int("Debe ser un número entero")
   .nonnegative("Debe ser mayor o igual a 0")
 

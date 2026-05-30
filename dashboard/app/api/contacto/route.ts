@@ -3,7 +3,7 @@ import { createAdminClient } from "@/lib/supabase/admin"
 import { sendContactoEmail } from "@/lib/email/send-contacto"
 import { sendWhatsAppCEO } from "@/lib/whatsapp/send-whatsapp"
 import { rateLimitMiddleware, RateLimitPresets, getRateLimitHeaders } from "@/lib/rate-limit"
-import { contactFormSchema } from "@/lib/validation/schemas"
+import { contactFormSchema, formatZodError } from "@/lib/validation/schemas"
 import { secureLog } from "@/lib/logging/secure-logger"
 
 export async function POST(request: Request) {
@@ -29,7 +29,7 @@ export async function POST(request: Request) {
     const validationResult = contactFormSchema.safeParse(body)
 
     if (!validationResult.success) {
-      const errors = validationResult.error.errors.map((e) => e.message).join(". ")
+      const errors = formatZodError(validationResult.error)
       return NextResponse.json(
         { error: errors },
         { status: 400 }
