@@ -133,6 +133,7 @@ export const translations = {
       cambioContrasena: "Cambio de contraseña",
       cerrarSesion: "Cerrar sesión",
       usuarios: "Usuarios",
+      habeasData: "Habeas Data",
     },
     catalogo: {
       titulo: "Catálogo de Propiedades",
@@ -1089,6 +1090,7 @@ export const translations = {
       cambioContrasena: "Change password",
       cerrarSesion: "Sign out",
       usuarios: "Users",
+      habeasData: "Habeas Data",
     },
     catalogo: {
       titulo: "Property Catalog",

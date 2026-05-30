@@ -1,11 +1,12 @@
 import { NextResponse } from "next/server"
-import { clearSessionCookie } from "@/lib/auth/session-sql"
+import { createClient } from "@/lib/supabase/server"
 
 /**
  * POST /api/auth/logout
- * Limpia la cookie de sesión SQL (JWT).
+ * Cierra la sesión del usuario usando Supabase Auth.
  */
 export async function POST() {
-  await clearSessionCookie()
+  const supabase = await createClient()
+  await supabase.auth.signOut()
   return NextResponse.json({ success: true })
 }

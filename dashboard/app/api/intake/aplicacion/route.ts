@@ -3,6 +3,7 @@ import { NextResponse } from "next/server"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { sendAplicacionEmail } from "@/lib/email/send-aplicacion"
 import { sendWhatsAppCEO, buildAplicacionWhatsAppText } from "@/lib/whatsapp/send-whatsapp"
+import { rateLimitMiddleware, RateLimitPresets, getRateLimitHeaders } from "@/lib/rate-limit"
 
 // Salario mensual mínimo (COP) que aceptamos para una solicitud de
 // arrendamiento. El cliente ya valida esto, pero lo replicamos en el servidor
@@ -63,6 +64,21 @@ function normalizeTipoSolicitante(raw: unknown): "arrendatario_principal" | "coa
  *    grupo se toman del registro del token, no del cuerpo de la petición
  */
 export async function POST(request: Request) {
+  // Rate limiting: 10 solicitudes por hora por IP
+  const rateLimitResult = rateLimitMiddleware(request, RateLimitPresets.publicForm)
+
+  if (!rateLimitResult.success) {
+    return NextResponse.json(
+      {
+        error: "Has enviado demasiadas solicitudes. Por favor espera antes de enviar otra.",
+      },
+      {
+        status: 429,
+        headers: getRateLimitHeaders(rateLimitResult),
+      }
+    )
+  }
+
   let body: Record<string, unknown>
   try {
     body = await request.json()

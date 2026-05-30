@@ -11,16 +11,20 @@ import { getUserRole } from "@/lib/auth/role"
 export async function GET() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
+
+  if (!user) {
+    return NextResponse.json({ error: "No autorizado" }, { status: 401 })
+  }
+
+  const role = await getUserRole(supabase, user)
+  if (role !== "admin" && role !== "propietario") {
+    return NextResponse.json({ error: "No autorizado" }, { status: 403 })
+  }
+
   const admin = createAdminClient()
 
-  // Detectar si es propietario para filtrar por sus propiedades
-  let propietarioId: string | null = null
-  if (user) {
-    const role = await getUserRole(supabase, user)
-    if (role === "propietario") {
-      propietarioId = user.id
-    }
-  }
+  // Propietario: solo sus propiedades; admin: todas
+  const propietarioId = role === "propietario" ? user.id : null
 
   const buildCountQuery = (estado: string) => {
     let q = admin.from("propiedades").select("*", { count: "exact", head: true }).eq("estado", estado)

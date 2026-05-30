@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin"
+import { constantDelay } from "@/lib/auth/security"
+import { rateLimitMiddleware, RateLimitPresets, getRateLimitHeaders } from "@/lib/rate-limit"
+import { loginSchema } from "@/lib/validation/schemas"
+import { secureLog } from "@/lib/logging/secure-logger"
 import type { UserRole } from "@/lib/auth/role"
 
 const VALID_ROLES: UserRole[] = ["admin", "propietario", "inquilino", "maintenance_special", "insurance_special", "lawyer_special"]
@@ -17,29 +21,36 @@ const VALID_ROLES: UserRole[] = ["admin", "propietario", "inquilino", "maintenan
  * 4. Crea la sesión del usuario
  */
 export async function POST(request: Request) {
+  // Rate limiting: 5 intentos por 15 minutos
+  const rateLimitResult = rateLimitMiddleware(request, RateLimitPresets.login)
+
+  if (!rateLimitResult.success) {
+    return NextResponse.json(
+      {
+        error: "Demasiados intentos de inicio de sesión. Por favor espera unos minutos antes de intentar nuevamente.",
+      },
+      {
+        status: 429,
+        headers: getRateLimitHeaders(rateLimitResult),
+      }
+    )
+  }
+
   try {
     const body = await request.json()
-    const rawEmailOrUsername = body?.email // El campo se llama "email" pero puede ser username
-    const password = body?.password
 
-    console.log("[auth/login] Intento de login con:", {
-      input: rawEmailOrUsername,
-      hasPassword: !!password,
-    })
+    // Validar con Zod
+    const validationResult = loginSchema.safeParse(body)
 
-    if (!rawEmailOrUsername || typeof rawEmailOrUsername !== "string") {
+    if (!validationResult.success) {
+      const errors = validationResult.error.errors.map((e) => e.message).join(". ")
       return NextResponse.json(
-        { error: "Correo electrónico o nombre de usuario es requerido" },
+        { error: errors },
         { status: 400 }
       )
     }
 
-    if (!password || typeof password !== "string") {
-      return NextResponse.json(
-        { error: "Contraseña es requerida" },
-        { status: 400 }
-      )
-    }
+    const { email: rawEmailOrUsername, password } = validationResult.data
 
     const admin = createAdminClient()
     let emailToUse = rawEmailOrUsername.trim()
@@ -47,22 +58,16 @@ export async function POST(request: Request) {
 
     // Verificar si es un username (no tiene @) o un email (tiene @)
     if (!emailToUse.includes("@")) {
-      console.log("[auth/login] Detectado username, buscando email...")
       // Es un username, buscar el email correspondiente
-      const { data: perfil, error: perfilError } = await admin
+      const { data: perfil } = await admin
         .from("perfiles")
         .select("email, username")
         .eq("username", emailToUse)
         .maybeSingle()
 
-      console.log("[auth/login] Resultado búsqueda username:", {
-        found: !!perfil,
-        email: perfil?.email,
-        username: perfil?.username,
-        error: perfilError?.message,
-      })
-
       if (!perfil || !perfil.email) {
+        // Aplicar delay constante para prevenir timing attacks
+        await constantDelay()
         return NextResponse.json(
           { error: "Usuario o contraseña incorrectos" },
           { status: 401 }
@@ -71,7 +76,6 @@ export async function POST(request: Request) {
 
       emailToUse = perfil.email
       usedUsername = true
-      console.log("[auth/login] Email encontrado:", emailToUse)
     } else {
       // Es un email, validar formato
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
@@ -84,8 +88,6 @@ export async function POST(request: Request) {
       emailToUse = emailToUse.toLowerCase()
     }
 
-    console.log("[auth/login] Intentando autenticar con email:", emailToUse)
-
     // Intentar iniciar sesión con Supabase Auth
     const supabase = await createClient()
     const { data, error: signInError } = await supabase.auth.signInWithPassword({
@@ -93,13 +95,10 @@ export async function POST(request: Request) {
       password,
     })
 
-    console.log("[auth/login] Resultado autenticación:", {
-      success: !!data.user,
-      error: signInError?.message,
-    })
-
     if (signInError || !data.user) {
-      console.error("[auth/login] Error de autenticación:", signInError)
+      // Aplicar delay constante para prevenir timing attacks
+      await constantDelay()
+      secureLog.securityError("auth/login", signInError, { reason: "invalid_credentials" })
       return NextResponse.json(
         { error: "Usuario o contraseña incorrectos" },
         { status: 401 }
@@ -115,15 +114,13 @@ export async function POST(request: Request) {
 
     const role = VALID_ROLES.includes(perfil?.role as UserRole) ? (perfil?.role as UserRole) : "inquilino"
 
-    console.log("[auth/login] Login exitoso para:", {
-      id: data.user.id,
-      email: perfil?.email,
-      username: perfil?.username,
-      role,
-    })
+    // Loguear login exitoso sin datos sensibles
+    secureLog.userAction("LOGIN_SUCCESS", data.user.id, { role })
 
     // Importante: La sesión ya está creada por signInWithPassword
     // Solo necesitamos retornar la información del usuario
+    const metadata = data.user.user_metadata ?? {}
+
     return NextResponse.json({
       success: true,
       user: {
@@ -133,6 +130,8 @@ export async function POST(request: Request) {
         role,
         nombre: perfil?.nombre,
       },
+      mustChangePassword: metadata.must_change_password === true,
+      tempPasswordExpiresAt: metadata.temp_password_expires_at as number | undefined,
       usedUsername, // Indica si se usó username para el login
       redirect: role === "admin"
         ? "/admin/dashboard"
@@ -141,7 +140,9 @@ export async function POST(request: Request) {
           : "/inquilino/dashboard",
     })
   } catch (err) {
-    console.error("[auth/login] Error:", err)
+    // Aplicar delay constante también en errores
+    await constantDelay()
+    secureLog.securityError("auth/login", err, { reason: "unexpected_error" })
     return NextResponse.json(
       { error: "Error al iniciar sesión" },
       { status: 500 }

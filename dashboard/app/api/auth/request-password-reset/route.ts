@@ -5,9 +5,11 @@ import {
   hashResetToken,
   getResetTokenExpiry,
   saveResetToken,
-  sanitizeEmail,
 } from "@/lib/auth/password-reset-service"
 import { sendPasswordResetEmail } from "@/lib/email/send-reset"
+import { rateLimitMiddleware, RateLimitPresets, getRateLimitHeaders } from "@/lib/rate-limit"
+import { passwordResetRequestSchema } from "@/lib/validation/schemas"
+import { secureLog } from "@/lib/logging/secure-logger"
 
 const RESET_TOKEN_EXPIRY_MINUTES = 60
 
@@ -17,34 +19,36 @@ const RESET_TOKEN_EXPIRY_MINUTES = 60
  * Respuesta genérica en éxito y error para no revelar si el email existe.
  */
 export async function POST(request: Request) {
+  // Rate limiting: 3 solicitudes por hora
+  const rateLimitResult = rateLimitMiddleware(request, RateLimitPresets.passwordReset)
+
+  if (!rateLimitResult.success) {
+    return NextResponse.json(
+      {
+        error: "Demasiadas solicitudes de restablecimiento. Por favor espera antes de intentar nuevamente.",
+      },
+      {
+        status: 429,
+        headers: getRateLimitHeaders(rateLimitResult),
+      }
+    )
+  }
+
   try {
     const body = await request.json()
-    const rawEmail = body?.email
 
-    if (!rawEmail || typeof rawEmail !== "string") {
+    // Validar con Zod
+    const validationResult = passwordResetRequestSchema.safeParse(body)
+
+    if (!validationResult.success) {
+      const errors = validationResult.error.errors.map((e) => e.message).join(". ")
       return NextResponse.json(
-        { error: "El correo electrónico es requerido" },
+        { error: errors },
         { status: 400 }
       )
     }
 
-    const email = sanitizeEmail(rawEmail)
-    if (!email) {
-      return NextResponse.json(
-        { error: "El correo electrónico es requerido" },
-        { status: 400 }
-      )
-    }
-
-    // Validar formato básico de email
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-    if (!emailRegex.test(email)) {
-      return NextResponse.json(
-        { error: "Formato de correo inválido" },
-        { status: 400 }
-      )
-    }
-
+    const { email } = validationResult.data
     const user = await findUserByEmail(email)
 
     // No revelar si el email existe o no: misma respuesta genérica
@@ -74,13 +78,13 @@ export async function POST(request: Request) {
     })
 
     if (!sendResult.success) {
-      console.error("[request-password-reset] Error enviando email:", sendResult.error)
+      secureLog.error("request-password-reset", sendResult.error)
       // No revelar fallo de envío al cliente; respuesta genérica
     }
 
     return NextResponse.json({ message: successMessage }, { status: 200 })
   } catch (err) {
-    console.error("[request-password-reset]", err)
+    secureLog.error("request-password-reset", err)
     return NextResponse.json(
       { error: "Error al procesar la solicitud" },
       { status: 500 }

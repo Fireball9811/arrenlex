@@ -2,47 +2,65 @@ import { NextResponse } from "next/server"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { sendContactoEmail } from "@/lib/email/send-contacto"
 import { sendWhatsAppCEO } from "@/lib/whatsapp/send-whatsapp"
+import { rateLimitMiddleware, RateLimitPresets, getRateLimitHeaders } from "@/lib/rate-limit"
+import { contactFormSchema } from "@/lib/validation/schemas"
+import { secureLog } from "@/lib/logging/secure-logger"
 
 export async function POST(request: Request) {
+  // Rate limiting: 5 mensajes por hora
+  const rateLimitResult = rateLimitMiddleware(request, RateLimitPresets.contact)
+
+  if (!rateLimitResult.success) {
+    return NextResponse.json(
+      {
+        error: "Has enviado demasiados mensajes. Por favor espera un poco antes de enviar otro.",
+      },
+      {
+        status: 429,
+        headers: getRateLimitHeaders(rateLimitResult),
+      }
+    )
+  }
+
   try {
     const body = await request.json()
-    const { nombre, celular, email, tipo } = body
 
-    if (!nombre?.trim() || !celular?.trim() || !email?.trim() || !tipo) {
+    // Validar con Zod
+    const validationResult = contactFormSchema.safeParse(body)
+
+    if (!validationResult.success) {
+      const errors = validationResult.error.errors.map((e) => e.message).join(". ")
       return NextResponse.json(
-        { error: "Todos los campos son obligatorios" },
+        { error: errors },
         { status: 400 }
       )
     }
 
-    if (!["propietario", "arrendatario"].includes(tipo)) {
-      return NextResponse.json({ error: "Tipo inválido" }, { status: 400 })
-    }
-
+    const { nombre, celular, email, tipo } = validationResult.data
     const tipoLabel = tipo === "propietario" ? "Propietario" : "Arrendatario"
-    const nombreTrim = nombre.trim()
-    const celularTrim = celular.trim()
-    const emailTrim = email.trim()
+    const celularTrim = celular.replace(/\D/g, "") // Solo dígitos para el almacenamiento
 
     const admin = createAdminClient()
     const { error: insertError } = await admin.from("contactos_landing").insert({
-      nombre: nombreTrim,
+      nombre,
       celular: celularTrim,
-      email: emailTrim,
+      email,
       tipo,
       estado: "pendiente",
     })
 
     if (insertError) {
-      console.error("[api/contacto] Error insertando en contactos_landing:", insertError)
+      secureLog.error("api/contacto", insertError)
       return NextResponse.json({ error: "Error al guardar el contacto" }, { status: 500 })
     }
 
+    secureLog.userAction("CONTACT_FORM_SUBMITTED", undefined, { tipo })
+
     const [emailResult, waResult] = await Promise.allSettled([
       sendContactoEmail({
-        nombre: nombreTrim,
+        nombre,
         celular: celularTrim,
-        email: emailTrim,
+        email,
         tipo,
       }),
       sendWhatsAppCEO(
@@ -50,28 +68,28 @@ export async function POST(request: Request) {
           `📞 *Nuevo contacto desde la web*`,
           ``,
           `👤 Tipo: ${tipoLabel}`,
-          `📝 Nombre: ${nombreTrim}`,
+          `📝 Nombre: ${nombre}`,
           `📱 Celular: ${celularTrim}`,
-          `📧 Correo: ${emailTrim}`,
+          `📧 Correo: ${email}`,
         ].join("\n")
       ),
     ])
 
     if (emailResult.status === "rejected") {
-      console.error("[api/contacto] Error en email:", emailResult.reason)
+      secureLog.warn("api/contacto email failed", { reason: emailResult.reason })
     } else if (!emailResult.value.success) {
-      console.error("[api/contacto] Email no enviado:", emailResult.value.error)
+      secureLog.warn("api/contacto email failed", { reason: emailResult.value.error })
     }
 
     if (waResult.status === "rejected") {
-      console.warn("[api/contacto] Error en WhatsApp:", waResult.reason)
+      secureLog.warn("api/contacto whatsapp failed", { reason: waResult.reason })
     } else if (!waResult.value.success) {
-      console.warn("[api/contacto] WhatsApp no enviado:", waResult.value.error)
+      secureLog.warn("api/contacto whatsapp failed", { reason: waResult.value.error })
     }
 
     return NextResponse.json({ success: true })
   } catch (err) {
-    console.error("[api/contacto] Error:", err)
+    secureLog.error("api/contacto", err)
     return NextResponse.json({ error: "Error interno del servidor" }, { status: 500 })
   }
 }

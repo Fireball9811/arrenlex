@@ -3,11 +3,21 @@ import { createClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { generateTempPassword } from "@/lib/auth/temp-password"
 import { sendInvitationEmail } from "@/lib/email/send-invitation"
+import { getUserRole } from "@/lib/auth/role"
+
+const VALID_ROLES = [
+  "admin",
+  "propietario",
+  "inquilino",
+  "maintenance_special",
+  "insurance_special",
+  "lawyer_special",
+] as const
 
 const EXPIRY_DAYS =
   parseInt(process.env.INVITATION_TEMP_PASSWORD_EXPIRY_DAYS ?? "7", 10) || 7
 
-// POST - Invitar usuario con contraseña temporal
+// POST - Invitar usuario con contraseña temporal (solo admin o propietario)
 export async function POST(request: Request) {
   const supabase = await createClient()
   const {
@@ -16,6 +26,14 @@ export async function POST(request: Request) {
 
   if (!user) {
     return NextResponse.json({ error: "No autorizado" }, { status: 401 })
+  }
+
+  const callerRole = await getUserRole(supabase, user)
+  if (callerRole !== "admin" && callerRole !== "propietario") {
+    return NextResponse.json(
+      { error: "No tienes permiso para enviar invitaciones" },
+      { status: 403 }
+    )
   }
 
   try {
@@ -148,9 +166,13 @@ export async function POST(request: Request) {
         ? bodyNombre.trim()
         : newUser.user.email?.split("@")[0] || "Inquilino"
 
-    // Validar el rol si se proporciona, por defecto "inquilino"
-    const VALID_ROLES = ["admin", "propietario", "inquilino", "maintenance_special", "insurance_special", "lawyer_special"]
-    const roleFinal = bodyRole && VALID_ROLES.includes(bodyRole) ? bodyRole : "inquilino"
+    // Propietario solo puede invitar inquilinos; admin puede elegir rol válido
+    const roleFinal =
+      callerRole === "admin"
+        ? bodyRole && VALID_ROLES.includes(bodyRole as (typeof VALID_ROLES)[number])
+          ? bodyRole
+          : "inquilino"
+        : "inquilino"
 
     const { error: perfilError } = await admin
       .from("perfiles")

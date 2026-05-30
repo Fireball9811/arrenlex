@@ -14,7 +14,8 @@ import {
   DollarSign,
   Wrench,
   BarChart3,
-  Home
+  Home,
+  Scale,
 } from "lucide-react"
 
 export function AdminSidebar() {
@@ -100,6 +101,10 @@ export function AdminSidebar() {
         <Link href="/admin/reportes" className="flex items-center gap-3 rounded p-2 transition hover:bg-sky-200">
           <BarChart3 className="h-4 w-4" />
           {t.sidebar.reportes}
+        </Link>
+        <Link href="/admin/habeas-data" className="flex items-center gap-3 rounded p-2 transition hover:bg-sky-200">
+          <Scale className="h-4 w-4" />
+          {t.sidebar.habeasData}
         </Link>
       </nav>
       <div className="relative space-y-2 border-t border-sky-300 p-4">

@@ -223,10 +223,9 @@ export async function PATCH(
             console.error("[api/admin/usuarios/[id]] Error enviando email:", emailResult.error)
             return NextResponse.json(
               {
-                error: "Contraseña actualizada pero no se pudo enviar el email: " + emailResult.error,
-                message: "Contraseña temporal: " + tempPassword,
+                error: "No se pudo enviar el email con la contraseña temporal. El usuario debe solicitar un nuevo enlace de restablecimiento o contactar a soporte.",
               },
-              { status: 200 }
+              { status: 500 }
             )
           }
 

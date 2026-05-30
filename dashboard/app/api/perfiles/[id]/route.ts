@@ -1,12 +1,28 @@
 import { NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin"
+import { isAdminRole } from "@/lib/auth/role"
 
 export async function GET(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params
+
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user) {
+    return NextResponse.json({ error: "No autorizado" }, { status: 401 })
+  }
+
+  const isAdmin = await isAdminRole(supabase, user.id)
+  if (user.id !== id && !isAdmin) {
+    return NextResponse.json({ error: "No tienes permiso para ver este perfil" }, { status: 403 })
+  }
+
   const admin = createAdminClient()
 
   const { data, error } = await admin

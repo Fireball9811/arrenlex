@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from "react"
 import Image from "next/image"
 import Link from "next/link"
+import { Scale } from "lucide-react"
 import { SignOutButton } from "@/components/auth/sign-out-button"
 import { useLang } from "@/lib/i18n/context"
 
@@ -101,6 +102,10 @@ export function PropietarioSidebar() {
         </Link>
         <Link href="/propietario/otros-gastos" className="block rounded p-2 transition hover:bg-green-200">
           {t.sidebar.otrosGastos}
+        </Link>
+        <Link href="/admin/habeas-data" className="flex items-center gap-3 rounded p-2 transition hover:bg-green-200">
+          <Scale className="h-4 w-4 shrink-0" />
+          {t.sidebar.habeasData}
         </Link>
       </nav>
       <div className="relative space-y-2 border-t border-green-300 p-4">

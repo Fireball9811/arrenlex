@@ -3,6 +3,7 @@ import { NextResponse } from "next/server"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { insertarParAplicacionTokens } from "@/lib/intake/aplicacion-par-tokens"
 import { respuestaErrorGeneracionTokens } from "@/lib/intake/tokens-error-response"
+import { rateLimitMiddleware, RateLimitPresets, getRateLimitHeaders } from "@/lib/rate-limit"
 
 /**
  * POST /api/intake/tokens/publico
@@ -14,6 +15,15 @@ import { respuestaErrorGeneracionTokens } from "@/lib/intake/tokens-error-respon
  * Response: { grupo_solicitud_id, expira_en, principal: { token, url }, coarrendatario: { token, url } }
  */
 export async function POST(request: Request) {
+  const rateLimitResult = rateLimitMiddleware(request, RateLimitPresets.publicForm)
+
+  if (!rateLimitResult.success) {
+    return NextResponse.json(
+      { error: "Demasiadas solicitudes. Intenta de nuevo más tarde." },
+      { status: 429, headers: getRateLimitHeaders(rateLimitResult) }
+    )
+  }
+
   let body: Record<string, unknown>
   try {
     body = await request.json()

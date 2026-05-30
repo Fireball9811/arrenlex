@@ -16,7 +16,6 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import { useLang } from "@/lib/i18n/context"
-import { createAdminClient } from "@/lib/supabase/admin"
 
 function LoginContent() {
   const { t, lang, setLang } = useLang()
@@ -41,74 +40,56 @@ function LoginContent() {
     }
 
     try {
-      const supabase = createClient()
-      let emailToUse = usuario.trim()
-
-      // Si no tiene @, es un username - buscar el email correspondiente
-      if (!emailToUse.includes("@")) {
-        const response = await fetch("/api/lookup-username", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ username: emailToUse }),
-        })
-
-        const data = await response.json()
-
-        if (!response.ok || !data.email) {
-          setError(t.auth.errorCredenciales)
-          setLoading(false)
-          return
-        }
-
-        emailToUse = data.email
-      }
-
-      // Hacer login con Supabase Auth
-      const { data, error: signInError } = await supabase.auth.signInWithPassword({
-        email: emailToUse,
-        password: contrasena,
+      const res = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: usuario.trim(),
+          password: contrasena,
+        }),
       })
 
-      if (signInError) {
-        setError(signInError.message === "Invalid login credentials"
-          ? t.auth.errorCredenciales
-          : signInError.message)
+      const data = await res.json().catch(() => ({}))
+
+      if (!res.ok) {
+        setError(
+          typeof data.error === "string" ? data.error : t.auth.errorCredenciales
+        )
         setLoading(false)
         return
       }
 
-      if (data.user) {
-        const metadata = data.user.user_metadata ?? {}
-        const mustChange = metadata.must_change_password === true
-        const expiresAt = metadata.temp_password_expires_at as number | undefined
+      const mustChange = data.mustChangePassword === true
+      const expiresAt = data.tempPasswordExpiresAt as number | undefined
 
-        if (mustChange && expiresAt && Date.now() > expiresAt) {
-          await supabase.auth.signOut()
-          setError(t.auth.errorContrasenaExpirada)
-          setLoading(false)
-          return
-        }
-
-        if (mustChange) {
-          const next = searchParams.get("next")
-          const nextPath = next && next.startsWith("/") ? next : "/inquilino/dashboard"
-          router.push(`/cambio-contrasena?next=${encodeURIComponent(nextPath)}`)
-          router.refresh()
-          setLoading(false)
-          return
-        }
-
-        // Redirigir según rol o parámetro
-        const explicitRedirect = searchParams.get("redirect")
-        if (explicitRedirect && explicitRedirect.startsWith("/")) {
-          router.push(explicitRedirect)
-        } else {
-          const res = await fetch("/api/auth/dashboard")
-          const json = await res.json().catch(() => ({}))
-          router.push(json.redirect || "/propietario/dashboard")
-        }
-        router.refresh()
+      if (mustChange && expiresAt && Date.now() > expiresAt) {
+        const supabase = createClient()
+        await supabase.auth.signOut()
+        setError(t.auth.errorContrasenaExpirada)
+        setLoading(false)
+        return
       }
+
+      if (mustChange) {
+        const next = searchParams.get("next")
+        const nextPath = next && next.startsWith("/") ? next : "/inquilino/dashboard"
+        router.push(`/cambio-contrasena?next=${encodeURIComponent(nextPath)}`)
+        router.refresh()
+        setLoading(false)
+        return
+      }
+
+      const explicitRedirect = searchParams.get("redirect")
+      if (explicitRedirect && explicitRedirect.startsWith("/")) {
+        router.push(explicitRedirect)
+      } else {
+        router.push(
+          typeof data.redirect === "string"
+            ? data.redirect
+            : "/propietario/dashboard"
+        )
+      }
+      router.refresh()
       setLoading(false)
     } catch (err) {
       console.error("Error en login:", err)
