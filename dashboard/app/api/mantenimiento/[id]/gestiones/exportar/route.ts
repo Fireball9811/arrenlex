@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { getUserRole } from "@/lib/auth/role"
+import { loadMantenimientoSolicitudForAccess } from "@/lib/auth/resource-access"
 import * as XLSX from 'xlsx'
 
 /**
@@ -23,20 +24,31 @@ export async function GET(
 
   const admin = createAdminClient()
 
-  // Obtener información de la solicitud y propiedad
-  const { data: solicitud } = await admin
-    .from("solicitudes_mantenimiento")
-    .select(`
+  const access = await loadMantenimientoSolicitudForAccess(
+    admin,
+    role,
+    user.id,
+    id,
+    `
       id,
+      assigned_to,
       nombre_completo,
       detalle,
       created_at,
-      propiedades ( direccion, ciudad )
-    `)
-    .eq("id", id)
-    .single()
+      propiedades ( direccion, ciudad, user_id )
+    `
+  )
+  if ("response" in access) return access.response
 
-  const propInfo = solicitud?.propiedades as { direccion?: string; ciudad?: string } | null
+  const solicitud = access.solicitud as {
+    nombre_completo?: string
+    detalle?: string
+    created_at?: string
+    propiedades?: { direccion?: string; ciudad?: string } | { direccion?: string; ciudad?: string }[]
+  }
+
+  const propRaw = solicitud.propiedades
+  const propInfo = propRaw == null ? null : Array.isArray(propRaw) ? propRaw[0] : propRaw
   const propRef = propInfo ? `${propInfo.direccion || ''}, ${propInfo.ciudad || ''}`.trim() : 'N/A'
 
   // Obtener todas las gestiones - query simple primero para verificar

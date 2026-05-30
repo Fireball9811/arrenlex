@@ -25,6 +25,24 @@ export async function GET() {
 
   const admin = createAdminClient()
 
+  if (role === "maintenance_special") {
+    const { count, error } = await admin
+      .from("solicitudes_mantenimiento")
+      .select("id", { count: "exact", head: true })
+      .eq("status", "pendiente")
+      .eq("assigned_to", user.id)
+
+    if (error) {
+      console.error("[mantenimiento count GET]", error)
+      return NextResponse.json({ count: 0 })
+    }
+    return NextResponse.json({ count: count ?? 0 })
+  }
+
+  if (role !== "admin" && role !== "propietario") {
+    return NextResponse.json({ count: 0 })
+  }
+
   if (role === "admin") {
     const { count, error } = await admin
       .from("solicitudes_mantenimiento")

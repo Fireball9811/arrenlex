@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { getUserRole } from "@/lib/auth/role"
+import { loadMantenimientoSolicitudForAccess } from "@/lib/auth/resource-access"
 import { handleSupabaseError } from "@/lib/api-error"
 
 const BUCKET = "mantenimiento-adjuntos"
@@ -29,25 +30,19 @@ export async function GET(
     .from("mantenimiento_adjuntos")
     .select(`
       id, storage_path, nombre_archivo, tipo,
-      mantenimiento_gestiones (
-        solicitud_id,
-        solicitudes_mantenimiento ( propiedades ( user_id ) )
-      )
+      mantenimiento_gestiones ( solicitud_id )
     `)
     .eq("id", adjuntoId)
     .single()
 
   if (errAdj || !adjunto) return NextResponse.json({ error: "Not found" }, { status: 404 })
 
-  const gestion = (adjunto.mantenimiento_gestiones as unknown) as {
-    solicitud_id: string
-    solicitudes_mantenimiento: { propiedades: { user_id?: string } | null } | null
-  } | null
+  const gestion = (adjunto.mantenimiento_gestiones as unknown) as { solicitud_id?: string } | null
+  const solicitudId = gestion?.solicitud_id
+  if (!solicitudId) return NextResponse.json({ error: "Not found" }, { status: 404 })
 
-  if (role === "propietario") {
-    const propUserId = gestion?.solicitudes_mantenimiento?.propiedades?.user_id
-    if (propUserId !== user.id) return NextResponse.json({ error: "Forbidden" }, { status: 403 })
-  }
+  const access = await loadMantenimientoSolicitudForAccess(admin, role, user.id, solicitudId)
+  if ("response" in access) return access.response
 
   const { data: signedData, error: errSign } = await admin.storage
     .from(BUCKET)
@@ -83,23 +78,19 @@ export async function DELETE(
     .from("mantenimiento_adjuntos")
     .select(`
       id, storage_path,
-      mantenimiento_gestiones (
-        solicitudes_mantenimiento ( propiedades ( user_id ) )
-      )
+      mantenimiento_gestiones ( solicitud_id )
     `)
     .eq("id", adjuntoId)
     .single()
 
   if (errAdj || !adjunto) return NextResponse.json({ error: "Not found" }, { status: 404 })
 
-  const gestion = (adjunto.mantenimiento_gestiones as unknown) as {
-    solicitudes_mantenimiento: { propiedades: { user_id?: string } | null } | null
-  } | null
+  const gestion = (adjunto.mantenimiento_gestiones as unknown) as { solicitud_id?: string } | null
+  const solicitudId = gestion?.solicitud_id
+  if (!solicitudId) return NextResponse.json({ error: "Not found" }, { status: 404 })
 
-  if (role === "propietario") {
-    const propUserId = gestion?.solicitudes_mantenimiento?.propiedades?.user_id
-    if (propUserId !== user.id) return NextResponse.json({ error: "Forbidden" }, { status: 403 })
-  }
+  const access = await loadMantenimientoSolicitudForAccess(admin, role, user.id, solicitudId)
+  if ("response" in access) return access.response
 
   await admin.storage.from(BUCKET).remove([adjunto.storage_path])
 

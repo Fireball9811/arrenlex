@@ -85,7 +85,7 @@ export async function loadContratoWithAccess(
 /**
  * Arrendatarios vinculados a contratos del propietario (deduplicados).
  */
-async function arrendatariosDelPropietario(
+export async function arrendatariosDelPropietario(
   admin: SupabaseClient,
   propietarioId: string
 ): Promise<ArrendatarioBusqueda[]> {
@@ -172,4 +172,62 @@ export function requireAdminOrPropietarioRole(role: UserRole): NextResponse | nu
     return NextResponse.json({ error: "No autorizado" }, { status: 403 })
   }
   return null
+}
+
+type MantenimientoRow = {
+  id: string
+  propiedad_id: string
+  assigned_to?: string | null
+  propiedades?: { user_id?: string } | { user_id?: string }[] | null
+}
+
+/**
+ * Valida lectura/edición de una solicitud de mantenimiento.
+ * Admin: cualquiera. Propietario: solo sus propiedades. maintenance_special: solo asignadas.
+ */
+export function assertMantenimientoSolicitudAccess(
+  role: UserRole,
+  userId: string,
+  solicitud: MantenimientoRow
+): NextResponse | null {
+  if (role === "admin") return null
+
+  if (role === "maintenance_special") {
+    if (solicitud.assigned_to === userId) return null
+    return NextResponse.json({ error: "No autorizado" }, { status: 403 })
+  }
+
+  if (role === "propietario") {
+    const propRaw = solicitud.propiedades
+    const prop = propRaw == null ? null : Array.isArray(propRaw) ? propRaw[0] : propRaw
+    if (prop?.user_id === userId) return null
+    return NextResponse.json({ error: "No autorizado" }, { status: 403 })
+  }
+
+  return NextResponse.json({ error: "No autorizado" }, { status: 403 })
+}
+
+/** Carga solicitud y valida acceso antes de operar sobre gestiones/adjuntos. */
+export async function loadMantenimientoSolicitudForAccess(
+  admin: SupabaseClient,
+  role: UserRole,
+  userId: string,
+  solicitudId: string,
+  select = "id, assigned_to, propiedades ( user_id )"
+): Promise<{ solicitud: MantenimientoRow } | { response: NextResponse }> {
+  const { data, error } = await admin
+    .from("solicitudes_mantenimiento")
+    .select(select)
+    .eq("id", solicitudId)
+    .maybeSingle()
+
+  if (error || !data) {
+    return { response: NextResponse.json({ error: "Solicitud no encontrada" }, { status: 404 }) }
+  }
+
+  const solicitud = data as unknown as MantenimientoRow
+  const denied = assertMantenimientoSolicitudAccess(role, userId, solicitud)
+  if (denied) return { response: denied }
+
+  return { solicitud }
 }

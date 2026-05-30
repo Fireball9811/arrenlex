@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { getUserRole } from "@/lib/auth/role"
+import { requireAdminOrPropietarioRole } from "@/lib/auth/resource-access"
 import { sendMantenimientoEmail } from "@/lib/email/send-mantenimiento"
 
 /**
@@ -25,6 +26,36 @@ export async function GET() {
   }
 
   const admin = createAdminClient()
+
+  if (role === "maintenance_special") {
+    const { data, error } = await admin
+      .from("solicitudes_mantenimiento")
+      .select(
+        `
+        id,
+        propiedad_id,
+        nombre_completo,
+        detalle,
+        desde_cuando,
+        responsable,
+        status,
+        arrendatario_id,
+        created_at,
+        propiedades ( id, direccion, ciudad, barrio )
+      `
+      )
+      .eq("assigned_to", user.id)
+      .order("created_at", { ascending: false })
+
+    if (error) {
+      console.error("[mantenimiento GET]", error)
+      return NextResponse.json({ error: "Error al listar solicitudes" }, { status: 500 })
+    }
+    return NextResponse.json(data ?? [])
+  }
+
+  const denied = requireAdminOrPropietarioRole(role)
+  if (denied) return denied
 
   if (role === "admin") {
     const { data, error } = await admin

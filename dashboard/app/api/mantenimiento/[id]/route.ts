@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { getUserRole } from "@/lib/auth/role"
+import { assertMantenimientoSolicitudAccess } from "@/lib/auth/resource-access"
 
 const VALID_STATUSES = ["pendiente", "ejecucion", "completado"] as const
 
@@ -29,7 +30,7 @@ export async function GET(
     .from("solicitudes_mantenimiento")
     .select(`
       id, propiedad_id, nombre_completo, detalle, desde_cuando,
-      responsable, status, arrendatario_id, created_at,
+      responsable, status, arrendatario_id, created_at, assigned_to,
       propiedades ( id, direccion, ciudad, barrio, user_id )
     `)
     .eq("id", id)
@@ -37,10 +38,8 @@ export async function GET(
 
   if (error || !data) return NextResponse.json({ error: "Solicitud no encontrada" }, { status: 404 })
 
-  const prop = data.propiedades as { user_id?: string } | null
-  if (role === "propietario" && prop?.user_id !== user.id) {
-    return NextResponse.json({ error: "No autorizado" }, { status: 403 })
-  }
+  const accessDenied = assertMantenimientoSolicitudAccess(role, user.id, data)
+  if (accessDenied) return accessDenied
 
   return NextResponse.json(data)
 }
@@ -99,7 +98,7 @@ export async function PATCH(
 
   const { data: solicitud, error: errSolicitud } = await admin
     .from("solicitudes_mantenimiento")
-    .select("id, propiedad_id, propiedades ( user_id )")
+    .select("id, propiedad_id, assigned_to, propiedades ( user_id )")
     .eq("id", id)
     .single()
 
@@ -107,12 +106,8 @@ export async function PATCH(
     return NextResponse.json({ error: "Solicitud no encontrada" }, { status: 404 })
   }
 
-  const prop = solicitud.propiedades as { user_id?: string } | null
-  const propUserId = prop?.user_id
-
-  if (role === "propietario" && propUserId !== user.id) {
-    return NextResponse.json({ error: "No puedes modificar esta solicitud" }, { status: 403 })
-  }
+  const accessDenied = assertMantenimientoSolicitudAccess(role, user.id, solicitud)
+  if (accessDenied) return accessDenied
 
   const updates: Record<string, unknown> = {}
   if (status !== undefined) updates.status = status

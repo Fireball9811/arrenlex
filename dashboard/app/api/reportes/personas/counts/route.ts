@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { getUserRole } from "@/lib/auth/role"
+import { requireAdminOrPropietarioRole } from "@/lib/auth/resource-access"
 
 /**
  * GET - Obtiene contadores dinámicos para cada categoría de personas
@@ -22,6 +23,8 @@ export async function GET() {
   }
 
   const role = await getUserRole(supabase, user)
+  const denied = requireAdminOrPropietarioRole(role)
+  if (denied) return denied
 
   try {
     // Contar inquilinos activos = arrendatarios con contratos activos
@@ -74,24 +77,34 @@ export async function GET() {
     let historialInquilinos = 0
 
     if (role === "propietario") {
-      // Para propietarios, necesitamos un enfoque diferente
-      // Obtener IDs de arrendatarios con contrato activo del propietario
-      const { data: contratosActivos } = await admin
-        .from("contratos")
-        .select("arrendatario_id")
+      const { data: props } = await admin
+        .from("propiedades")
+        .select("id")
         .eq("user_id", user.id)
-        .in("estado", ["activo", "borrador"])
 
-      const arrendatariosActivosIds = new Set(
-        (contratosActivos || []).map(c => c.arrendatario_id)
-      )
+      const propiedadIds = props?.map((p) => p.id) ?? []
+      if (propiedadIds.length === 0) {
+        historialInquilinos = 0
+      } else {
+        const { data: contratosScope } = await admin
+          .from("contratos")
+          .select("arrendatario_id, estado")
+          .in("propiedad_id", propiedadIds)
 
-      // Contar todos los arrendatarios menos los que tienen contrato activo
-      const { count: totalArrendatarios } = await supabase
-        .from("arrendatarios")
-        .select("*", { count: "exact", head: true })
+        const estadosActivos = new Set(["activo", "borrador"])
+        const porArrendatario = new Map<string, string[]>()
 
-      historialInquilinos = (totalArrendatarios || 0) - arrendatariosActivosIds.size
+        for (const c of contratosScope ?? []) {
+          const list = porArrendatario.get(c.arrendatario_id) ?? []
+          list.push(c.estado)
+          porArrendatario.set(c.arrendatario_id, list)
+        }
+
+        historialInquilinos = [...porArrendatario.entries()].filter(([, estados]) => {
+          if (estados.length === 0) return true
+          return !estados.some((e) => estadosActivos.has(e))
+        }).length
+      }
     } else {
       // Admin: contar todos los arrendatarios inactivos
       const { data: arrendatariosConContratos } = await admin

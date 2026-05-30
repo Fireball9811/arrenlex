@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { getUserRole } from "@/lib/auth/role"
+import { loadMantenimientoSolicitudForAccess } from "@/lib/auth/resource-access"
 import { handleSupabaseError } from "@/lib/api-error"
 
 /**
@@ -28,23 +29,17 @@ export async function PATCH(
 
   const admin = createAdminClient()
 
-  // Verificar acceso
+  const access = await loadMantenimientoSolicitudForAccess(admin, role, user.id, id)
+  if ("response" in access) return access.response
+
   const { data: gestion, error: errG } = await admin
     .from("mantenimiento_gestiones")
-    .select("id, solicitud_id, solicitudes_mantenimiento ( propiedad_id, propiedades ( user_id ) )")
+    .select("id, solicitud_id")
     .eq("id", gestionId)
     .eq("solicitud_id", id)
     .single()
 
   if (errG || !gestion) return NextResponse.json({ error: "Not found" }, { status: 404 })
-
-  const solicitud = (gestion.solicitudes_mantenimiento as unknown) as {
-    propiedad_id: string
-    propiedades: { user_id?: string } | null
-  } | null
-  if (role === "propietario" && solicitud?.propiedades?.user_id !== user.id) {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 })
-  }
 
   const { fecha_ejecucion, descripcion, proveedor, costo } = body as Record<string, unknown>
   const updates: Record<string, unknown> = {}
@@ -90,11 +85,13 @@ export async function DELETE(
 
   const admin = createAdminClient()
 
+  const access = await loadMantenimientoSolicitudForAccess(admin, role, user.id, id)
+  if ("response" in access) return access.response
+
   const { data: gestion, error: errG } = await admin
     .from("mantenimiento_gestiones")
     .select(`
       id, solicitud_id,
-      solicitudes_mantenimiento ( propiedades ( user_id ) ),
       mantenimiento_adjuntos ( storage_path )
     `)
     .eq("id", gestionId)
@@ -102,13 +99,6 @@ export async function DELETE(
     .single()
 
   if (errG || !gestion) return NextResponse.json({ error: "Not found" }, { status: 404 })
-
-  const solicitud = (gestion.solicitudes_mantenimiento as unknown) as {
-    propiedades: { user_id?: string } | null
-  } | null
-  if (role === "propietario" && solicitud?.propiedades?.user_id !== user.id) {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 })
-  }
 
   // Borrar archivos del storage
   const adjuntos = gestion.mantenimiento_adjuntos as { storage_path: string }[] | null
