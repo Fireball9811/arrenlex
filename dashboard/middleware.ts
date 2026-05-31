@@ -6,8 +6,8 @@ import { createServerClient } from "@supabase/ssr"
 const PUBLIC_PATHS = [
   "/",
   "/login",
-  "/forgot-password", // Versión en inglés de recuperar-contrasena
-  "/reset-password",  // Versión en inglés de restablecer-contrasena
+  "/forgot-password",
+  "/reset-password",
   "/recuperar-contrasena",
   "/restablecer-contrasena",
   "/auth/callback",
@@ -19,6 +19,9 @@ const PUBLIC_PATHS = [
   "/catalogo",
   "/politica-datos",
   "/politica-tratamiento-datos",
+  "/api/auth/login",
+  "/api/auth/request-password-reset",
+  "/api/auth/reset-password",
   "/api/propiedades/ciudades",
   "/api/propiedades/public",
   "/api/propiedades/banner",
@@ -34,147 +37,59 @@ const PUBLIC_PATH_PATTERNS = [
   /^\/api\/propiedades\/[^/]+\/aplicacion-info$/,
 ]
 
-async function getSessionRole(request: NextRequest): Promise<string | null> {
-  try {
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-    const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+const VALID_ROLES = new Set([
+  "admin",
+  "propietario",
+  "inquilino",
+  "maintenance_special",
+  "insurance_special",
+  "lawyer_special",
+])
 
-    const response = NextResponse.next()
-    const supabase = createServerClient(supabaseUrl, supabaseKey, {
-      cookies: {
-        getAll() {
-          return request.cookies.getAll()
-        },
-        setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value, options }) => {
-            response.cookies.set(name, value, options)
-          })
-        },
-      },
-    })
-
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return null
-
-    const { data: perfil } = await supabase
-      .from("perfiles")
-      .select("role")
-      .eq("id", user.id)
-      .maybeSingle()
-
-    return perfil?.role ?? "inquilino"
-  } catch {
-    return null
-  }
-}
-
-export async function middleware(request: NextRequest) {
-  const path = request.nextUrl.pathname
-
-  // 1. Rutas públicas — pasar sin verificar
-  const isPublic =
+function isPublicPath(path: string): boolean {
+  return (
     PUBLIC_PATHS.some((p) => path === p || path.startsWith(p + "/")) ||
     PUBLIC_PATH_PATTERNS.some((pattern) => pattern.test(path))
+  )
+}
 
-  if (isPublic) {
-    return NextResponse.next()
+async function resolveRole(
+  supabase: ReturnType<typeof createServerClient>,
+  userId: string
+): Promise<string> {
+  const { data: perfil } = await supabase
+    .from("perfiles")
+    .select("role")
+    .eq("id", userId)
+    .maybeSingle()
+
+  if (perfil?.role && VALID_ROLES.has(perfil.role)) {
+    return perfil.role
   }
 
-  // 2. Verificar sesión
-  const role = await getSessionRole(request)
+  const { count } = await supabase
+    .from("propiedades")
+    .select("*", { count: "exact", head: true })
+    .eq("user_id", userId)
 
-  if (!role) {
-    if (path.startsWith("/api/")) {
-      return NextResponse.json({ error: "No autorizado" }, { status: 401 })
-    }
-    const loginUrl = new URL("/login", request.url)
-    loginUrl.searchParams.set("redirect", path)
-    return NextResponse.redirect(loginUrl, 302)
-  }
+  if (count && count > 0) return "propietario"
 
-  // 3. Rutas de admin — por defecto solo "admin"; Habeas Data también para "propietario"
-  if (path.startsWith("/admin")) {
-    const isHabeasData = path === "/admin/habeas-data" || path.startsWith("/admin/habeas-data/")
-    if (isHabeasData) {
-      if (role !== "admin" && role !== "propietario") {
-        return NextResponse.redirect(new URL("/login?unauthorized=1", request.url), 302)
-      }
-    } else if (role !== "admin") {
-      return NextResponse.redirect(new URL("/login?unauthorized=1", request.url), 302)
-    }
-  }
+  return "inquilino"
+}
 
-  // 4. Rutas de propietario — solo "propietario" o "admin"
-  if (path.startsWith("/propietario")) {
-    if (role !== "admin" && role !== "propietario") {
-      return NextResponse.redirect(new URL("/login?unauthorized=1", request.url), 302)
-    }
-  }
-
-  // 5. Rutas de inquilino — solo "inquilino", "admin" y roles especiales
-  // (propietario NO accede a vistas privadas del inquilino)
-  if (path.startsWith("/inquilino")) {
-    const INQUILINO_ALLOWED_ROLES = ["inquilino", "admin", "maintenance_special", "insurance_special", "lawyer_special"]
-    if (!INQUILINO_ALLOWED_ROLES.includes(role)) {
-      return NextResponse.redirect(new URL("/propietario/dashboard", request.url), 302)
-    }
-  }
-
-  // 6. Rutas de dashboard general — requieren autenticación (cualquier rol)
-  if (path.startsWith("/dashboard")) {
-    // Ya verificamos que role existe arriba, así que solo permitimos pasar
-    // El dashboard interno maneja la redirección según rol
-    if (!role) {
-      const loginUrl = new URL("/login", request.url)
-      loginUrl.searchParams.set("redirect", path)
-      return NextResponse.redirect(loginUrl, 302)
-    }
-  }
-
-  // 7. Rutas de imprimir recibos — requieren autenticación
-  if (path.startsWith("/imprimir-recibo")) {
-    if (!role) {
-      const loginUrl = new URL("/login", request.url)
-      loginUrl.searchParams.set("redirect", path)
-      return NextResponse.redirect(loginUrl, 302)
-    }
-  }
-
-  // 8. Rutas de mis contratos — requieren autenticación
-  if (path.startsWith("/mis-contratos")) {
-    if (!role) {
-      const loginUrl = new URL("/login", request.url)
-      loginUrl.searchParams.set("redirect", path)
-      return NextResponse.redirect(loginUrl, 302)
-    }
-  }
-
-  // 9. Ruta de test-username — solo admin (página de desarrollo)
-  if (path.startsWith("/test-username")) {
-    if (role !== "admin") {
-      return NextResponse.redirect(new URL("/login?unauthorized=1", request.url), 302)
-    }
-  }
-
-  // 10. Agregar headers de seguridad
-  const response = NextResponse.next()
-
-  // Headers de seguridad existentes
+function applySecurityHeaders(response: NextResponse) {
   response.headers.set("X-Frame-Options", "DENY")
   response.headers.set("X-Content-Type-Options", "nosniff")
   response.headers.set("Referrer-Policy", "strict-origin-when-cross-origin")
 
-  // Nuevos headers de seguridad
-  // Content-Security-Policy - Previene XSS, clickjacking, y otros ataques de inyección
-  // Nota: Para desarrollo con Next.js, necesitamos ser menos estrictos. Ajustar para producción.
   const isDev = process.env.NODE_ENV === "development"
   if (!isDev) {
     response.headers.set(
       "Content-Security-Policy",
       [
         "default-src 'self'",
-        "script-src 'self' 'unsafe-eval' 'unsafe-inline'", // unsafe-inline/eval para Next.js
-        "style-src 'self' 'unsafe-inline'", // unsafe-inline para styled-components/emotion
+        "script-src 'self' 'unsafe-eval' 'unsafe-inline'",
+        "style-src 'self' 'unsafe-inline'",
         "img-src 'self' data: blob: https:",
         "font-src 'self' data:",
         "connect-src 'self' https://*.supabase.co https://api.resend.com",
@@ -188,12 +103,13 @@ export async function middleware(request: NextRequest) {
     )
   }
 
-  // Strict-Transport-Security - Fuerza HTTPS (solo en producción con HTTPS)
   if (process.env.VERCEL_ENV === "production" || !isDev) {
-    response.headers.set("Strict-Transport-Security", "max-age=31536000; includeSubDomains; preload")
+    response.headers.set(
+      "Strict-Transport-Security",
+      "max-age=31536000; includeSubDomains; preload"
+    )
   }
 
-  // Permissions-Policy - Controla qué APIs del navegador pueden usar
   response.headers.set(
     "Permissions-Policy",
     [
@@ -208,16 +124,97 @@ export async function middleware(request: NextRequest) {
     ].join(", ")
   )
 
-  // X-XSS-Protection - Protección adicional contra XSS (obsoleto pero útil para browsers viejos)
   response.headers.set("X-XSS-Protection", "1; mode=block")
-
-  // Cross-Origin-Opener-Policy - Previene ataques de window.opener
   response.headers.set("Cross-Origin-Opener-Policy", "same-origin")
-
-  // Cross-Origin-Resource-Policy - Previene lectura de recursos cross-origin
   response.headers.set("Cross-Origin-Resource-Policy", "same-origin")
 
   return response
+}
+
+export async function middleware(request: NextRequest) {
+  const path = request.nextUrl.pathname
+
+  let supabaseResponse = NextResponse.next({ request })
+
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll() {
+          return request.cookies.getAll()
+        },
+        setAll(cookiesToSet) {
+          cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value))
+          supabaseResponse = NextResponse.next({ request })
+          cookiesToSet.forEach(({ name, value, options }) =>
+            supabaseResponse.cookies.set(name, value, options)
+          )
+        },
+      },
+    }
+  )
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (isPublicPath(path)) {
+    return applySecurityHeaders(supabaseResponse)
+  }
+
+  if (!user) {
+    if (path.startsWith("/api/")) {
+      return NextResponse.json({ error: "No autorizado" }, { status: 401 })
+    }
+    const loginUrl = new URL("/login", request.url)
+    loginUrl.searchParams.set("redirect", path)
+    return NextResponse.redirect(loginUrl, 302)
+  }
+
+  let role = "inquilino"
+  try {
+    role = await resolveRole(supabase, user.id)
+  } catch {
+    role = "inquilino"
+  }
+
+  if (path.startsWith("/admin")) {
+    const isHabeasData =
+      path === "/admin/habeas-data" || path.startsWith("/admin/habeas-data/")
+    if (isHabeasData) {
+      if (role !== "admin" && role !== "propietario") {
+        return NextResponse.redirect(new URL("/login?unauthorized=1", request.url), 302)
+      }
+    } else if (role !== "admin") {
+      return NextResponse.redirect(new URL("/login?unauthorized=1", request.url), 302)
+    }
+  }
+
+  if (path.startsWith("/propietario")) {
+    if (role !== "admin" && role !== "propietario") {
+      return NextResponse.redirect(new URL("/login?unauthorized=1", request.url), 302)
+    }
+  }
+
+  if (path.startsWith("/inquilino")) {
+    const INQUILINO_ALLOWED_ROLES = [
+      "inquilino",
+      "admin",
+      "maintenance_special",
+      "insurance_special",
+      "lawyer_special",
+    ]
+    if (!INQUILINO_ALLOWED_ROLES.includes(role)) {
+      return NextResponse.redirect(new URL("/propietario/dashboard", request.url), 302)
+    }
+  }
+
+  if (path.startsWith("/test-username") && role !== "admin") {
+    return NextResponse.redirect(new URL("/login?unauthorized=1", request.url), 302)
+  }
+
+  return applySecurityHeaders(supabaseResponse)
 }
 
 export const config = {
