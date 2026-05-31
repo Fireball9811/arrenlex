@@ -371,6 +371,9 @@ export type IntakeFormulario = {
   // Fecha (YYYY-MM-DD) en la que el aplicante desea ocupar el inmueble.
   // Capturada en el formulario público de aplicación (migración 055).
   fecha_ingreso_deseada?: string | null
+  // Formularios separados principal/codeudor (migración 061)
+  grupo_solicitud_id?: string | null
+  tipo_solicitante?: string | null
   raw_data: Record<string, unknown> | null
   data: Record<string, unknown> | null
   fecha_envio: string | null

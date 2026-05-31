@@ -7,9 +7,11 @@ import type { SolicitudVisitaConPropiedad, IntakeFormulario } from "@/lib/types/
 import { useLang } from "@/lib/i18n/context"
 import {
   ModalComparacion,
+  ModalCalificacion,
   ModalDetalleIntake,
   TablaIntake,
 } from "@/components/mensajes/mensajes-helpers"
+import { analizarSeleccion } from "@/lib/intake/evaluacion-intake"
 
 const STATUS_VALUES = ["pendiente", "contestado", "esperando"] as const
 
@@ -24,6 +26,7 @@ export default function PropietarioMensajesPage() {
   const [subTabIntake, setSubTabIntake] = useState<"pendientes" | "gestionados" | "no_aceptados" | "completados">("pendientes")
   const [seleccionados, setSeleccionados] = useState<Set<string>>(new Set())
   const [mostrarComparacion, setMostrarComparacion] = useState(false)
+  const [mostrarCalificacion, setMostrarCalificacion] = useState(false)
   const [propiedades, setPropiedades] = useState<Array<{ id: string; direccion?: string; ciudad?: string }>>([])
   const [propiedadSeleccionada, setPropiedadSeleccionada] = useState<string | "all">("all")
   const [busquedaNombre, setBusquedaNombre] = useState("")
@@ -232,13 +235,16 @@ export default function PropietarioMensajesPage() {
     }
   }, [t])
 
-  const { registrosParaComparar, puedeComparar, motivoInvalido } = useMemo(() => {
-    const lista = intakeRegistros.filter((r) => seleccionados.has(r.id))
-    if (lista.length < 2) return { registrosParaComparar: lista, puedeComparar: false, motivoInvalido: t.mensajes.comparacion.sinPropiedad }
-    const ids = [...new Set(lista.map((r) => r.propiedad_id ?? "__sin__"))]
-    if (ids.length > 1 || ids[0] === "__sin__") return { registrosParaComparar: lista, puedeComparar: false, motivoInvalido: t.mensajes.comparacion.sinPropiedad }
-    return { registrosParaComparar: lista, puedeComparar: true, motivoInvalido: "" }
-  }, [seleccionados, intakeRegistros, t])
+  const analisisSeleccion = useMemo(
+    () =>
+      analizarSeleccion(seleccionados, intakeRegistros, {
+        sinSeleccion: t.mensajes.calificacion.sinSeleccion,
+        compararMinUnidades: t.mensajes.comparacion.compararMinUnidades,
+        compararMismaPropiedad: t.mensajes.comparacion.compararMismaPropiedad,
+        parejaIncompleta: t.mensajes.calificacion.parejaIncompleta,
+      }),
+    [seleccionados, intakeRegistros, t]
+  )
 
   const intakeRegistrosFiltrados = useMemo(() => {
     if (propiedadSeleccionada !== "all") {
@@ -327,13 +333,25 @@ export default function PropietarioMensajesPage() {
         <p className="text-muted-foreground">{t.mensajes.descripcion}</p>
       </div>
 
-      {mostrarComparacion && puedeComparar && (
-        <ModalComparacion registros={registrosParaComparar} onCerrar={() => setMostrarComparacion(false)} />
+      {mostrarComparacion && analisisSeleccion.puedeComparar && (
+        <ModalComparacion
+          unidades={analisisSeleccion.unidades}
+          onCerrar={() => setMostrarComparacion(false)}
+        />
+      )}
+
+      {mostrarCalificacion && analisisSeleccion.puedeCalificar && (
+        <ModalCalificacion
+          unidades={analisisSeleccion.unidades}
+          todosRegistros={intakeRegistros}
+          onCerrar={() => setMostrarCalificacion(false)}
+        />
       )}
 
       {intakeSeleccionado && (
         <ModalDetalleIntake
           registro={intakeRegistros.find((r) => r.id === intakeSeleccionado.id) ?? intakeSeleccionado}
+          todosRegistros={intakeRegistros}
           role="propietario"
           onCerrar={() => setIntakeSeleccionado(null)}
           onPasarArrendatario={handlePasarArrendatario}
@@ -569,18 +587,32 @@ export default function PropietarioMensajesPage() {
                     </div>
 
                     <button
-                      onClick={() => puedeComparar && setMostrarComparacion(true)}
-                      disabled={!puedeComparar}
-                      title={!puedeComparar ? motivoInvalido : t.mensajes.comparar}
+                      onClick={() => analisisSeleccion.puedeCalificar && setMostrarCalificacion(true)}
+                      disabled={!analisisSeleccion.puedeCalificar}
+                      title={analisisSeleccion.motivoCalificacion || t.mensajes.calificacion.boton}
                       className={`rounded-lg px-4 py-1.5 text-sm font-medium transition-colors ${
-                        puedeComparar
+                        analisisSeleccion.puedeCalificar
+                          ? "bg-emerald-600 text-white hover:bg-emerald-700"
+                          : "bg-muted text-muted-foreground cursor-not-allowed opacity-50"
+                      }`}
+                    >
+                      {t.mensajes.calificacion.boton}
+                    </button>
+                    <button
+                      onClick={() => analisisSeleccion.puedeComparar && setMostrarComparacion(true)}
+                      disabled={!analisisSeleccion.puedeComparar}
+                      title={!analisisSeleccion.puedeComparar ? analisisSeleccion.motivoComparacion : t.mensajes.comparar}
+                      className={`rounded-lg px-4 py-1.5 text-sm font-medium transition-colors ${
+                        analisisSeleccion.puedeComparar
                           ? "bg-primary text-primary-foreground hover:bg-primary/90"
                           : "bg-muted text-muted-foreground cursor-not-allowed opacity-50"
                       }`}
                     >
                       {t.mensajes.comparar}
-                      {seleccionados.size >= 2 && (
-                        <span className="ml-1.5 rounded-full bg-white/20 px-1.5 py-0.5 text-xs">{seleccionados.size}</span>
+                      {analisisSeleccion.unidades.length >= 2 && (
+                        <span className="ml-1.5 rounded-full bg-white/20 px-1.5 py-0.5 text-xs">
+                          {analisisSeleccion.unidades.length}
+                        </span>
                       )}
                     </button>
                   </div>
@@ -619,14 +651,18 @@ export default function PropietarioMensajesPage() {
                     return (
                       <TablaIntake
                         lista={lista}
+                        todosRegistros={intakeRegistros}
                         seleccionados={seleccionados}
                         onToggle={handleToggleSeleccion}
                         onVerDetalle={handleAbrirDetalle}
                         formatDate={formatDate}
                         formatCurrency={formatCurrency}
-                        puedeComparar={puedeComparar}
-                        motivoInvalido={motivoInvalido}
+                        puedeComparar={analisisSeleccion.puedeComparar}
+                        motivoComparacion={analisisSeleccion.motivoComparacion}
                         onComparar={() => setMostrarComparacion(true)}
+                        puedeCalificar={analisisSeleccion.puedeCalificar}
+                        motivoCalificacion={analisisSeleccion.motivoCalificacion}
+                        onCalificar={() => setMostrarCalificacion(true)}
                         role="propietario"
                         onEliminar={handleEliminarIntake}
                         onCompletar={handleCompletar}

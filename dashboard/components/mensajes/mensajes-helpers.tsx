@@ -4,6 +4,12 @@ import { useState, type ReactNode } from "react"
 import type { IntakeFormulario } from "@/lib/types/database"
 import type { UserRole } from "@/lib/auth/role"
 import { useLang } from "@/lib/i18n/context"
+import {
+  buildRegistroParaScore,
+  ingresosHogar,
+  obtenerParejaGrupo,
+  type UnidadEvaluacion,
+} from "@/lib/intake/evaluacion-intake"
 
 // ── Tipos del scoring ──────────────────────────────────────────────────────
 
@@ -298,9 +304,20 @@ export function calcularScore(r: IntakeFormulario): ResultadoScore {
 
 // ── Componente de calificación ─────────────────────────────────────────────
 
-export function SeccionCalificacion({ registro }: { registro: IntakeFormulario }) {
-  const resultado = calcularScore(registro)
+export function SeccionCalificacion({
+  registro,
+  todosRegistros,
+}: {
+  registro: IntakeFormulario
+  todosRegistros?: IntakeFormulario[]
+}) {
   const { t } = useLang()
+  const registroScore =
+    todosRegistros && todosRegistros.length > 0
+      ? buildRegistroParaScore(registro, todosRegistros)
+      : registro
+  const pareja = todosRegistros ? obtenerParejaGrupo(registro, todosRegistros) : null
+  const resultado = calcularScore(registroScore)
 
   const avisoUnicoArrendatario = registro.unico_arrendatario === true ? (
     <div className="mt-6 pt-4 border-t">
@@ -359,6 +376,15 @@ export function SeccionCalificacion({ registro }: { registro: IntakeFormulario }
   return (
     <>
       {avisoUnicoArrendatario}
+      {pareja && (
+        <div className="mb-3 rounded-lg border border-blue-500/40 bg-blue-500/10 px-4 py-3 text-sm text-blue-900 dark:text-blue-200">
+          <p className="font-semibold mb-1">{t.mensajes.calificacion.hogarConPareja}</p>
+          <p className="text-xs opacity-90">
+            {t.mensajes.calificacion.hogarConParejaDetalle}: {registro.nombre ?? "—"} + {pareja.nombre ?? "—"}.
+            {" "}{t.mensajes.calificacion.ingresosSumados}.
+          </p>
+        </div>
+      )}
       <div className="mt-6 pt-4 border-t">
       <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">Calificación ARRENLEX</p>
       {score.flags.tieneRechazoPrevio && (
@@ -428,27 +454,27 @@ export function SeccionCalificacion({ registro }: { registro: IntakeFormulario }
 // ── Modal de comparación rankeada ──────────────────────────────────────────
 
 export function ModalComparacion({
-  registros,
+  unidades,
   onCerrar,
 }: {
-  registros: IntakeFormulario[]
+  unidades: UnidadEvaluacion[]
   onCerrar: () => void
 }) {
   const { t } = useLang()
 
-  type Fila = { registro: IntakeFormulario; resultado: ResultadoScore; sortKey: number }
+  type Fila = { unidad: UnidadEvaluacion; resultado: ResultadoScore; sortKey: number }
 
-  const filas: Fila[] = registros
-    .map((r) => {
-      const resultado = calcularScore(r)
+  const filas: Fila[] = unidades
+    .map((u) => {
+      const resultado = calcularScore(u.registroParaScore)
       let sortKey = -1
       if (!resultado.sinCanon && !resultado.excluido) sortKey = resultado.score.total
-      return { registro: r, resultado, sortKey }
+      return { unidad: u, resultado, sortKey }
     })
     .sort((a, b) => b.sortKey - a.sortKey)
 
-  const inmueble = registros[0]?.propiedad_id ?? registros[0]?.id_inmueble ?? "—"
-  const canon = registros[0]?.valor_arriendo
+  const inmueble = unidades[0]?.registroBase.propiedad_id ?? unidades[0]?.registroBase.id_inmueble ?? "—"
+  const canon = unidades[0]?.registroParaScore.valor_arriendo
 
   const fmtCurrency = (v: number | null | undefined) =>
     v != null
@@ -485,7 +511,8 @@ export function ModalComparacion({
               </tr>
             </thead>
             <tbody>
-              {filas.map(({ registro: r, resultado }, idx) => {
+              {filas.map(({ unidad: u, resultado }, idx) => {
+                const r = u.registroParaScore
                 const esGanador = idx === 0 && !resultado.sinCanon && !resultado.excluido
                 const rowClass = esGanador
                   ? "border-b border-l-4 border-l-green-500 bg-green-500/5"
@@ -493,9 +520,16 @@ export function ModalComparacion({
 
                 if (resultado.sinCanon) {
                   return (
-                    <tr key={r.id} className={rowClass}>
+                    <tr key={u.unidadId} className={rowClass}>
                       <td className="p-2 text-muted-foreground">{idx + 1}</td>
-                      <td className="p-2 font-medium">{r.nombre ?? "—"}</td>
+                      <td className="p-2 font-medium">
+                        {u.etiqueta}
+                        {u.esPareja && (
+                          <span className="ml-2 rounded-full bg-blue-500/15 text-blue-700 dark:text-blue-300 px-1.5 py-0.5 text-[10px]">
+                            {t.mensajes.grupo.pareja}
+                          </span>
+                        )}
+                      </td>
                       <td colSpan={6} className="p-2 text-center text-muted-foreground text-xs">{t.mensajes.comparacion.sinPropiedad}</td>
                       <td className="p-2"><span className="rounded-full bg-muted px-2 py-0.5 text-xs font-medium">{t.mensajes.comparacion.sinDatos}</span></td>
                     </tr>
@@ -503,9 +537,16 @@ export function ModalComparacion({
                 }
                 if (resultado.excluido) {
                   return (
-                    <tr key={r.id} className={rowClass}>
+                    <tr key={u.unidadId} className={rowClass}>
                       <td className="p-2 text-muted-foreground">{idx + 1}</td>
-                      <td className="p-2 font-medium">{r.nombre ?? "—"}</td>
+                      <td className="p-2 font-medium">
+                        {u.etiqueta}
+                        {u.esPareja && (
+                          <span className="ml-2 rounded-full bg-blue-500/15 text-blue-700 dark:text-blue-300 px-1.5 py-0.5 text-[10px]">
+                            {t.mensajes.grupo.pareja}
+                          </span>
+                        )}
+                      </td>
                       <td colSpan={6} className="p-2 text-xs text-red-600 dark:text-red-400 truncate max-w-[200px]" title={resultado.filtro.motivo}>{resultado.filtro.motivo}</td>
                       <td className="p-2"><span className="rounded-full bg-red-500/15 text-red-600 dark:text-red-400 px-2 py-0.5 text-xs font-medium">{t.mensajes.comparacion.excluido}</span></td>
                     </tr>
@@ -517,12 +558,17 @@ export function ModalComparacion({
                 const badgeClass = score.nivel === "verde" ? "bg-green-500/15 text-green-700 dark:text-green-400" : score.nivel === "amarillo" ? "bg-amber-500/15 text-amber-700 dark:text-amber-400" : "bg-red-500/15 text-red-700 dark:text-red-400"
 
                 return (
-                  <tr key={r.id} className={rowClass}>
+                  <tr key={u.unidadId} className={rowClass}>
                     <td className="p-2 font-bold text-muted-foreground">
                       {esGanador ? <span className="text-green-600 dark:text-green-400">1</span> : idx + 1}
                     </td>
                     <td className="p-2 font-medium">
-                      {r.nombre ?? "—"}
+                      {u.etiqueta}
+                      {u.esPareja && (
+                        <span className="ml-2 rounded-full bg-blue-500/15 text-blue-700 dark:text-blue-300 px-1.5 py-0.5 text-[10px]">
+                          {t.mensajes.grupo.pareja}
+                        </span>
+                      )}
                       {esGanador && <span className="ml-2 rounded-full bg-green-500/20 text-green-700 dark:text-green-400 px-1.5 py-0.5 text-xs">{t.mensajes.comparacion.mejor}</span>}
                     </td>
                     <td className={`p-2 text-right ${colorScore}`}>{score.capacidadPago.puntos}</td>
@@ -546,32 +592,94 @@ export function ModalComparacion({
   )
 }
 
+// ── Modal de calificación (una o más unidades) ───────────────────────────────
+
+export function ModalCalificacion({
+  unidades,
+  todosRegistros,
+  onCerrar,
+}: {
+  unidades: UnidadEvaluacion[]
+  todosRegistros: IntakeFormulario[]
+  onCerrar: () => void
+}) {
+  const { t } = useLang()
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={onCerrar}>
+      <div
+        className="bg-background rounded-xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto p-6"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-start justify-between mb-4">
+          <div>
+            <h2 className="text-xl font-bold">{t.mensajes.calificacion.titulo}</h2>
+            <p className="text-sm text-muted-foreground">{t.mensajes.calificacion.modalSubtitulo}</p>
+          </div>
+          <button onClick={onCerrar} className="text-muted-foreground hover:text-foreground text-2xl leading-none" aria-label="Cerrar">
+            ×
+          </button>
+        </div>
+
+        <div className="space-y-8">
+          {unidades.map((u) => (
+            <div key={u.unidadId} className="rounded-lg border p-4">
+              <div className="mb-3 flex flex-wrap items-center gap-2">
+                <h3 className="font-semibold">{u.etiqueta}</h3>
+                {u.esPareja && (
+                  <span className="rounded-full bg-blue-500/15 text-blue-700 dark:text-blue-300 px-2 py-0.5 text-xs font-medium">
+                    {t.mensajes.grupo.pareja}
+                  </span>
+                )}
+                {u.parejaIncompleta && (
+                  <span className="rounded-full bg-amber-500/15 text-amber-800 dark:text-amber-300 px-2 py-0.5 text-xs font-medium">
+                    {t.mensajes.grupo.parejaPendiente}
+                  </span>
+                )}
+              </div>
+              <SeccionCalificacion registro={u.registroBase} todosRegistros={todosRegistros} />
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ── Tabla de intake reutilizable ───────────────────────────────────────────
 
 export function TablaIntake({
   lista,
+  todosRegistros,
   seleccionados,
   onToggle,
   onVerDetalle,
   formatDate,
   formatCurrency,
   puedeComparar,
-  motivoInvalido,
+  motivoComparacion,
   onComparar,
+  puedeCalificar,
+  motivoCalificacion,
+  onCalificar,
   role,
   onEliminar,
   onCompletar,
   onDescompletar,
 }: {
   lista: IntakeFormulario[]
+  todosRegistros: IntakeFormulario[]
   seleccionados: Set<string>
   onToggle: (id: string) => void
   onVerDetalle: (r: IntakeFormulario) => void
   formatDate: (d: string | null | undefined) => string
   formatCurrency: (v: number | null | undefined) => string
   puedeComparar: boolean
-  motivoInvalido: string
+  motivoComparacion: string
   onComparar: () => void
+  puedeCalificar: boolean
+  motivoCalificacion: string
+  onCalificar: () => void
   role: UserRole
   onEliminar?: (id: string) => Promise<{ ok: boolean; error?: string }>
   onCompletar?: (id: string) => Promise<{ ok: boolean; error?: string }>
@@ -603,10 +711,24 @@ export function TablaIntake({
           <span className="text-muted-foreground">
             {seleccionados.size} {seleccionados.size !== 1 ? t.mensajes.seleccionadosPlural : t.mensajes.seleccionados}
           </span>
-          <div className="flex items-center gap-2">
-            {!puedeComparar && motivoInvalido && (
-              <span className="text-xs text-red-500 dark:text-red-400">{motivoInvalido}</span>
+          <div className="flex items-center gap-2 flex-wrap justify-end">
+            {motivoCalificacion && (
+              <span className="text-xs text-amber-600 dark:text-amber-400">{motivoCalificacion}</span>
             )}
+            {!puedeComparar && motivoComparacion && seleccionados.size >= 1 && (
+              <span className="text-xs text-muted-foreground">{motivoComparacion}</span>
+            )}
+            <button
+              onClick={onCalificar}
+              disabled={!puedeCalificar}
+              className={`rounded-lg px-4 py-1.5 text-sm font-medium transition-colors ${
+                puedeCalificar
+                  ? "bg-emerald-600 text-white hover:bg-emerald-700"
+                  : "bg-muted text-muted-foreground cursor-not-allowed opacity-60"
+              }`}
+            >
+              {t.mensajes.calificacion.boton}
+            </button>
             <button
               onClick={onComparar}
               disabled={!puedeComparar}
@@ -645,15 +767,24 @@ export function TablaIntake({
           </thead>
           <tbody>
             {lista.map((r) => {
-              const salarioPrincipal = r.salario_principal ?? r.salario ?? 0
-              const salarioSecundario = r.salario_secundario ?? r.salario_2 ?? 0
-              const ingresosTotales = salarioPrincipal + salarioSecundario
+              const pareja = obtenerParejaGrupo(r, todosRegistros)
+              const ingresosTotales = ingresosHogar(r, todosRegistros)
+              const merged = buildRegistroParaScore(r, todosRegistros)
+              const celularCoarrendatario =
+                merged.coarrendatario_telefono ?? merged.telefono_coarrendatario ?? "—"
               const personas = r.adultos_habitantes ?? r.personas ?? 0
               const ninos = r.ninos_habitantes ?? r.ninos ?? 0
               const mascotas = r.mascotas_cantidad ?? r.mascotas ?? 0
               const empresa = r.empresa_principal ?? r.empresa_arrendatario ?? r.empresas ?? "—"
               const celularPrincipal = r.telefono ?? "—"
-              const celularCoarrendatario = r.coarrendatario_telefono ?? r.telefono_coarrendatario ?? "—"
+
+              const tipo = (r.tipo_solicitante ?? "").trim().toLowerCase()
+              const badgeTipo =
+                tipo === "coarrendatario"
+                  ? t.mensajes.grupo.codeudor
+                  : r.grupo_solicitud_id
+                    ? t.mensajes.grupo.principal
+                    : null
 
               return (
                 <tr
@@ -665,6 +796,19 @@ export function TablaIntake({
                   </td>
                   <td className="p-2 font-medium">
                     {r.nombre ?? "—"}
+                    {badgeTipo && (
+                      <span className="ml-2 rounded-full bg-slate-500/15 text-slate-700 dark:text-slate-300 px-1.5 py-0.5 text-[10px] font-medium">
+                        {badgeTipo}
+                      </span>
+                    )}
+                    {pareja && !seleccionados.has(pareja.id) && (
+                      <span
+                        className="ml-1 rounded-full bg-blue-500/10 text-blue-700 dark:text-blue-300 px-1.5 py-0.5 text-[10px]"
+                        title={`${t.mensajes.grupo.vinculadoA}: ${pareja.nombre ?? "—"}`}
+                      >
+                        + {pareja.nombre?.split(" ")[0] ?? t.mensajes.grupo.pareja}
+                      </span>
+                    )}
                     {(r.rechazos_previos?.length ?? 0) > 0 && (
                       <span
                         className="ml-2 inline-block rounded bg-red-500/15 text-red-700 dark:text-red-300 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide"
@@ -835,6 +979,7 @@ export function TablaIntake({
 
 export function ModalDetalleIntake({
   registro,
+  todosRegistros,
   role,
   onCerrar,
   onPasarArrendatario,
@@ -845,6 +990,7 @@ export function ModalDetalleIntake({
   onDescompletar,
 }: {
   registro: IntakeFormulario
+  todosRegistros?: IntakeFormulario[]
   role: UserRole
   onCerrar: () => void
   onPasarArrendatario: (id: string) => Promise<{ ok: boolean; email?: string; error?: string }>
@@ -874,9 +1020,12 @@ export function ModalDetalleIntake({
     return new Intl.NumberFormat("es-CO", { style: "currency", currency: "COP", maximumFractionDigits: 0 }).format(value)
   }
 
-  // Calcular ingresos totales sumando ambos salarios
-  const salarioPrincipal = registro.salario_principal ?? registro.salario ?? 0
-  const salarioSecundario = registro.salario_secundario ?? registro.salario_2 ?? 0
+  // Calcular ingresos del hogar (fusiona pareja del mismo grupo si existe)
+  const registroEval = todosRegistros?.length
+    ? buildRegistroParaScore(registro, todosRegistros)
+    : registro
+  const salarioPrincipal = registroEval.salario_principal ?? registroEval.salario ?? 0
+  const salarioSecundario = registroEval.salario_secundario ?? registroEval.salario_2 ?? 0
   const ingresosTotales = salarioPrincipal + salarioSecundario
 
   // Aviso: el inquilino quiere ocupar el inmueble en menos de 5 días hábiles
@@ -889,7 +1038,7 @@ export function ModalDetalleIntake({
     diasHabilesParaIngreso !== null && diasHabilesParaIngreso < 5
 
   // Resultado del score para resaltar campos vacíos, "Independiente" y aviso RUT
-  const resultadoScore = calcularScore(registro)
+  const resultadoScore = calcularScore(registroEval)
   const camposVaciosSet: Set<string> =
     !resultadoScore.sinCanon && !resultadoScore.excluido
       ? resultadoScore.score.flags.camposVacios
@@ -1111,7 +1260,7 @@ export function ModalDetalleIntake({
           </details>
         )}
 
-        <SeccionCalificacion registro={registro} />
+        <SeccionCalificacion registro={registro} todosRegistros={todosRegistros} />
 
         {ingresoUrgente && (
           <div className="mt-4 rounded-lg border-2 border-amber-500 bg-amber-50 dark:bg-amber-950/40 p-4">
