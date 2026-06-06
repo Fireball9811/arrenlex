@@ -1,6 +1,5 @@
 "use client"
 
-import { useEffect, useState } from "react"
 import Link from "next/link"
 import {
   Card,
@@ -9,6 +8,7 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import { useLang } from "@/lib/i18n/context"
+import { useAuth } from "@/components/auth/auth-provider"
 
 interface ReporteCard {
   title: string
@@ -20,16 +20,8 @@ interface ReporteCard {
 
 export default function ReportesPage() {
   const { t } = useLang()
-  const [role, setRole] = useState<string | null>(null)
-
-  useEffect(() => {
-    fetch("/api/auth/me")
-      .then((res) => (res.ok ? res.json() : null))
-      .then((data: { role?: string } | null) => {
-        setRole(data?.role ?? "unknown")
-      })
-      .catch(() => setRole("unknown"))
-  }, [])
+  const { user } = useAuth()
+  const role = user?.role ?? "unknown"
 
   const reportesPropietario: ReporteCard[] = [
     {

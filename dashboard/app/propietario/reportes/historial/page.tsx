@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { formatCalendarDateEs } from "@/lib/utils/calendar-date"
+import { useAuth } from "@/components/auth/auth-provider"
 
 interface Recibo {
   id: string
@@ -65,7 +66,8 @@ function getFirstDayOfMonthStr() {
 }
 
 export default function PropietarioHistorialPagosPage() {
-  const [role, setRole] = useState<string | null>(null)
+  const { user } = useAuth()
+  const role = user?.role ?? "propietario"
   const [propietarios, setPropietarios] = useState<Propietario[]>([])
   const [propietarioId, setPropietarioId] = useState<string>("")
 
@@ -76,22 +78,15 @@ export default function PropietarioHistorialPagosPage() {
   const [error, setError] = useState<string | null>(null)
   const [expandidos, setExpandidos] = useState<Set<string>>(new Set())
 
-  // Detectar rol y cargar lista de propietarios si es admin
+  // Cargar lista de propietarios si es admin
   useEffect(() => {
-    fetch("/api/auth/me")
-      .then((res) => (res.ok ? res.json() : null))
-      .then((data: { role?: string } | null) => {
-        const r = data?.role ?? "propietario"
-        setRole(r)
-        if (r === "admin") {
-          fetch("/api/admin/propietarios")
-            .then((res) => (res.ok ? res.json() : []))
-            .then((lista: Propietario[]) => setPropietarios(lista))
-            .catch(() => setPropietarios([]))
-        }
-      })
-      .catch(() => setRole("propietario"))
-  }, [])
+    if (role === "admin") {
+      fetch("/api/admin/propietarios")
+        .then((res) => (res.ok ? res.json() : []))
+        .then((lista: Propietario[]) => setPropietarios(lista))
+        .catch(() => setPropietarios([]))
+    }
+  }, [role])
 
   const cargar = useCallback(
     async (inicio: string, fin: string, pid: string) => {
@@ -116,12 +111,12 @@ export default function PropietarioHistorialPagosPage() {
     []
   )
 
-  // Cargar cuando el rol esté definido
+  // Cargar cuando el usuario esté disponible
   useEffect(() => {
-    if (role !== null) {
+    if (user) {
       cargar(fechaInicio, fechaFin, propietarioId)
     }
-  }, [role]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [user]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleFechaInicioChange = (val: string) => {
     setFechaInicio(val)

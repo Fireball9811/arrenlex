@@ -4,6 +4,7 @@ import { useEffect, useState } from "react"
 import Link from "next/link"
 import { ArrowLeft, CheckCircle, AlertCircle, Phone, Mail, Home } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { useAuth } from "@/components/auth/auth-provider"
 
 interface Propiedad {
   id: string
@@ -59,7 +60,8 @@ function getNombreMes(mesStr: string) {
 }
 
 export default function PropietarioPendientesMesPage() {
-  const [role, setRole] = useState<string | null>(null)
+  const { user } = useAuth()
+  const role = user?.role ?? "propietario"
   const [propietarios, setPropietarios] = useState<Propietario[]>([])
   const [propietarioId, setPropietarioId] = useState<string>("")
 
@@ -82,26 +84,18 @@ export default function PropietarioPendientesMesPage() {
       .finally(() => setLoading(false))
   }
 
-  // Detectar rol y cargar propietarios si es admin
+  // Cargar propietarios si es admin y datos iniciales
   useEffect(() => {
-    fetch("/api/auth/me")
-      .then((res) => (res.ok ? res.json() : null))
-      .then((data: { role?: string } | null) => {
-        const r = data?.role ?? "propietario"
-        setRole(r)
-        if (r === "admin") {
-          fetch("/api/admin/propietarios")
-            .then((res) => (res.ok ? res.json() : []))
-            .then((lista: Propietario[]) => setPropietarios(lista))
-            .catch(() => setPropietarios([]))
-        }
-        cargar("")
-      })
-      .catch(() => {
-        setRole("propietario")
-        cargar("")
-      })
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+    if (role === "admin") {
+      fetch("/api/admin/propietarios")
+        .then((res) => (res.ok ? res.json() : []))
+        .then((lista: Propietario[]) => setPropietarios(lista))
+        .catch(() => setPropietarios([]))
+    }
+    if (user) {
+      cargar("")
+    }
+  }, [user, role]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const handlePropietarioChange = (pid: string) => {
     setPropietarioId(pid)

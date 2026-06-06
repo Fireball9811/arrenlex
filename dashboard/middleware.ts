@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
 import { createServerClient } from "@supabase/ssr"
+import {
+  AUTH_USER_ID_HEADER,
+  AUTH_USER_ROLE_HEADER,
+} from "@/lib/auth/api-auth"
 
 // Rutas públicas — no requieren autenticación
 const PUBLIC_PATHS = [
@@ -131,14 +135,36 @@ function applySecurityHeaders(response: NextResponse) {
   return response
 }
 
+function forwardWithRequestHeaders(
+  requestHeaders: Headers,
+  previous: NextResponse
+): NextResponse {
+  const response = NextResponse.next({ request: { headers: requestHeaders } })
+  previous.cookies.getAll().forEach((cookie) => {
+    response.cookies.set(cookie)
+  })
+  return response
+}
+
 export async function middleware(request: NextRequest) {
   const path = request.nextUrl.pathname
 
-  let supabaseResponse = NextResponse.next({ request })
+  const requestHeaders = new Headers(request.headers)
+  requestHeaders.delete(AUTH_USER_ID_HEADER)
+  requestHeaders.delete(AUTH_USER_ROLE_HEADER)
+
+  let supabaseResponse = forwardWithRequestHeaders(
+    requestHeaders,
+    NextResponse.next()
+  )
+
+  const supabaseKey =
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ??
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    supabaseKey,
     {
       cookies: {
         getAll() {
@@ -146,7 +172,7 @@ export async function middleware(request: NextRequest) {
         },
         setAll(cookiesToSet) {
           cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value))
-          supabaseResponse = NextResponse.next({ request })
+          supabaseResponse = forwardWithRequestHeaders(requestHeaders, supabaseResponse)
           cookiesToSet.forEach(({ name, value, options }) =>
             supabaseResponse.cookies.set(name, value, options)
           )
@@ -178,6 +204,10 @@ export async function middleware(request: NextRequest) {
   } catch {
     role = "inquilino"
   }
+
+  requestHeaders.set(AUTH_USER_ID_HEADER, user.id)
+  requestHeaders.set(AUTH_USER_ROLE_HEADER, role)
+  supabaseResponse = forwardWithRequestHeaders(requestHeaders, supabaseResponse)
 
   if (path.startsWith("/admin")) {
     const isHabeasData =

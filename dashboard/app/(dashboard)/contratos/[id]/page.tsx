@@ -15,26 +15,23 @@ import type { ContratoConRelaciones } from "@/lib/types/database"
 import { FileText, Download, Edit, ArrowLeft, Trash2, ClipboardList } from "lucide-react"
 import { DocumentosContrato } from "@/components/contratos/documentos-contrato"
 import { RecibosContrato } from "@/components/contratos/recibos-contrato"
+import { useAuth } from "@/components/auth/auth-provider"
 
 export default function ContratoDetallePage() {
   const params = useParams()
   const router = useRouter()
+  const { user } = useAuth()
   const [contrato, setContrato] = useState<ContratoConRelaciones | null>(null)
   const [loading, setLoading] = useState(true)
-  const [isAdmin, setIsAdmin] = useState(false)
-  const [isPropietario, setIsPropietario] = useState(false)
+  const isAdmin = user?.role === "admin"
+  const isPropietario = user?.role === "propietario"
 
   useEffect(() => {
-    Promise.all([
-      fetch(`/api/contratos/${params.id}`).then(res => res.json()),
-      fetch("/api/auth/me").then(res => res.json())
-    ]).then(([contratoData, userData]) => {
-      setContrato(contratoData)
-      const role = userData?.role
-      setIsAdmin(role === "admin")
-      setIsPropietario(role === "propietario")
-    }).catch(() => setContrato(null))
-    .finally(() => setLoading(false))
+    fetch(`/api/contratos/${params.id}`)
+      .then((res) => res.json())
+      .then((contratoData) => setContrato(contratoData))
+      .catch(() => setContrato(null))
+      .finally(() => setLoading(false))
   }, [params.id])
 
   async function handleDelete() {

@@ -16,6 +16,7 @@ import {
 import { CIUDADES_COLOMBIA } from "@/lib/ciudades-colombia"
 import type { UserRole } from "@/lib/auth/role"
 import { useLang } from "@/lib/i18n/context"
+import { useAuth } from "@/components/auth/auth-provider"
 
 type PerfilOption = { id: string; email: string; nombre?: string | null; role: string }
 
@@ -26,7 +27,8 @@ export default function NuevaPropiedadPage() {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [role, setRole] = useState<UserRole | null>(null)
+  const { user } = useAuth()
+  const role = (user?.role as UserRole | undefined) ?? null
   const [propietarios, setPropietarios] = useState<PerfilOption[]>([])
   const [user_id, setUser_id] = useState<string>("")
   const [form, setForm] = useState({
@@ -41,15 +43,6 @@ export default function NuevaPropiedadPage() {
     descripcion: "",
     estado: "disponible",
   })
-
-  useEffect(() => {
-    fetch("/api/auth/me")
-      .then((res) => (res.ok ? res.json() : null))
-      .then((data: { role?: UserRole } | null) => {
-        if (data?.role) setRole(data.role)
-      })
-      .catch(() => {})
-  }, [])
 
   useEffect(() => {
     if (role !== "admin") return

@@ -1,8 +1,8 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { useRouter } from "next/navigation"
 import Link from "next/link"
+import { useRequireRole } from "@/lib/hooks/use-require-role"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Plus, MapPin, Home, Edit2, Trash2, Receipt, Link2, Copy, Check, DollarSign } from "lucide-react"
@@ -32,7 +32,7 @@ type EnlacesAplicacionPar = {
 }
 
 export default function PropietarioPropiedadesPage() {
-  const router = useRouter()
+  const { isAuthorized } = useRequireRole(["propietario"])
   const { t } = useLang()
   const [loading, setLoading] = useState(true)
   const [propiedades, setPropiedades] = useState<Propiedad[]>([])
@@ -54,32 +54,26 @@ export default function PropietarioPropiedadesPage() {
     return `/api/propiedades?${params.toString()}`
   }
 
-  // Carga inicial — redirige según rol y trae primera página
+  // Carga inicial — trae primera página cuando el rol está autorizado
   useEffect(() => {
-    fetch("/api/auth/me")
-      .then((res) => (res.ok ? res.json() : null))
-      .then((data: { role?: string } | null) => {
-        if (data?.role === "admin") { router.replace("/admin/dashboard"); return }
-        if (data?.role === "inquilino") { router.replace("/inquilino/dashboard"); return }
+    if (!isAuthorized) return
 
-        return fetch(buildUrl(""))
-          .then((res) => {
-            if (!res.ok) throw new Error(`HTTP ${res.status}`)
-            return res.json()
-          })
-          .then((data: { propiedades: Propiedad[]; nextCursor: string | null }) => {
-            const lista = data.propiedades ?? []
-            setPropiedades(lista)
-            setNextCursor(data.nextCursor ?? null)
-            setTotalSinFiltro(lista.length)
-            const uniqueCities = [...new Set(lista.map((p) => p.ciudad).filter(Boolean))].sort()
-            setCiudades(uniqueCities)
-            setLoading(false)
-          })
-          .catch((err) => { setError(`Error: ${err.message}`); setLoading(false) })
+    fetch(buildUrl(""))
+      .then((res) => {
+        if (!res.ok) throw new Error(`HTTP ${res.status}`)
+        return res.json()
       })
-      .catch(() => { setError("Error de autenticación"); setLoading(false) })
-  }, [router])
+      .then((data: { propiedades: Propiedad[]; nextCursor: string | null }) => {
+        const lista = data.propiedades ?? []
+        setPropiedades(lista)
+        setNextCursor(data.nextCursor ?? null)
+        setTotalSinFiltro(lista.length)
+        const uniqueCities = [...new Set(lista.map((p) => p.ciudad).filter(Boolean))].sort()
+        setCiudades(uniqueCities)
+        setLoading(false)
+      })
+      .catch((err) => { setError(`Error: ${err.message}`); setLoading(false) })
+  }, [isAuthorized])
 
   // Cuando cambia el filtro de ciudad — recarga desde cero con filtro server-side
   useEffect(() => {

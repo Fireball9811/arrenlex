@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { ArrowLeft, Edit2, Download, Trash2 } from "lucide-react"
 import { formatCalendarDateEs } from "@/lib/utils/calendar-date"
+import { useRequireRole } from "@/lib/hooks/use-require-role"
 
 interface ReciboPago {
   id: string
@@ -30,6 +31,7 @@ interface ReciboPago {
 
 export default function VerReciboPagoPage() {
   const router = useRouter()
+  const { isAuthorized } = useRequireRole(["propietario", "admin"])
   const params = useParams()
   const reciboId = params.id as string
 
@@ -38,33 +40,22 @@ export default function VerReciboPagoPage() {
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    fetch("/api/auth/me")
-      .then((res) => (res.ok ? res.json() : null))
-      .then((data: { role?: string } | null) => {
-        if (data?.role === "inquilino") {
-          router.replace("/inquilino/dashboard")
-          return
-        }
+    if (!isAuthorized) return
 
-        return fetch(`/api/recibos-pago/${reciboId}`)
-          .then((res) => {
-            if (!res.ok) throw new Error(`HTTP ${res.status}`)
-            return res.json()
-          })
-          .then((data: ReciboPago) => {
-            setRecibo(data)
-            setLoading(false)
-          })
-          .catch((err) => {
-            setError(`Error: ${err.message}`)
-            setLoading(false)
-          })
+    fetch(`/api/recibos-pago/${reciboId}`)
+      .then((res) => {
+        if (!res.ok) throw new Error(`HTTP ${res.status}`)
+        return res.json()
       })
-      .catch(() => {
-        setError("Error de autenticación")
+      .then((data: ReciboPago) => {
+        setRecibo(data)
         setLoading(false)
       })
-  }, [router, reciboId])
+      .catch((err) => {
+        setError(`Error: ${err.message}`)
+        setLoading(false)
+      })
+  }, [isAuthorized, reciboId])
 
   if (loading) {
     return <p className="text-muted-foreground">Cargando recibo...</p>

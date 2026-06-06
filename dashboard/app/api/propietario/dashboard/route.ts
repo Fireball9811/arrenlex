@@ -5,13 +5,9 @@ import { getUserRole } from "@/lib/auth/role"
 
 /**
  * GET /api/propietario/dashboard
- * Retorna conteos para el dashboard del propietario:
- * - Número de propiedades
- * - Número de contratos activos
- * - Número de invitaciones enviadas
- * - Pagos recibidos en el último año
+ * Retorna conteos para el dashboard del propietario.
  */
-export async function GET(request: Request) {
+export async function GET() {
   const supabase = await createClient()
   const {
     data: { user },
@@ -32,76 +28,59 @@ export async function GET(request: Request) {
   const admin = createAdminClient()
 
   try {
-    // Contar propiedades del propietario
-    const { count: propiedadesCount } = await admin
-      .from("propiedades")
-      .select("id", { count: "exact", head: true })
-      .eq("user_id", user.id)
-
-    // Contar contratos activos del propietario (a través de sus propiedades)
     const { data: propiedades } = await admin
       .from("propiedades")
       .select("id")
       .eq("user_id", user.id)
 
     const propiedadIds = (propiedades ?? []).map((p: { id: string }) => p.id)
+    const propiedadesCount = propiedadIds.length
 
-    let contratosCount = 0
-    if (propiedadIds.length > 0) {
-      const { count } = await admin
-        .from("contratos")
-        .select("id", { count: "exact", head: true })
-        .in("propiedad_id", propiedadIds)
-        .eq("estado", "activo")
-
-      contratosCount = count ?? 0
-    }
-
-    // Contar invitaciones enviadas (inquilinos invitados por este propietario)
-    // Referencia: es el que crea los contratos/invitaciones
-    const { count: invitacionesCount } = await admin
-      .from("inquilinos")
-      .select("id", { count: "exact", head: true })
-      .eq("propietario_id", user.id)
-
-    // Pagos recibidos en el último año
     const oneYearAgo = new Date()
     oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1)
     const oneYearAgoISO = oneYearAgo.toISOString()
 
-    let pagosLastYear = 0
-    if (propiedadIds.length > 0) {
-      const { count } = await admin
-        .from("pagos")
-        .select("id", { count: "exact", head: true })
-        .in("propiedad_id", propiedadIds)
-        .eq("estado", "aprobado")
-        .gte("fecha_pago", oneYearAgoISO)
-    
-      pagosLastYear = count ?? 0
-    }
+    const [contratosRes, invitacionesRes, pagosCountRes, pagosMontoRes] =
+      await Promise.all([
+        propiedadIds.length > 0
+          ? admin
+              .from("contratos")
+              .select("id", { count: "exact", head: true })
+              .in("propiedad_id", propiedadIds)
+              .eq("estado", "activo")
+          : Promise.resolve({ count: 0 }),
+        admin
+          .from("inquilinos")
+          .select("id", { count: "exact", head: true })
+          .eq("propietario_id", user.id),
+        propiedadIds.length > 0
+          ? admin
+              .from("pagos")
+              .select("id", { count: "exact", head: true })
+              .in("propiedad_id", propiedadIds)
+              .eq("estado", "aprobado")
+              .gte("fecha_pago", oneYearAgoISO)
+          : Promise.resolve({ count: 0 }),
+        propiedadIds.length > 0
+          ? admin
+              .from("pagos")
+              .select("monto")
+              .in("propiedad_id", propiedadIds)
+              .eq("estado", "aprobado")
+              .gte("fecha_pago", oneYearAgoISO)
+          : Promise.resolve({ data: [] }),
+      ])
 
-    // Monto total recibido en el último año
-    let montoTotalLastYear = 0
-    if (propiedadIds.length > 0) {
-      const { data: pagos } = await admin
-        .from("pagos")
-        .select("monto")
-        .in("propiedad_id", propiedadIds)
-        .eq("estado", "aprobado")
-        .gte("fecha_pago", oneYearAgoISO)
-
-      montoTotalLastYear = (pagos ?? []).reduce(
-        (sum: number, pago: { monto: number }) => sum + (pago.monto ?? 0),
-        0
-      )
-    }
+    const montoTotalLastYear = (pagosMontoRes.data ?? []).reduce(
+      (sum: number, pago: { monto: number }) => sum + (pago.monto ?? 0),
+      0
+    )
 
     return NextResponse.json({
-      propiedades: propiedadesCount ?? 0,
-      contratos: contratosCount,
-      invitaciones: invitacionesCount ?? 0,
-      pagosLastYear,
+      propiedades: propiedadesCount,
+      contratos: contratosRes.count ?? 0,
+      invitaciones: invitacionesRes.count ?? 0,
+      pagosLastYear: pagosCountRes.count ?? 0,
       montoTotalLastYear,
     })
   } catch (err) {

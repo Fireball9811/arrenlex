@@ -15,6 +15,7 @@ import { ArrowLeft, Save } from "lucide-react"
 import type { ContratoConRelaciones } from "@/lib/types/database"
 import { DocumentosContrato } from "@/components/contratos/documentos-contrato"
 import { RecibosContrato } from "@/components/contratos/recibos-contrato"
+import { useAuth } from "@/components/auth/auth-provider"
 
 type Propiedad = {
   id: string
@@ -32,13 +33,14 @@ type Arrendatario = {
 export default function EditarContratoPage() {
   const params = useParams()
   const router = useRouter()
+  const { user } = useAuth()
   const [contrato, setContrato] = useState<ContratoConRelaciones | null>(null)
   const [propiedades, setPropiedades] = useState<Propiedad[]>([])
   const [arrendatarios, setArrendatarios] = useState<Arrendatario[]>([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
-  const [isAdmin, setIsAdmin] = useState(false)
-  const [isPropietario, setIsPropietario] = useState(false)
+  const isAdmin = user?.role === "admin"
+  const isPropietario = user?.role === "propietario"
 
   const [formData, setFormData] = useState({
     propiedad_id: "",
@@ -55,14 +57,10 @@ export default function EditarContratoPage() {
       fetch(`/api/contratos/${params.id}`).then((res) => res.json()),
       fetch("/api/propiedades").then((res) => res.json()),
       fetch("/api/arrendatarios").then((res) => res.json()),
-      fetch("/api/auth/me").then((res) => res.json()),
     ])
-      .then(([cont, props, arrend, userData]) => {
+      .then(([cont, props, arrend]) => {
         setContrato(cont)
         setPropiedades(props)
-        const role = userData?.role
-        setIsAdmin(role === "admin")
-        setIsPropietario(role === "propietario")
 
         // Si el arrendatario del contrato no está en la lista (ej: creado con otro user_id),
         // lo añadimos usando los datos que ya vienen en el contrato

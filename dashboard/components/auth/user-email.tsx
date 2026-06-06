@@ -1,9 +1,3 @@
-import { createClient } from "@/lib/supabase/server"
-
-export async function UserEmail() {
-  const supabase = await createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-  return <span>{user?.email ?? "Usuario"}</span>
+export function UserEmail({ email }: { email?: string | null }) {
+  return <span>{email ?? "Usuario"}</span>
 }

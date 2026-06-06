@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input"
 import { ArrowLeft, Save, X } from "lucide-react"
 import { addCalendarDays, todayLocalISODate } from "@/lib/utils/calendar-date"
+import { useRequireRole } from "@/lib/hooks/use-require-role"
 
 interface Propiedad {
   id: string
@@ -31,16 +32,9 @@ interface Contrato {
   estado: string
 }
 
-interface AuthUser {
-  id: string
-  email: string
-  role: string
-  nombre: string
-  cedula: string
-}
-
 export default function NuevoReciboPagoContent() {
   const router = useRouter()
+  const { user, isAuthorized } = useRequireRole(["propietario", "admin"])
   const searchParams = useSearchParams()
   const propiedadIdParam = searchParams.get("propiedad_id") ?? ""
 
@@ -94,23 +88,11 @@ export default function NuevoReciboPagoContent() {
   })
 
   useEffect(() => {
+    if (!isAuthorized || !user) return
+
     const cargarDatosIniciales = async () => {
       try {
-        const res = await fetch("/api/auth/me")
-        if (!res.ok) {
-          setError("Error de autenticación")
-          setLoading(false)
-          return
-        }
-
-        const data: AuthUser = await res.json()
-
-        if (data.role === "inquilino") {
-          router.replace("/inquilino/dashboard")
-          return
-        }
-
-        const isAdmin = data.role === "admin"
+        const isAdmin = user.role === "admin"
 
         // Cargar propiedades
         const resPropiedades = await fetch("/api/propiedades")
@@ -134,8 +116,8 @@ export default function NuevoReciboPagoContent() {
             setFormData((prev) => ({
               ...prev,
               propiedad_id: propiedadIdParam,
-              propietario_nombre: prev.propietario_nombre || (isAdmin ? "" : data.nombre || ""),
-              propietario_cedula: prev.propietario_cedula || (isAdmin ? "" : data.cedula || ""),
+              propietario_nombre: prev.propietario_nombre || (isAdmin ? "" : user.nombre || ""),
+              propietario_cedula: prev.propietario_cedula || (isAdmin ? "" : user.cedula || ""),
               valor_arriendo: prev.valor_arriendo || String(valorArriendo),
               valor_arriendo_letras: prev.valor_arriendo_letras || (valorArriendo > 0 ? numerosEnLetras(valorArriendo) : ""),
             }))
@@ -182,8 +164,8 @@ export default function NuevoReciboPagoContent() {
           // Si no hay propiedad seleccionada y es propietario, cargar sus datos
           setFormData((prev) => ({
             ...prev,
-            propietario_nombre: data.nombre || "",
-            propietario_cedula: data.cedula || "",
+            propietario_nombre: user.nombre || "",
+            propietario_cedula: user.cedula || "",
           }))
         }
       } catch (err) {
@@ -194,7 +176,7 @@ export default function NuevoReciboPagoContent() {
     }
 
     cargarDatosIniciales()
-  }, [router, propiedadIdParam])
+  }, [isAuthorized, user, propiedadIdParam])
 
   const handleChange = (field: string, value: string | number) => {
     setFormData((prev) => ({

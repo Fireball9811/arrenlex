@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { useRouter } from "next/navigation"
+import { useRequireRole } from "@/lib/hooks/use-require-role"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -24,37 +24,26 @@ interface ReciboPago {
 }
 
 export default function RecibosPage() {
-  const router = useRouter()
+  const { isAuthorized } = useRequireRole(["propietario", "admin"])
   const [loading, setLoading] = useState(true)
   const [recibos, setRecibos] = useState<ReciboPago[]>([])
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    const cargarRecibos = () => {
-      fetch("/api/auth/me")
-        .then((res) => (res.ok ? res.json() : null))
-        .then((data: { role?: string } | null) => {
-          if (data?.role === "inquilino") {
-            router.replace("/inquilino/dashboard")
-            return
-          }
+    if (!isAuthorized) return
 
-          return fetch("/api/recibos-pago")
-            .then((res) => {
-              if (!res.ok) throw new Error(`HTTP ${res.status}`)
-              return res.json()
-            })
-            .then((data: ReciboPago[]) => {
-              setRecibos(data)
-              setLoading(false)
-            })
-            .catch((err) => {
-              setError(`Error: ${err.message}`)
-              setLoading(false)
-            })
+    const cargarRecibos = () => {
+      fetch("/api/recibos-pago")
+        .then((res) => {
+          if (!res.ok) throw new Error(`HTTP ${res.status}`)
+          return res.json()
         })
-        .catch(() => {
-          setError("Error de autenticación")
+        .then((data: ReciboPago[]) => {
+          setRecibos(data)
+          setLoading(false)
+        })
+        .catch((err) => {
+          setError(`Error: ${err.message}`)
           setLoading(false)
         })
     }
@@ -72,7 +61,7 @@ export default function RecibosPage() {
     return () => {
       document.removeEventListener("visibilitychange", handleVisibilityChange)
     }
-  }, [router])
+  }, [isAuthorized])
 
   const getEstadoColor = (estado: string) => {
     switch (estado?.toLowerCase()) {

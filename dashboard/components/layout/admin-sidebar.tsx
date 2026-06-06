@@ -1,10 +1,10 @@
 "use client"
 
-import { useEffect, useState } from "react"
 import Image from "next/image"
 import Link from "next/link"
 import { SignOutButton } from "@/components/auth/sign-out-button"
 import { useLang } from "@/lib/i18n/context"
+import { useNavCounts } from "@/lib/hooks/use-nav-counts"
 import {
   UserPlus,
   Building,
@@ -20,26 +20,10 @@ import {
 
 export function AdminSidebar() {
   const { t, lang, setLang } = useLang()
-  const [pendientesCount, setPendientesCount] = useState(0)
-  const [mantenimientoPendientesCount, setMantenimientoPendientesCount] = useState(0)
-
-  useEffect(() => {
-    fetch("/api/solicitudes-visita/count")
-      .then((res) => (res.ok ? res.json() : { count: 0 }))
-      .then((data: { count?: number }) => setPendientesCount(Number(data?.count) || 0))
-      .catch(() => setPendientesCount(0))
-  }, [])
-
-  useEffect(() => {
-    fetch("/api/mantenimiento/count")
-      .then((res) => (res.ok ? res.json() : { count: 0 }))
-      .then((data: { count?: number }) => setMantenimientoPendientesCount(Number(data?.count) || 0))
-      .catch(() => setMantenimientoPendientesCount(0))
-  }, [])
+  const { solicitudes, mantenimiento } = useNavCounts(true)
 
   return (
     <aside className="relative flex w-64 flex-col bg-sky-100 text-sky-900 overflow-hidden">
-      {/* Marca de agua */}
       <div className="pointer-events-none select-none absolute inset-0 flex items-center justify-center opacity-[0.12]">
         <Image src="/Logo2.png" alt="" width={220} height={220} className="w-48 object-contain" />
       </div>
@@ -73,9 +57,9 @@ export function AdminSidebar() {
             <MessageSquare className="h-4 w-4" />
             {t.sidebar.mensajes}
           </div>
-          {pendientesCount > 0 && (
+          {solicitudes > 0 && (
             <span className="rounded-full bg-amber-500/90 px-2 py-0.5 text-xs font-medium text-white">
-              {pendientesCount}
+              {solicitudes}
             </span>
           )}
         </Link>
@@ -88,9 +72,9 @@ export function AdminSidebar() {
             <Wrench className="h-4 w-4" />
             {t.sidebar.mantenimiento}
           </div>
-          {mantenimientoPendientesCount > 0 && (
+          {mantenimiento > 0 && (
             <span className="rounded-full bg-amber-500/90 px-2 py-0.5 text-xs font-medium text-white">
-              {mantenimientoPendientesCount}
+              {mantenimiento}
             </span>
           )}
         </Link>

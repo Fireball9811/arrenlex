@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -13,6 +13,7 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import { cn } from "@/lib/utils"
+import { useAuth } from "@/components/auth/auth-provider"
 
 /** Solo dígitos, máximo 10 (celular Colombia). */
 function soloDigitosMax10(value: string): string {
@@ -64,7 +65,8 @@ const PARENTESCOS = [
 const inputRow = "grid gap-4 sm:grid-cols-2"
 
 export default function NuevoArrendatarioPage() {
-  const [role, setRole] = useState<"admin" | "propietario" | "inquilino" | null>(null)
+  const { user } = useAuth()
+  const role = (user?.role as "admin" | "propietario" | "inquilino" | undefined) ?? "inquilino"
   const [adultosHabitantes, setAdultosHabitantes] = useState("")
   const [ninosHabitantes, setNinosHabitantes] = useState("")
   const [mascotasCantidad, setMascotasCantidad] = useState("")
@@ -102,13 +104,6 @@ export default function NuevoArrendatarioPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
-
-  useEffect(() => {
-    fetch("/api/auth/me")
-      .then((res) => (res.ok ? res.json() : null))
-      .then((data: { role?: string } | null) => setRole((data?.role as typeof role) ?? "inquilino"))
-      .catch(() => setRole("inquilino"))
-  }, [])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()

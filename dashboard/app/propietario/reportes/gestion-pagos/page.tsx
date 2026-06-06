@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { useRouter } from "next/navigation"
+import { useRequireRole } from "@/lib/hooks/use-require-role"
 import Link from "next/link"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -65,7 +65,7 @@ const getEstadoBadge = (estado: string) => {
 }
 
 export default function PropietarioGestionPagosPage() {
-  const router = useRouter()
+  const { isAuthorized } = useRequireRole(["propietario"])
   const { t } = useLang()
   const [loading, setLoading] = useState(true)
   const [pagos, setPagos] = useState<Pago[]>([])
@@ -74,38 +74,27 @@ export default function PropietarioGestionPagosPage() {
   const [propiedades, setPropiedades] = useState<{ id: string; titulo: string }[]>([])
 
   useEffect(() => {
-    fetch("/api/auth/me")
-      .then((res) => (res.ok ? res.json() : null))
-      .then((data: { role?: string } | null) => {
-        if (data?.role === "admin") {
-          router.replace("/admin/dashboard")
-          return
-        }
-        if (data?.role === "inquilino") {
-          router.replace("/inquilino/dashboard")
-          return
-        }
-        
-        return fetch("/api/propietario/pagos-ultimo-ano")
-          .then((res) => res.ok ? res.json() : [])
-          .then((data: Pago[]) => {
-            setPagos(data)
-            const uniqueProps = [
-              ...new Map(
-                data.map((p) => [
-                  p.propiedad_id,
-                  { id: p.propiedad_id, titulo: p.propiedad?.titulo || "Sin título" },
-                ])
-              ).values(),
-            ].sort((a, b) => a.titulo.localeCompare(b.titulo))
-            setPropiedades(uniqueProps)
-            setLoading(false)
-          })
+    if (!isAuthorized) return
+
+    fetch("/api/propietario/pagos-ultimo-ano")
+      .then((res) => res.ok ? res.json() : [])
+      .then((data: Pago[]) => {
+        setPagos(data)
+        const uniqueProps = [
+          ...new Map(
+            data.map((p) => [
+              p.propiedad_id,
+              { id: p.propiedad_id, titulo: p.propiedad?.titulo || "Sin título" },
+            ])
+          ).values(),
+        ].sort((a, b) => a.titulo.localeCompare(b.titulo))
+        setPropiedades(uniqueProps)
+        setLoading(false)
       })
       .catch(() => {
         setLoading(false)
       })
-  }, [router])
+  }, [isAuthorized])
 
   const pagosFiltrados = pagos.filter((p) => {
     const matchEstado = !filtroEstado || p.estado === filtroEstado

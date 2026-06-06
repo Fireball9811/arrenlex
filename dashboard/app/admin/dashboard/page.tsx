@@ -35,33 +35,24 @@ interface DashboardMetrics {
 }
 
 import { useLang } from "@/lib/i18n/context"
+import { useRequireRole } from "@/lib/hooks/use-require-role"
 
 export default function AdminDashboardPage() {
   const { t } = useLang()
   const router = useRouter()
-  const [loading, setLoading] = useState(true)
+  const { isAuthorized } = useRequireRole(["admin"])
   const [metrics, setMetrics] = useState<DashboardMetrics | null>(null)
 
   useEffect(() => {
-    // Verificar rol
-    fetch("/api/auth/me")
-      .then((res) => (res.ok ? res.json() : null))
-      .then((data: { role?: string } | null) => {
-        if (data?.role !== "admin") {
-          const redirect = data?.role === "propietario" ? "/propietario/dashboard" : "/inquilino/dashboard"
-          router.replace(redirect)
-          return
-        }
-        setLoading(false)
-      })
-      .catch(() => router.replace("/login"))
+    if (!isAuthorized) return
 
-    // Cargar métricas
     fetch("/api/admin/dashboard/metrics")
       .then((res) => (res.ok ? res.json() : null))
       .then((data) => setMetrics(data))
       .catch(() => {})
-  }, [router])
+  }, [isAuthorized])
+
+  const loading = !isAuthorized
 
   if (loading) {
     return <p className="text-muted-foreground">{t.comun.cargando}</p>

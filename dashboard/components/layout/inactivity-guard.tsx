@@ -2,10 +2,11 @@
 
 import { useEffect, useRef, useState, useCallback } from "react"
 import { useRouter } from "next/navigation"
-import { createClient } from "@/lib/supabase/client"
+import { signOutUser } from "@/lib/auth/sign-out-client"
 
 const INACTIVITY_MS = 30 * 60 * 1000       // 30 minutos → logout
 const WARNING_BEFORE_MS = 5 * 60 * 1000    // aviso 5 minutos antes (a los 25 min)
+const ACTIVITY_DEBOUNCE_MS = 1500          // evita resetear timers en cada mousemove
 
 function formatCountdown(ms: number): string {
   const totalSeconds = Math.max(0, Math.ceil(ms / 1000))
@@ -22,12 +23,15 @@ export function InactivityGuard({ children }: { children: React.ReactNode }) {
   const logoutTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const warningTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const countdownIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const warningStartRef = useRef<number>(0)
+  const isLoggingOutRef = useRef(false)
 
   const clearAllTimers = useCallback(() => {
     if (logoutTimerRef.current) clearTimeout(logoutTimerRef.current)
     if (warningTimerRef.current) clearTimeout(warningTimerRef.current)
     if (countdownIntervalRef.current) clearInterval(countdownIntervalRef.current)
+    if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current)
   }, [])
 
   const startCountdownInterval = useCallback(() => {
@@ -47,6 +51,19 @@ export function InactivityGuard({ children }: { children: React.ReactNode }) {
     }, 500)
   }, [])
 
+  const performLogout = useCallback(async () => {
+    if (isLoggingOutRef.current) return
+    isLoggingOutRef.current = true
+
+    const result = await signOutUser()
+    if (result.success) {
+      router.push("/login")
+      router.refresh()
+    } else {
+      isLoggingOutRef.current = false
+    }
+  }, [router])
+
   const resetTimers = useCallback(() => {
     clearAllTimers()
     setShowWarning(false)
@@ -56,14 +73,18 @@ export function InactivityGuard({ children }: { children: React.ReactNode }) {
       setShowWarning(true)
       startCountdownInterval()
 
-      logoutTimerRef.current = setTimeout(async () => {
-        const supabase = createClient()
-        await supabase.auth.signOut()
-        router.push("/login")
-        router.refresh()
+      logoutTimerRef.current = setTimeout(() => {
+        void performLogout()
       }, WARNING_BEFORE_MS)
     }, INACTIVITY_MS - WARNING_BEFORE_MS)
-  }, [clearAllTimers, startCountdownInterval, router])
+  }, [clearAllTimers, startCountdownInterval, performLogout])
+
+  const scheduleResetTimers = useCallback(() => {
+    if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current)
+    debounceTimerRef.current = setTimeout(() => {
+      resetTimers()
+    }, ACTIVITY_DEBOUNCE_MS)
+  }, [resetTimers])
 
   const handleContinue = useCallback(() => {
     resetTimers()
@@ -71,14 +92,14 @@ export function InactivityGuard({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     const events = ["mousemove", "keydown", "mousedown", "scroll", "touchstart"]
-    events.forEach((e) => window.addEventListener(e, resetTimers, { passive: true }))
+    events.forEach((e) => window.addEventListener(e, scheduleResetTimers, { passive: true }))
     resetTimers()
 
     return () => {
       clearAllTimers()
-      events.forEach((e) => window.removeEventListener(e, resetTimers))
+      events.forEach((e) => window.removeEventListener(e, scheduleResetTimers))
     }
-  }, [resetTimers, clearAllTimers])
+  }, [scheduleResetTimers, resetTimers, clearAllTimers])
 
   return (
     <>

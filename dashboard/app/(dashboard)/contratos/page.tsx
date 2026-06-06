@@ -27,15 +27,17 @@ import {
 } from "@/components/ui/select"
 import type { ContratoConRelaciones } from "@/lib/types/database"
 import { useLang } from "@/lib/i18n/context"
+import { useAuth } from "@/components/auth/auth-provider"
 
 export default function ContratosPage() {
   const { t } = useLang()
+  const { user } = useAuth()
   const [contratos, setContratos] = useState<ContratoConRelaciones[]>([])
   const [contratosFiltrados, setContratosFiltrados] = useState<ContratoConRelaciones[]>([])
   const [loading, setLoading] = useState(true)
   const [activando, setActivando] = useState(false)
   const [corrigiendo, setCorrigiendo] = useState(false)
-  const [isAdmin, setIsAdmin] = useState(false)
+  const isAdmin = user?.role === "admin"
 
   // Filtros (solo admin)
   const [filtroEstado, setFiltroEstado] = useState<string>("todos")
@@ -43,15 +45,13 @@ export default function ContratosPage() {
   const [busquedaPropietario, setBusquedaPropietario] = useState<string>("")
 
   useEffect(() => {
-    // Cargar contratos y verificar si es admin
-    Promise.all([
-      fetch("/api/contratos").then(r => r.json()),
-      fetch("/api/auth/me").then(r => r.json())
-    ]).then(([contratosData, userData]) => {
-      setContratos(contratosData)
-      setContratosFiltrados(contratosData)
-      setIsAdmin(userData?.role === "admin")
-    }).finally(() => setLoading(false))
+    fetch("/api/contratos")
+      .then((r) => r.json())
+      .then((contratosData) => {
+        setContratos(contratosData)
+        setContratosFiltrados(contratosData)
+      })
+      .finally(() => setLoading(false))
   }, [])
 
   // Aplicar filtros cuando cambian

@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input"
 import { ArrowLeft, Save, X, Loader2 } from "lucide-react"
 import { todayLocalISODate } from "@/lib/utils/calendar-date"
 import { fechasPeriodoRecibo } from "@/lib/utils/recibo-periodo"
+import { useAuth } from "@/components/auth/auth-provider"
 
 interface Propiedad {
   id: string
@@ -40,6 +41,7 @@ interface ReciboPago {
 
 export default function EditarReciboPage() {
   const router = useRouter()
+  const { user } = useAuth()
   const params = useParams()
   const reciboId = params.id as string
 
@@ -68,22 +70,21 @@ export default function EditarReciboPage() {
   })
 
   useEffect(() => {
+    if (!user) {
+      setError("Error de autenticación")
+      setLoading(false)
+      return
+    }
+    if (user.role === "inquilino") {
+      router.replace("/inquilino/dashboard")
+      return
+    }
+
     Promise.all([
-      fetch("/api/auth/me").then(res => res.ok ? res.json() : null),
       fetch(`/api/recibos-pago/${reciboId}`).then(res => res.ok ? res.json() : null),
       fetch("/api/propiedades").then(res => res.ok ? res.json() : []),
     ])
-      .then(([userData, reciboData, propiedadesData]) => {
-        if (!userData) {
-          setError("Error de autenticación")
-          setLoading(false)
-          return
-        }
-        if (userData.role === "inquilino") {
-          router.replace("/inquilino/dashboard")
-          return
-        }
-
+      .then(([reciboData, propiedadesData]) => {
         if (!reciboData) {
           setError("Recibo no encontrado")
           setLoading(false)
@@ -118,7 +119,7 @@ export default function EditarReciboPage() {
         setError("Error al cargar datos")
         setLoading(false)
       })
-  }, [router, reciboId])
+  }, [user, router, reciboId])
 
   const handleChange = (field: string, value: string | number) => {
     setFormData({

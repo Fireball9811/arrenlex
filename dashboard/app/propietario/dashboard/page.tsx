@@ -16,6 +16,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Home, FileText, Mail, BarChart3, Download } from "lucide-react"
 import { useLang } from "@/lib/i18n/context"
 import { IngresosGastosChart } from "@/components/charts/IngresosGastosChart"
+import { useRequireRole } from "@/lib/hooks/use-require-role"
 
 interface DashboardData {
   propiedades: number
@@ -35,6 +36,7 @@ interface Propiedad {
 export default function PropietarioDashboardPage() {
   const router = useRouter()
   const { t } = useLang()
+  const { isAuthorized } = useRequireRole(["propietario"])
   const [loading, setLoading] = useState(true)
   const [dashboardData, setDashboardData] = useState<DashboardData | null>(null)
   const [propiedades, setPropiedades] = useState<Propiedad[]>([])
@@ -45,26 +47,10 @@ export default function PropietarioDashboardPage() {
   const [vistaMensual, setVistaMensual] = useState<boolean>(true)
 
   useEffect(() => {
+    if (!isAuthorized) return
+
     const loadData = async () => {
       try {
-        // Check auth and role
-        const authRes = await fetch("/api/auth/me")
-        if (!authRes.ok) {
-          router.replace("/login")
-          return
-        }
-
-        const authData: { role?: string } | null = await authRes.json()
-        if (authData?.role === "admin") {
-          router.replace("/admin/dashboard")
-          return
-        }
-        if (authData?.role === "inquilino") {
-          router.replace("/inquilino/dashboard")
-          return
-        }
-
-        // Cargar datos del dashboard
         const [dashboardRes, propsRes] = await Promise.all([
           fetch("/api/propietario/dashboard"),
           fetch("/api/propiedades"),
@@ -88,7 +74,7 @@ export default function PropietarioDashboardPage() {
     }
 
     loadData()
-  }, [router])
+  }, [isAuthorized, router])
 
   const handleExportar = async () => {
     try {

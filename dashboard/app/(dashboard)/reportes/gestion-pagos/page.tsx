@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from "react"
 import Link from "next/link"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
+import { useAuth } from "@/components/auth/auth-provider"
 
 interface ContratoParaPago {
   contrato_id: string
@@ -62,18 +63,12 @@ export default function GestionPagosPage() {
   const [loadingInquilinos, setLoadingInquilinos] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
-  const [role, setRole] = useState<UserRole | null>(null)
+  const { user } = useAuth()
+  const role = (user?.role as UserRole | undefined) ?? null
 
   const isAdmin = role === "admin"
   const isPropietario = role === "propietario"
   const puedeRegistrarPagos = isPropietario
-
-  useEffect(() => {
-    fetch("/api/auth/me")
-      .then((r) => r.ok ? r.json() : null)
-      .then((data: { role?: UserRole } | null) => setRole((data?.role as UserRole) ?? null))
-      .catch(() => setRole(null))
-  }, [])
 
   const fetchPagos = useCallback(async () => {
     const res = await fetch("/api/pagos")

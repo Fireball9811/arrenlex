@@ -12,6 +12,7 @@ import { GaleríaImagenes } from "@/components/propiedades/galeria-imagenes"
 import { ServiciosPropiedad } from "@/components/propiedades/servicios-propiedad"
 import type { PropiedadImagen } from "@/lib/types/database"
 import { classifyCAP, classifyGRM, classifyCashOnCash, classifyBER, type IndicatorClassification } from "@/lib/financial-indicators"
+import { useAuth } from "@/components/auth/auth-provider"
 
 interface Propiedad {
   id: string
@@ -98,6 +99,7 @@ const calcularBER = (gastosOperativos: number, cuotaMensual: number): number | n
 
 export default function EditarPropiedadPage() {
   const router = useRouter()
+  const { user } = useAuth()
   const params = useParams()
   const propiedadId = params.id as string
 
@@ -141,25 +143,19 @@ export default function EditarPropiedadPage() {
   useEffect(() => {
     const cargarDatos = async () => {
       try {
-        // Primero verificar autenticación
-        const authRes = await fetch("/api/auth/me")
-        if (!authRes.ok) {
-          console.error("Error en auth/me:", authRes.status)
+        if (!user) {
           setError("Error de autenticación")
           setLoading(false)
           return
         }
 
-        const authData = await authRes.json()
-        console.log("Auth data:", authData)
-
-        if (authData.role === "inquilino") {
+        if (user.role === "inquilino") {
           router.replace("/inquilino/dashboard")
           return
         }
 
         // Admin y propietario pueden editar propiedades
-        if (authData.role !== "admin" && authData.role !== "propietario") {
+        if (user.role !== "admin" && user.role !== "propietario") {
           setError("No tienes permiso para editar propiedades")
           setLoading(false)
           return
@@ -186,32 +182,16 @@ export default function EditarPropiedadPage() {
         const propData = await propRes.json()
         console.log("Propiedad cargada:", propData)
 
-        // Cargar datos bancarios del propietario desde perfiles
-        try {
-          const perfilRes = await fetch("/api/auth/me")
-          if (perfilRes.ok) {
-            const perfilData = await perfilRes.json()
-            // Obtener datos bancarios del propietario
-            const datosBancariosPropietario = {
-              cuenta_bancaria_1_numero: perfilData.cuenta_bancaria_1_numero,
-              cuenta_bancaria_1_titular: perfilData.nombre || null,
-            }
-            setDatosPropietario(datosBancariosPropietario)
-
-            // Si la propiedad no tiene datos bancarios, usar los del propietario
-            const propiedadConDatosBancarios = {
-              ...propData,
-              cuenta_bancaria_numero: propData.cuenta_bancaria_numero || datosBancariosPropietario.cuenta_bancaria_1_numero,
-              cuenta_bancaria_titular: propData.cuenta_bancaria_titular || datosBancariosPropietario.cuenta_bancaria_1_titular,
-            }
-            setPropiedad(propiedadConDatosBancarios)
-          } else {
-            setPropiedad(propData)
-          }
-        } catch (err) {
-          console.log("No se pudo cargar datos del propietario, usando datos de propiedad")
-          setPropiedad(propData)
+        const datosBancariosPropietario = {
+          cuenta_bancaria_1_titular: user.nombre || null,
         }
+        setDatosPropietario(datosBancariosPropietario)
+
+        const propiedadConDatosBancarios = {
+          ...propData,
+          cuenta_bancaria_titular: propData.cuenta_bancaria_titular || datosBancariosPropietario.cuenta_bancaria_1_titular,
+        }
+        setPropiedad(propiedadConDatosBancarios)
 
         // Inicializar los displays
         setValorArriendoDisplay(formatMoneda(propData.valor_arriendo || 0))
@@ -245,7 +225,7 @@ export default function EditarPropiedadPage() {
     }
 
     cargarDatos()
-  }, [router, propiedadId])
+  }, [user, router, propiedadId])
 
   // Calcular CAP, GRM y Cash on Cash automáticamente cuando cambian los valores
   useEffect(() => {

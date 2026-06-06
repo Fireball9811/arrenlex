@@ -17,6 +17,7 @@ import { GaleríaImagenes as GaleriaImagenes } from "@/components/propiedades/ga
 import type { PropiedadImagen } from "@/lib/types/database"
 import { CIUDADES_COLOMBIA } from "@/lib/ciudades-colombia"
 import type { UserRole } from "@/lib/auth/role"
+import { useAuth } from "@/components/auth/auth-provider"
 
 type PerfilOption = { id: string; email: string; nombre?: string | null; role: string }
 
@@ -32,7 +33,8 @@ export default function EditarPropiedadPage() {
   const [loadingData, setLoadingData] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [imagenes, setImagenes] = useState<PropiedadImagen[]>([])
-  const [role, setRole] = useState<UserRole | null>(null)
+  const { user } = useAuth()
+  const role = (user?.role as UserRole | undefined) ?? null
   const [propietarios, setPropietarios] = useState<PerfilOption[]>([])
   const [user_id, setUser_id] = useState<string>("")
 
@@ -57,15 +59,6 @@ export default function EditarPropiedadPage() {
     cuenta_bancaria_titular: "",
     notificaciones_email: false,
   })
-
-  useEffect(() => {
-    fetch("/api/auth/me")
-      .then((res) => (res.ok ? res.json() : null))
-      .then((data: { role?: UserRole } | null) => {
-        if (data?.role) setRole(data.role)
-      })
-      .catch(() => {})
-  }, [])
 
   useEffect(() => {
     if (role !== "admin") return

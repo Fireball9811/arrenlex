@@ -1,82 +1,18 @@
 "use client"
 
-import { useEffect, useState, useCallback } from "react"
 import Link from "next/link"
 import { BarChart3, User, Building2, FileCheck, Mail, CreditCard, MessageSquare, Wrench } from "lucide-react"
-import type { UserRole } from "@/lib/auth/role"
 import { getDashboardPathByRole } from "@/lib/auth/redirect-by-role"
 import { useLang } from "@/lib/i18n/context"
-
-const ROLE_CACHE_KEY = "arrenlex_user_role"
+import { useAuth } from "@/components/auth/auth-provider"
+import { useNavCounts } from "@/lib/hooks/use-nav-counts"
 
 export function DashboardNav() {
   const { t } = useLang()
-  const [role, setRole] = useState<UserRole | null>(() => {
-    if (typeof window !== "undefined") {
-      return (sessionStorage.getItem(ROLE_CACHE_KEY) as UserRole) ?? null
-    }
-    return null
-  })
-  const [pendientesCount, setPendientesCount] = useState<number>(0)
-  const [intakeCount, setIntakeCount] = useState<number>(0)
-  const [mantenimientoPendientesCount, setMantenimientoPendientesCount] = useState<number>(0)
-
-  useEffect(() => {
-    fetch("/api/auth/me")
-      .then((res) => (res.ok ? res.json() : null))
-      .then((data: { role?: UserRole } | null) => {
-        const r: UserRole = data?.role ?? "inquilino"
-        setRole(r)
-        sessionStorage.setItem(ROLE_CACHE_KEY, r)
-      })
-      .catch(() => {
-        setRole("inquilino")
-        sessionStorage.setItem(ROLE_CACHE_KEY, "inquilino")
-      })
-  }, [])
-
-  const fetchCounts = useCallback(async () => {
-    if (role !== "admin" && role !== "propietario") return
-
-    // Cargar todos los contadores en paralelo
-    const [solicitudesRes, intakeRes, mantenimientoRes] = await Promise.all([
-      fetch("/api/solicitudes-visita/count"),
-      fetch("/api/intake/count"),
-      fetch("/api/mantenimiento/count"),
-    ])
-
-    const solicitudesData = solicitudesRes.ok ? await solicitudesRes.json() : { count: 0 }
-    const intakeData = intakeRes.ok ? await intakeRes.json() : { count: 0 }
-    const mantenimientoData = mantenimientoRes.ok ? await mantenimientoRes.json() : { count: 0 }
-
-    setPendientesCount(Number(solicitudesData?.count) || 0)
-    setIntakeCount(Number(intakeData?.count) || 0)
-    setMantenimientoPendientesCount(Number(mantenimientoData?.count) || 0)
-  }, [role])
-
-  // Cargar cuando cambia el role
-  useEffect(() => {
-    fetchCounts()
-  }, [fetchCounts])
-
-  // Recargar cada 30 segundos
-  useEffect(() => {
-    if (role !== "admin" && role !== "propietario") return
-    const interval = setInterval(fetchCounts, 30000)
-    return () => clearInterval(interval)
-  }, [fetchCounts, role])
-
-  // Recargar cuando la ventana gana foco
-  useEffect(() => {
-    if (role !== "admin" && role !== "propietario") return
-    const handleVisibilityChange = () => {
-      if (!document.hidden) {
-        fetchCounts()
-      }
-    }
-    document.addEventListener("visibilitychange", handleVisibilityChange)
-    return () => document.removeEventListener("visibilitychange", handleVisibilityChange)
-  }, [fetchCounts, role])
+  const { user } = useAuth()
+  const role = user?.role ?? null
+  const countsEnabled = role === "admin" || role === "propietario"
+  const { solicitudes, intake, mantenimiento } = useNavCounts(countsEnabled)
 
   const isAdmin = role === "admin"
   const isPropietario = role === "propietario"
@@ -125,9 +61,9 @@ export function DashboardNav() {
         <Link href={isAdmin ? "/admin/mensajes" : "/propietario/mensajes"} className={linkClass}>
           <MessageSquare />
           {t.sidebar.mensajes}
-          {(pendientesCount + intakeCount) > 0 && (
+          {(solicitudes + intake) > 0 && (
             <span className="ml-auto rounded-full bg-amber-500/90 px-2 py-0.5 text-xs font-medium text-white">
-              {pendientesCount + intakeCount}
+              {solicitudes + intake}
             </span>
           )}
         </Link>
@@ -145,9 +81,9 @@ export function DashboardNav() {
         >
           <Wrench />
           {t.sidebar.mantenimiento}
-          {(isAdmin || isPropietario) && mantenimientoPendientesCount > 0 && (
+          {(isAdmin || isPropietario) && mantenimiento > 0 && (
             <span className="ml-auto rounded-full bg-amber-500/90 px-2 py-0.5 text-xs font-medium text-white">
-              {mantenimientoPendientesCount}
+              {mantenimiento}
             </span>
           )}
         </Link>

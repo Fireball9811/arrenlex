@@ -3,34 +3,39 @@ import Image from "next/image"
 import { InquilinoSidebar } from "@/components/layout/inquilino-sidebar"
 import { UserEmail } from "@/components/auth/user-email"
 import { InactivityGuard } from "@/components/layout/inactivity-guard"
+import { AuthProvider } from "@/components/auth/auth-provider"
+import { getSessionUser } from "@/lib/auth/session"
 
-export default function InquilinoLayout({ children }: { children: ReactNode }) {
+export default async function InquilinoLayout({ children }: { children: ReactNode }) {
+  const session = await getSessionUser()
+
   return (
-    <InactivityGuard>
-      <div className="flex h-screen bg-green-50">
-        <InquilinoSidebar />
-        <div className="relative flex flex-1 flex-col overflow-hidden">
-          {/* Marca de agua protagonista */}
-          <div className="pointer-events-none select-none absolute inset-0 z-0 flex items-center justify-center">
-            <Image src="/Logo2.png" alt="" width={700} height={700} className="w-[600px] opacity-[0.06] object-contain" />
-          </div>
-
-          <header className="relative z-10 flex h-24 items-center justify-between bg-white px-8 shadow">
-            <div className="flex flex-col leading-tight">
-              <span className="text-2xl font-bold tracking-tight text-gray-800">Sistema de Gestión</span>
-              <span className="text-sm font-semibold uppercase tracking-widest text-gray-500">de Arrendamientos</span>
+    <AuthProvider initialUser={session}>
+      <InactivityGuard>
+        <div className="flex h-screen bg-green-50">
+          <InquilinoSidebar />
+          <div className="relative flex flex-1 flex-col overflow-hidden">
+            <div className="pointer-events-none select-none absolute inset-0 z-0 flex items-center justify-center">
+              <Image src="/Logo2.png" alt="" width={700} height={700} className="w-[600px] opacity-[0.06] object-contain" />
             </div>
-            <div className="flex items-center gap-3">
-              <span className="hidden text-sm font-medium text-gray-400 sm:block">Sesión activa</span>
-              <div className="text-base font-semibold text-gray-700">
-                <UserEmail />
+
+            <header className="relative z-10 flex h-24 items-center justify-between bg-white px-8 shadow">
+              <div className="flex flex-col leading-tight">
+                <span className="text-2xl font-bold tracking-tight text-gray-800">Sistema de Gestión</span>
+                <span className="text-sm font-semibold uppercase tracking-widest text-gray-500">de Arrendamientos</span>
               </div>
-            </div>
-          </header>
+              <div className="flex items-center gap-3">
+                <span className="hidden text-sm font-medium text-gray-400 sm:block">Sesión activa</span>
+                <div className="text-base font-semibold text-gray-700">
+                  <UserEmail email={session?.email} />
+                </div>
+              </div>
+            </header>
 
-          <main className="relative z-10 flex-1 overflow-y-auto p-6">{children}</main>
+            <main className="relative z-10 flex-1 overflow-y-auto p-6">{children}</main>
+          </div>
         </div>
-      </div>
-    </InactivityGuard>
+      </InactivityGuard>
+    </AuthProvider>
   )
 }

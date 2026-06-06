@@ -8,9 +8,11 @@ import { Input } from "@/components/ui/input"
 import { ArrowLeft, Send, X, Printer, Loader2 } from "lucide-react"
 import Link from "next/link"
 import { formatCalendarDateEs } from "@/lib/utils/calendar-date"
+import { useAuth } from "@/components/auth/auth-provider"
 
 export default function VistaPreviaReciboContent() {
   const router = useRouter()
+  const { user } = useAuth()
   const searchParams = useSearchParams()
   const reciboId = searchParams.get("recibo_id")
   const reciboRef = useRef<HTMLDivElement>(null)
@@ -98,16 +100,8 @@ export default function VistaPreviaReciboContent() {
     }
 
     // 2) Correo del usuario logueado (propietario)
-    try {
-      const meRes = await fetch("/api/auth/me")
-      if (meRes.ok) {
-        const me = await meRes.json()
-        if (me.email && !emailPropietarioSugerido) {
-          emailPropietarioSugerido = me.email
-        }
-      }
-    } catch {
-      /* noop */
+    if (user?.email && !emailPropietarioSugerido) {
+      emailPropietarioSugerido = user.email
     }
 
     // 3) Fallback: búsqueda por nombre / cédula en la tabla arrendatarios

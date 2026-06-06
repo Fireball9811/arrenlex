@@ -1,7 +1,8 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { useRouter, useParams } from "next/navigation"
+import { useParams } from "next/navigation"
+import { useRequireRole } from "@/lib/hooks/use-require-role"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
@@ -22,7 +23,7 @@ interface ReciboPago {
 }
 
 export default function RecibosDePropiedad() {
-  const router = useRouter()
+  const { isAuthorized } = useRequireRole(["propietario"])
   const params = useParams()
   const propiedadId = params.id as string
 
@@ -31,37 +32,22 @@ export default function RecibosDePropiedad() {
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    fetch("/api/auth/me")
-      .then((res) => (res.ok ? res.json() : null))
-      .then((data: { role?: string } | null) => {
-        if (data?.role === "admin") {
-          router.replace("/admin/dashboard")
-          return
-        }
-        if (data?.role === "inquilino") {
-          router.replace("/inquilino/dashboard")
-          return
-        }
+    if (!isAuthorized) return
 
-        return fetch(`/api/recibos-pago?propiedad_id=${propiedadId}`)
-          .then((res) => {
-            if (!res.ok) throw new Error(`HTTP ${res.status}`)
-            return res.json()
-          })
-          .then((data: ReciboPago[]) => {
-            setRecibos(data)
-            setLoading(false)
-          })
-          .catch((err) => {
-            setError(`Error: ${err.message}`)
-            setLoading(false)
-          })
+    fetch(`/api/recibos-pago?propiedad_id=${propiedadId}`)
+      .then((res) => {
+        if (!res.ok) throw new Error(`HTTP ${res.status}`)
+        return res.json()
       })
-      .catch(() => {
-        setError("Error de autenticación")
+      .then((data: ReciboPago[]) => {
+        setRecibos(data)
         setLoading(false)
       })
-  }, [router, propiedadId])
+      .catch((err) => {
+        setError(`Error: ${err.message}`)
+        setLoading(false)
+      })
+  }, [isAuthorized, propiedadId])
 
   const handleEliminar = async (reciboId: string) => {
     if (!window.confirm("¿Eliminar este recibo?")) return
