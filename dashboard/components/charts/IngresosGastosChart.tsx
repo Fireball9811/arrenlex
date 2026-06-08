@@ -150,13 +150,13 @@ export function IngresosGastosChart({
             />
             <Bar
               dataKey="ingresos"
-              fill="hsl(var(--primary))"
+              fill="#3b82f6"
               name="ingresos"
               radius={[4, 4, 0, 0]}
             />
             <Bar
               dataKey="gastos"
-              fill="hsl(var(--destructive))"
+              fill="#ef4444"
               name="gastos"
               radius={[4, 4, 0, 0]}
             />

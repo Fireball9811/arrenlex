@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server"
+import { sortPropiedadesByOrden } from "@/lib/propiedades/orden-query"
 
 /**
  * GET - Obtiene propiedades que NO tienen contrato activo
@@ -52,18 +53,24 @@ export async function GET(request: Request) {
     }
 
     const { data: todasPropiedades, error: errorPropiedades } = await query
-      .neq("estado", "arrendado")  // Excluir propiedades arrendadas
-      .order("created_at", { ascending: false })
+      .neq("estado", "arrendado")
 
     if (errorPropiedades) {
       console.error("❌ Error obteniendo propiedades:", errorPropiedades)
       return NextResponse.json({ error: errorPropiedades.message }, { status: 500 })
     }
 
-    // Filtrar propiedades sin contrato activo Y que no estén arrendadas
-    const propiedadesDisponibles = (todasPropiedades || []).filter(
+    let propiedadesDisponibles = (todasPropiedades || []).filter(
       p => !propiedadesOcupadas.has(p.id) && p.estado !== "arrendado"
     )
+
+    if (role === "propietario") {
+      propiedadesDisponibles = sortPropiedadesByOrden(propiedadesDisponibles)
+    } else {
+      propiedadesDisponibles = [...propiedadesDisponibles].sort(
+        (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      )
+    }
 
     console.log("✓ Propiedades disponibles:", propiedadesDisponibles.length, "de", todasPropiedades?.length || 0)
 

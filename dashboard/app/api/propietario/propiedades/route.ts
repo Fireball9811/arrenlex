@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { getUserRole } from "@/lib/auth/role"
+import { sortPropiedadesByOrden } from "@/lib/propiedades/orden-query"
 
 /**
  * GET - Devuelve las propiedades DISPONIBLES del propietario autenticado.
@@ -52,17 +53,16 @@ export async function GET() {
 
   const { data: propiedades, error } = await admin
     .from("propiedades")
-    .select("id, direccion, ciudad, estado")
+    .select("id, direccion, ciudad, estado, orden_display, created_at")
     .eq("user_id", user.id)
     .neq("estado", "arrendado")
-    .order("created_at", { ascending: false })
 
   if (error) {
     console.error("[propietario/propiedades GET]", error)
     return NextResponse.json({ error: "Error al obtener propiedades" }, { status: 500 })
   }
 
-  const disponibles = (propiedades ?? [])
+  const disponibles = sortPropiedadesByOrden(propiedades ?? [])
     .filter((p) => !idsOcupadas.has(p.id))
     .map(({ id, direccion, ciudad }) => ({ id, direccion, ciudad }))
 

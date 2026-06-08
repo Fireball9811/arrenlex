@@ -16,6 +16,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Home, FileText, Mail, BarChart3, Download } from "lucide-react"
 import { useLang } from "@/lib/i18n/context"
 import { IngresosGastosChart } from "@/components/charts/IngresosGastosChart"
+import { PropiedadesResumenTable } from "@/components/propietario/PropiedadesResumenTable"
 import { useRequireRole } from "@/lib/hooks/use-require-role"
 
 interface DashboardData {
@@ -244,6 +245,23 @@ export default function PropietarioDashboardPage() {
               vistaMensual={vistaMensual}
             />
           </div>
+        </CardContent>
+      </Card>
+
+      {/* Lista de propiedades con arrendatarios */}
+      <Card className="mb-8">
+        <CardHeader>
+          <CardTitle>Mis propiedades</CardTitle>
+          <CardDescription>
+            Todas tus propiedades ya registradas aparecen aquí. Consulta arrendatarios,
+            asigna el orden de visualización y accede a recibos, gastos y contratos.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <PropiedadesResumenTable
+            aniosAtras={aniosAtras}
+            vistaMensual={vistaMensual}
+          />
         </CardContent>
       </Card>
 

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import { handleSupabaseError, handleApiError } from "@/lib/api-error"
+import { sortPropiedadesByOrden } from "@/lib/propiedades/orden-query"
 
 export async function GET(request: Request) {
   console.log("🔵 [propiedades] GET iniciado")
@@ -87,15 +88,17 @@ export async function GET(request: Request) {
       console.log("✓ Filtro ciudad:", ciudad)
     }
 
-    if (cursor) {
-      query = query.lt("created_at", cursor)
-      console.log("✓ Cursor:", cursor)
-    }
+    const isPropietario = role === "propietario"
 
-    query = query.order("created_at", { ascending: false })
-
-    if (paginated) {
-      query = query.limit(PAGE_SIZE + 1)
+    if (!isPropietario) {
+      if (cursor) {
+        query = query.lt("created_at", cursor)
+        console.log("✓ Cursor:", cursor)
+      }
+      query = query.order("created_at", { ascending: false })
+      if (paginated) {
+        query = query.limit(PAGE_SIZE + 1)
+      }
     }
 
     const { data, error } = await query
@@ -108,11 +111,24 @@ export async function GET(request: Request) {
       )
     }
 
-    const rows = data ?? []
+    let rows = data ?? []
+
+    if (isPropietario) {
+      rows = sortPropiedadesByOrden(rows)
+    }
 
     if (!paginated) {
       console.log("✓ SUCCESS (array)! Retornando", rows.length, "propiedades")
       return NextResponse.json(rows)
+    }
+
+    if (isPropietario) {
+      const offset = cursor ? parseInt(cursor, 10) || 0 : 0
+      const propiedades = rows.slice(offset, offset + PAGE_SIZE)
+      const nextOffset = offset + PAGE_SIZE
+      const nextCursor = nextOffset < rows.length ? String(nextOffset) : null
+      console.log("✓ SUCCESS (paginado propietario)! Retornando", propiedades.length, "propiedades")
+      return NextResponse.json({ propiedades, nextCursor })
     }
 
     const hayMas = rows.length > PAGE_SIZE

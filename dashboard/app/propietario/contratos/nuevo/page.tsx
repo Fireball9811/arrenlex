@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import {
@@ -29,6 +29,8 @@ type Arrendatario = {
 
 export default function PropietarioNuevoContratoPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const propiedadIdParam = searchParams.get("propiedad_id")
   const [propiedades, setPropiedades] = useState<Propiedad[]>([])
   const [arrendatarios, setArrendatarios] = useState<Arrendatario[]>([])
   const [loading, setLoading] = useState(true)
@@ -53,12 +55,16 @@ export default function PropietarioNuevoContratoPage() {
         setPropiedades(props)
         setArrendatarios(arrend)
         if (props.length > 0) {
+          const preseleccionada =
+            propiedadIdParam && props.some((p: Propiedad) => p.id === propiedadIdParam)
+              ? props.find((p: Propiedad) => p.id === propiedadIdParam)!
+              : props[0]
           setFormData((prev) => ({
             ...prev,
-            propiedad_id: props[0].id,
-            canon_mensual: props[0].valor_arriendo || 0,
+            propiedad_id: preseleccionada.id,
+            canon_mensual: preseleccionada.valor_arriendo || 0,
             porcentaje_garantia: 0.5,
-            ciudad_firma: props[0].ciudad || "",
+            ciudad_firma: preseleccionada.ciudad || "",
           }))
         }
         if (arrend.length > 0) {
@@ -66,7 +72,7 @@ export default function PropietarioNuevoContratoPage() {
         }
       })
       .finally(() => setLoading(false))
-  }, [])
+  }, [propiedadIdParam])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()

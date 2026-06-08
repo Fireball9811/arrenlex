@@ -1,6 +1,7 @@
 export type Propiedad = {
   id: string
   user_id: string
+  titulo?: string | null
   direccion: string
   ciudad: string
   barrio: string
@@ -32,6 +33,7 @@ export type Propiedad = {
   intereses_anuales?: number | null
   cash_on_cash?: number | null
   ber?: number | null
+  orden_display?: number | null
   created_at: string
 }
 
