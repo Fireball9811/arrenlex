@@ -92,7 +92,7 @@ export function buildAplicacionWhatsAppText(params: {
   propiedadRef: string
   canonArriendo: number | null
   nombre: string
-  cedula: string
+  documento: string
   telefono: string | null
   salario: number | null
   salario2: number | null
@@ -134,7 +134,7 @@ export function buildAplicacionWhatsAppText(params: {
       ? ["⚠️ *Motivo de estudio:* el aplicante declara que será el _único arrendatario_ (vivirá solo, sin coarrendatario).", ""]
       : []),
     `👤 Solicitante: ${params.nombre}`,
-    `🪪 Cédula: ${v(params.cedula)}`,
+    `🪪 Documento: ${v(params.documento)}`,
     `📞 Teléfono: ${v(params.telefono)}`,
     `💼 Salario mensual: ${cop(params.salario)}`,
     ...(!esUnico && params.salario2 ? [`💼 Otros ingresos laborales (segundo solicitante, mismo envío): ${cop(params.salario2)}`] : []),

@@ -10,7 +10,7 @@ export type SendAplicacionParams = {
   // Arrendatario
   nombre: string
   email: string
-  cedula: string
+  documento: string
   fechaExpedicionCedula: string | null
   telefono: string | null
   // Laboral arrendatario
@@ -180,7 +180,7 @@ function buildBody(params: SendAplicacionParams, baseUrl: string): string {
 
   const secArrendatario = section("1. Solicitante", [
     row("Nombre completo", params.nombre),
-    row("Cédula", params.cedula),
+    row("Documento", params.documento),
     row("Fecha exp. cédula", params.fechaExpedicionCedula),
     row("Teléfono", params.telefono),
     row("Correo electrónico", params.email),

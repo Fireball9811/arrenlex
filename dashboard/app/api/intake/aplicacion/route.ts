@@ -11,6 +11,7 @@ import { rateLimitMiddleware, RateLimitPresets, getRateLimitHeaders } from "@/li
 const SALARIO_MINIMO = 1_000_000
 
 const AUTORIZACION_VERSION = "2026.03"
+const TIPOS_DOCUMENTO_PERMITIDOS = new Set(["CC", "CE", "INT", "NIT", "PP", "PPT"])
 
 const AUTORIZACION_TEXTO = `Autorizo de manera previa, expresa e informada a Arrenlex SAS, identificada con NIT 902036870-9, como responsable del tratamiento de mis datos personales, para recolectar, almacenar, usar, consultar, actualizar, transmitir, conservar y validar la información que suministre en esta solicitud.
 
@@ -92,6 +93,7 @@ export async function POST(request: Request) {
     // Paso 1 — Solicitante
     nombre,
     email,
+    tipo_documento,
     cedula,
     fecha_expedicion_cedula,
     telefono,
@@ -123,24 +125,29 @@ export async function POST(request: Request) {
     typeof propiedad_id !== "string" ||
     typeof nombre !== "string" ||
     typeof email !== "string" ||
+    typeof tipo_documento !== "string" ||
     typeof cedula !== "string"
   ) {
     return NextResponse.json(
-      { error: "Faltan campos requeridos: propiedad_id, nombre, email, cedula" },
+      { error: "Faltan campos requeridos: propiedad_id, nombre, email, tipo_documento, cedula" },
       { status: 400 }
     )
   }
 
   const nombreTrim = nombre.trim()
   const emailTrim = email.trim().toLowerCase()
+  const tipoDocumentoTrim = tipo_documento.trim().toUpperCase()
   const cedulaTrim = cedula.trim()
   const propiedadIdTrim = propiedad_id.trim()
 
-  if (!nombreTrim || !emailTrim || !cedulaTrim || !propiedadIdTrim) {
+  if (!nombreTrim || !emailTrim || !tipoDocumentoTrim || !cedulaTrim || !propiedadIdTrim) {
     return NextResponse.json(
-      { error: "nombre, email, cedula y propiedad_id no pueden estar vacíos" },
+      { error: "nombre, email, tipo_documento, cedula y propiedad_id no pueden estar vacíos" },
       { status: 400 }
     )
+  }
+  if (!TIPOS_DOCUMENTO_PERMITIDOS.has(tipoDocumentoTrim)) {
+    return NextResponse.json({ error: "Tipo de documento no válido" }, { status: 400 })
   }
 
   if (typeof token !== "string" || !token.trim()) {
@@ -236,6 +243,7 @@ export async function POST(request: Request) {
       tipo_solicitante: tipoSolicitante,
       nombre: nombreTrim,
       email: emailTrim,
+      tipo_documento: tipoDocumentoTrim,
       cedula: cedulaTrim,
       cedula_ciudad_expedicion: toNullableText(fecha_expedicion_cedula),
       telefono: toNullableText(telefono),
@@ -304,7 +312,7 @@ export async function POST(request: Request) {
     canonArriendo: propiedad.valor_arriendo ?? null,
     nombre: nombreTrim,
     email: emailTrim,
-    cedula: cedulaTrim,
+    documento: `${tipoDocumentoTrim} ${cedulaTrim}`,
     fechaExpedicionCedula: toNullableText(fecha_expedicion_cedula),
     telefono: toNullableText(telefono),
     empresaArrendatario: toNullableText(empresa_arrendatario),
@@ -335,7 +343,7 @@ export async function POST(request: Request) {
       propiedadRef,
       canonArriendo: propiedad.valor_arriendo ?? null,
       nombre: nombreTrim,
-      cedula: cedulaTrim,
+      documento: `${tipoDocumentoTrim} ${cedulaTrim}`,
       telefono: toNullableText(telefono),
       salario: toNullableNum(salario),
       salario2: null,

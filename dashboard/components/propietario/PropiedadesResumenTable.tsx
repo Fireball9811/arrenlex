@@ -205,12 +205,21 @@ export function PropiedadesResumenTable({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ orden_display }),
       })
-      if (!res.ok) throw new Error("Error al guardar")
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        throw new Error(
+          (err as { error?: string }).error || "Error al guardar el orden"
+        )
+      }
       setGuardadoId(id)
       setTimeout(() => setGuardadoId(null), 2000)
       await loadItems()
-    } catch {
-      alert("No se pudo guardar el orden")
+    } catch (e) {
+      alert(
+        e instanceof Error
+          ? e.message
+          : "No se pudo guardar el orden"
+      )
     } finally {
       setGuardandoId(null)
     }

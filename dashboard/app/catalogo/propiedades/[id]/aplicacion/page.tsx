@@ -24,6 +24,7 @@ type FormData = {
   // Paso 1 — Arrendatario
   nombre: string
   email: string
+  tipo_documento: string
   cedula: string
   fecha_expedicion_cedula: string
   telefono: string
@@ -45,6 +46,7 @@ type FormData = {
 const INITIAL_FORM: FormData = {
   nombre: "",
   email: "",
+  tipo_documento: "CC",
   cedula: "",
   fecha_expedicion_cedula: "",
   telefono: "",
@@ -64,6 +66,14 @@ const INITIAL_FORM: FormData = {
 const TOTAL_STEPS = 3
 
 const PASO_TITULOS = ["Información personal", "Situación laboral", "Tu hogar"]
+const OPCIONES_TIPO_DOCUMENTO = [
+  { value: "CC", label: "CC (Cédula de ciudadanía)" },
+  { value: "CE", label: "CE (Cédula de Extranjería)" },
+  { value: "INT", label: "INT (Internacional)" },
+  { value: "NIT", label: "NIT (Número de Identificación Tributaria)" },
+  { value: "PP", label: "PP (Pasaporte)" },
+  { value: "PPT", label: "PPT (Permiso por Protección Temporal)" },
+]
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -338,7 +348,18 @@ function Paso1({
       </div>
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <FieldLabel htmlFor="cedula" required>Cédula</FieldLabel>
+          <FieldLabel htmlFor="tipo_documento" required>Tipo de documento</FieldLabel>
+          <SelectGroup
+            id="tipo_documento"
+            value={form.tipo_documento}
+            onChange={(v) => onChange("tipo_documento", v)}
+            options={OPCIONES_TIPO_DOCUMENTO}
+            required
+            disabled={disabled}
+          />
+        </div>
+        <div>
+          <FieldLabel htmlFor="cedula" required>Número de documento</FieldLabel>
           <Input
             id="cedula"
             value={form.cedula}
@@ -702,6 +723,7 @@ export default function AplicacionPage() {
         form.nombre.trim() !== "" &&
         form.email.trim() !== "" &&
         isEmailValido(form.email) &&
+        form.tipo_documento.trim() !== "" &&
         form.cedula.trim() !== "" &&
         form.fecha_expedicion_cedula !== "" &&
         form.telefono.trim() !== "" &&
@@ -733,7 +755,9 @@ export default function AplicacionPage() {
       if (!form.nombre.trim()) return { mensaje: "Ingresa el nombre completo.", idCampo: "nombre" }
       if (!form.email.trim() || !isEmailValido(form.email))
         return { mensaje: "Ingresa un correo electrónico válido.", idCampo: "email" }
-      if (!form.cedula.trim()) return { mensaje: "Ingresa la cédula.", idCampo: "cedula" }
+      if (!form.tipo_documento.trim())
+        return { mensaje: "Selecciona el tipo de documento.", idCampo: "tipo_documento" }
+      if (!form.cedula.trim()) return { mensaje: "Ingresa el número de documento.", idCampo: "cedula" }
       if (!form.fecha_expedicion_cedula)
         return { mensaje: "Ingresa la fecha de expedición.", idCampo: "fecha_expedicion_cedula" }
       if (!form.telefono.trim() || !isTelefonoValido(form.telefono))

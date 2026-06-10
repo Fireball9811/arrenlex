@@ -329,6 +329,7 @@ export type IntakeFormulario = {
   nombre: string | null
   email: string | null
   telefono: string | null
+  tipo_documento?: string | null
   cedula: string | null
   // Nombres antiguos (para compatibilidad)
   fecha_expedicion_cedula?: string | null

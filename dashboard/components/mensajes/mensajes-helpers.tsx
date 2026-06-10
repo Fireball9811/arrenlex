@@ -69,6 +69,13 @@ function esVacio(v: unknown): boolean {
   return false
 }
 
+function formatearDocumento(tipo: string | null | undefined, numero: string | null | undefined): string {
+  const n = (numero ?? "").trim()
+  if (!n) return "—"
+  const t = (tipo ?? "").trim().toUpperCase()
+  return t ? `${t} ${n}` : n
+}
+
 // Formatea una fecha ISO/texto como "DD/MM/AAAA".
 // Si viene solo "YYYY-MM-DD" (DATE) la reordena sin pasar por Date() para evitar
 // desplazamientos de zona horaria.
@@ -818,7 +825,7 @@ export function TablaIntake({
                       </span>
                     )}
                   </td>
-                  <td className="p-2">{r.cedula ?? "—"}</td>
+                  <td className="p-2">{formatearDocumento(r.tipo_documento, r.cedula)}</td>
                   <td className="p-2">{r.email ?? "—"}</td>
                   <td className="p-2 whitespace-nowrap">{celularPrincipal}</td>
                   <td className="p-2 whitespace-nowrap">{celularCoarrendatario}</td>
@@ -924,7 +931,9 @@ export function TablaIntake({
               <p className="text-xs text-muted-foreground">{t.mensajes.eliminarRegistroDe}</p>
               <p className="font-medium">{confirmando.nombre ?? "—"}</p>
               {confirmando.cedula && (
-                <p className="text-xs text-muted-foreground">{confirmando.cedula}</p>
+                <p className="text-xs text-muted-foreground">
+                  {formatearDocumento(confirmando.tipo_documento, confirmando.cedula)}
+                </p>
               )}
             </div>
             {errorEliminar && (
@@ -1120,7 +1129,14 @@ export function ModalDetalleIntake({
             <p className="font-semibold text-muted-foreground uppercase text-xs tracking-wide border-b pb-1">Información de Contacto</p>
             <p><span className="font-medium">Email:</span> {renderValor("email", registro.email, registro.email)}</p>
             <p><span className="font-medium">Teléfono:</span> {renderValor("telefono", registro.telefono, registro.telefono)}</p>
-            <p><span className="font-medium">Cédula:</span> {renderValor("cedula", registro.cedula, registro.cedula)}</p>
+            <p>
+              <span className="font-medium">Documento:</span>{" "}
+              {renderValor(
+                "cedula",
+                formatearDocumento(registro.tipo_documento, registro.cedula),
+                registro.cedula
+              )}
+            </p>
             <p><span className="font-medium">Fecha Expedición:</span> {renderValor("cedula_ciudad_expedicion", formatearFechaDMY(registro.cedula_ciudad_expedicion ?? registro.fecha_expedicion_cedula), registro.cedula_ciudad_expedicion ?? registro.fecha_expedicion_cedula)}</p>
           </div>
 
