@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { createClient } from "@/lib/supabase/server"
 import { getUserRole } from "@/lib/auth/role"
+import { randomUUID } from "crypto"
 
 /**
  * POST /api/debug/reparar-grupo-solicitud
@@ -65,8 +66,7 @@ export async function POST(request: Request) {
   for (const [clave, registrosDelGrupo] of Object.entries(grupos)) {
     // Solo agrupar si hay más de uno (principal + coarrendatario)
     if (registrosDelGrupo.length > 0) {
-      const { v4: uuidv4 } = await import("uuid")
-      const grupoId = uuidv4()
+      const grupoId = randomUUID()
 
       // Asignar tipos_solicitante si no existen
       let tipoCounter = 0

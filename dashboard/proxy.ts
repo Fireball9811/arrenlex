@@ -146,7 +146,7 @@ function forwardWithRequestHeaders(
   return response
 }
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const path = request.nextUrl.pathname
 
   const requestHeaders = new Headers(request.headers)
