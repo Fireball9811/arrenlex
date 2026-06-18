@@ -48,7 +48,11 @@ export async function GET(
           nombre,
           cedula,
           email,
-          celular
+          celular,
+          coarrendatario_nombre,
+          coarrendatario_cedula,
+          coarrendatario_email,
+          coarrendatario_telefono
         )
       `)
       .eq("id", contratoId)
@@ -183,7 +187,13 @@ export async function PATCH(
         arrendatario:arrendatarios (
           id,
           nombre,
-          cedula
+          cedula,
+          email,
+          celular,
+          coarrendatario_nombre,
+          coarrendatario_cedula,
+          coarrendatario_email,
+          coarrendatario_telefono
         )
       `)
       .single()

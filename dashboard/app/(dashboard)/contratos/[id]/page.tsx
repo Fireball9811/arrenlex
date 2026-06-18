@@ -215,6 +215,29 @@ export default function ContratoDetallePage() {
               {contrato.arrendatario?.celular && (
                 <p className="text-sm text-muted-foreground">{contrato.arrendatario.celular}</p>
               )}
+              {contrato.arrendatario?.coarrendatario_nombre && (
+                <div className="mt-3 rounded-md border bg-muted/40 p-2">
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                    Coarrendatario
+                  </p>
+                  <p className="font-medium">{contrato.arrendatario.coarrendatario_nombre}</p>
+                  {contrato.arrendatario?.coarrendatario_cedula && (
+                    <p className="text-sm text-muted-foreground">
+                      C.C. {contrato.arrendatario.coarrendatario_cedula}
+                    </p>
+                  )}
+                  {contrato.arrendatario?.coarrendatario_email && (
+                    <p className="text-sm text-muted-foreground">
+                      {contrato.arrendatario.coarrendatario_email}
+                    </p>
+                  )}
+                  {contrato.arrendatario?.coarrendatario_telefono && (
+                    <p className="text-sm text-muted-foreground">
+                      {contrato.arrendatario.coarrendatario_telefono}
+                    </p>
+                  )}
+                </div>
+              )}
             </CardContent>
           </Card>
 

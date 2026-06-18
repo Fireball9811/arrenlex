@@ -45,7 +45,8 @@ export async function GET(request: Request) {
         id, direccion, ciudad, barrio, valor_arriendo, user_id
       ),
       arrendatario:arrendatarios(
-        id, nombre, cedula, email, celular
+        id, nombre, cedula, email, celular,
+        coarrendatario_nombre, coarrendatario_cedula, coarrendatario_email, coarrendatario_telefono
       )
     `)
 

@@ -175,6 +175,10 @@ export type ContratoConRelaciones = Contrato & {
     cedula: string
     email?: string | null
     celular?: string | null
+    coarrendatario_nombre?: string | null
+    coarrendatario_cedula?: string | null
+    coarrendatario_email?: string | null
+    coarrendatario_telefono?: string | null
   }
   propietario: {
     nombre: string | null
