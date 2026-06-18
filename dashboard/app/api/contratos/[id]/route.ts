@@ -204,3 +204,85 @@ export async function PATCH(
     )
   }
 }
+
+// DELETE - Eliminar un contrato (solo en estado "borrador")
+export async function DELETE(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const contratoId = (await params).id
+  console.log("🔴 [contratos/{id}] DELETE - contrato:", contratoId)
+
+  try {
+    const { createClient } = await import("@/lib/supabase/server")
+    const { createAdminClient } = await import("@/lib/supabase/admin")
+    const { getUserRole } = await import("@/lib/auth/role")
+
+    const supabase = await createClient()
+    const authData = await supabase.auth.getUser()
+    const user = authData.data?.user
+
+    if (!user) {
+      return NextResponse.json({ error: "No autorizado" }, { status: 401 })
+    }
+
+    const role = await getUserRole(supabase, user)
+    if (!role || (role !== "admin" && role !== "propietario")) {
+      return NextResponse.json({ error: "No tienes permiso" }, { status: 403 })
+    }
+
+    const admin = createAdminClient()
+
+    // Obtener el contrato para verificar estado y permisos
+    const { data: contrato } = await admin
+      .from("contratos")
+      .select("id, user_id, estado")
+      .eq("id", contratoId)
+      .single()
+
+    if (!contrato) {
+      return NextResponse.json({ error: "Contrato no encontrado" }, { status: 404 })
+    }
+
+    // Verificar permisos: propietario solo puede eliminar sus propios contratos
+    if (role === "propietario" && contrato.user_id !== user.id) {
+      return NextResponse.json({ error: "No tienes permiso para eliminar este contrato" }, { status: 403 })
+    }
+
+    // Solo permitir eliminación de contratos en estado "borrador"
+    if (contrato.estado !== "borrador") {
+      return NextResponse.json(
+        { 
+          error: `No puedes eliminar un contrato en estado '${contrato.estado}'. Solo se pueden eliminar contratos en estado 'borrador'.`,
+          estado: contrato.estado
+        },
+        { status: 400 }
+      )
+    }
+
+    // Eliminar el contrato
+    const { error } = await admin
+      .from("contratos")
+      .delete()
+      .eq("id", contratoId)
+
+    if (error) {
+      console.error("❌ Error eliminando contrato:", error)
+      return NextResponse.json({ error: error.message }, { status: 500 })
+    }
+
+    console.log("✓ Contrato eliminado:", contratoId)
+    return NextResponse.json({
+      ok: true,
+      message: "Contrato eliminado exitosamente",
+      deletedId: contratoId,
+    })
+
+  } catch (err: any) {
+    console.error("❌ ERROR GENERAL:", err?.message || err)
+    return NextResponse.json(
+      { error: "Error interno del servidor", details: err?.message },
+      { status: 500 }
+    )
+  }
+}

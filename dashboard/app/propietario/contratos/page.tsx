@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
-import { FileEdit } from "lucide-react"
+import { FileEdit, Trash2 } from "lucide-react"
 import {
   Card,
   CardContent,
@@ -18,6 +18,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 import type { ContratoConRelaciones } from "@/lib/types/database"
 
 export default function PropietarioContratosPage() {
@@ -25,6 +35,9 @@ export default function PropietarioContratosPage() {
   const [contratosFiltrados, setContratosFiltrados] = useState<ContratoConRelaciones[]>([])
   const [loading, setLoading] = useState(true)
   const [filtroEstado, setFiltroEstado] = useState<string>("todos")
+  const [contratoAEliminar, setContratoAEliminar] = useState<ContratoConRelaciones | null>(null)
+  const [eliminando, setEliminando] = useState(false)
+  const [errorEliminar, setErrorEliminar] = useState<string | null>(null)
 
   // Cargar contratos
   useEffect(() => {
@@ -78,6 +91,31 @@ export default function PropietarioContratosPage() {
 
   const limpiarFiltros = () => {
     setFiltroEstado("todos")
+  }
+
+  const handleEliminarContrato = async () => {
+    if (!contratoAEliminar) return
+    setEliminando(true)
+    setErrorEliminar(null)
+
+    try {
+      const res = await fetch(`/api/contratos/${contratoAEliminar.id}`, {
+        method: "DELETE",
+      })
+
+      if (!res.ok) {
+        const data = await res.json()
+        throw new Error(data.error || "Error al eliminar el contrato")
+      }
+
+      // Eliminar de la lista local
+      setContratos((prev) => prev.filter((c) => c.id !== contratoAEliminar.id))
+      setContratoAEliminar(null)
+    } catch (error) {
+      setErrorEliminar(error instanceof Error ? error.message : "Error desconocido")
+    } finally {
+      setEliminando(false)
+    }
   }
 
   return (
@@ -229,6 +267,16 @@ export default function PropietarioContratosPage() {
                             Editar
                           </Link>
                         </Button>
+                        {c.estado === "borrador" && (
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            onClick={() => setContratoAEliminar(c)}
+                          >
+                            <Trash2 className="h-4 w-4 mr-1" />
+                            Eliminar
+                          </Button>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -243,6 +291,41 @@ export default function PropietarioContratosPage() {
           </div>
         </Card>
       )}
+
+      {/* Modal de confirmación para eliminar */}
+      <AlertDialog open={!!contratoAEliminar} onOpenChange={(open) => !open && setContratoAEliminar(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Eliminar contrato?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {errorEliminar ? (
+                <div className="text-red-600 font-semibold mt-2">{errorEliminar}</div>
+              ) : (
+                <>
+                  <p className="mb-3">
+                    Se eliminarán los datos del contrato en estado borrador para{" "}
+                    <strong>{contratoAEliminar?.arrendatario?.nombre}</strong> en{" "}
+                    <strong>{contratoAEliminar?.propiedad?.direccion}</strong>.
+                  </p>
+                  <p className="text-sm">
+                    Esta acción <strong>no se puede deshacer</strong>. Solo se pueden eliminar contratos en estado "borrador".
+                  </p>
+                </>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={eliminando}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleEliminarContrato}
+              disabled={eliminando}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              {eliminando ? "Eliminando..." : "Sí, eliminar"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

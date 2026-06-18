@@ -1304,7 +1304,8 @@ export function ModalDetalleIntake({
         <div className="mt-4 pt-4 border-t space-y-3">
           {pasadoOk && (
             <div className="rounded-lg bg-green-50 border border-green-200 px-4 py-3 text-sm text-green-800 dark:bg-green-950/30 dark:border-green-800 dark:text-green-300">
-              {t.mensajes.creadoOk} <strong>{pasadoOk}</strong>
+              <p className="font-semibold mb-1">✓ Contrato creado exitosamente</p>
+              <p className="text-xs opacity-90">{pasadoOk}</p>
             </div>
           )}
           {pasadoError && (
