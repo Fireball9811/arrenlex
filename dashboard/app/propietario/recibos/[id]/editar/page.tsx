@@ -78,6 +78,15 @@ export default function EditarReciboPage() {
   })
 
   const valorArriendoNum = Number(formData.valor_arriendo || 0)
+  const formatearMonedaCOP = (valor: number) =>
+    new Intl.NumberFormat("es-CO", {
+      style: "currency",
+      currency: "COP",
+      maximumFractionDigits: 0,
+    }).format(valor)
+
+  const limpiarMonedaAEntero = (valor: string) => valor.replace(/\D/g, "")
+
   const montoDifiereContrato =
     formData.tipo_pago === "arriendo" &&
     canonContrato !== null &&
@@ -213,7 +222,10 @@ export default function EditarReciboPage() {
       const res = await fetch(`/api/recibos-pago/${reciboId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData),
+        body: JSON.stringify({
+          ...formData,
+          valor_arriendo: Number(formData.valor_arriendo || 0),
+        }),
       })
 
       if (!res.ok) {
@@ -390,16 +402,19 @@ export default function EditarReciboPage() {
               <div>
                 <label className="block text-sm font-medium mb-1">Valor Arriendo ($) *</label>
                 <Input
-                  type="number"
-                  value={formData.valor_arriendo}
+                  type="text"
+                  inputMode="numeric"
+                  value={formData.valor_arriendo ? formatearMonedaCOP(Number(formData.valor_arriendo)) : ""}
                   onChange={(e) => {
-                    handleChange("valor_arriendo", e.target.value)
-                    if (e.target.value) {
-                      handleChange("valor_arriendo_letras", numerosEnLetras(parseInt(e.target.value)))
+                    const soloNumeros = limpiarMonedaAEntero(e.target.value)
+                    handleChange("valor_arriendo", soloNumeros)
+                    if (soloNumeros) {
+                      handleChange("valor_arriendo_letras", numerosEnLetras(parseInt(soloNumeros)))
+                    } else {
+                      handleChange("valor_arriendo_letras", "")
                     }
                   }}
-                  placeholder=""
-                  min="0"
+                  placeholder="$ 0"
                 />
               </div>
               <div>
