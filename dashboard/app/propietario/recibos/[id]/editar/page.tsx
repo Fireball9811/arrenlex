@@ -37,6 +37,12 @@ interface ReciboPago {
   cuenta_consignacion: string
   referencia_pago: string
   nota: string
+  estado?: string
+}
+
+interface ContratoActivo {
+  id: string
+  canon_mensual?: number
 }
 
 export default function EditarReciboPage() {
@@ -50,6 +56,8 @@ export default function EditarReciboPage() {
   const [error, setError] = useState<string | null>(null)
   const [recibo, setRecibo] = useState<ReciboPago | null>(null)
   const [propiedades, setPropiedades] = useState<Propiedad[]>([])
+  const [canonContrato, setCanonContrato] = useState<number | null>(null)
+  const [aceptaMontoDiferente, setAceptaMontoDiferente] = useState(false)
 
   const [formData, setFormData] = useState({
     propiedad_id: "",
@@ -67,7 +75,16 @@ export default function EditarReciboPage() {
     cuenta_consignacion: "",
     referencia_pago: "",
     nota: "",
+    estado: "borrador",
   })
+
+  const valorArriendoNum = Number(formData.valor_arriendo || 0)
+  const montoDifiereContrato =
+    formData.tipo_pago === "arriendo" &&
+    canonContrato !== null &&
+    canonContrato > 0 &&
+    valorArriendoNum > 0 &&
+    valorArriendoNum !== canonContrato
 
   useEffect(() => {
     if (!user) {
@@ -111,7 +128,19 @@ export default function EditarReciboPage() {
           cuenta_consignacion: reciboData.cuenta_consignacion || "",
           referencia_pago: reciboData.referencia_pago || "",
           nota: reciboData.nota || "",
+          estado: reciboData.estado || "borrador",
         })
+
+        // Cargar canon activo para validación/confirmación de monto
+        if (reciboData.propiedad_id) {
+          fetch(`/api/contratos?propiedad_id=${reciboData.propiedad_id}&estado=activo`)
+            .then((res) => (res.ok ? res.json() : []))
+            .then((contratos: ContratoActivo[]) => {
+              const canon = Number(contratos?.[0]?.canon_mensual || 0)
+              setCanonContrato(canon > 0 ? canon : null)
+            })
+            .catch(() => setCanonContrato(null))
+        }
 
         setLoading(false)
       })
@@ -126,6 +155,48 @@ export default function EditarReciboPage() {
       ...formData,
       [field]: value,
     })
+    if (field === "valor_arriendo") {
+      setAceptaMontoDiferente(false)
+    }
+  }
+
+  const handlePropiedadChange = async (propiedadId: string) => {
+    setCanonContrato(null)
+    setAceptaMontoDiferente(false)
+
+    if (!propiedadId) {
+      handleChange("propiedad_id", "")
+      return
+    }
+
+    const prop = propiedades.find((p) => p.id === propiedadId)
+    const valorPropiedad = Number(prop?.valor_arriendo || 0)
+
+    setFormData((prev) => ({
+      ...prev,
+      propiedad_id: propiedadId,
+      valor_arriendo: valorPropiedad > 0 ? String(valorPropiedad) : prev.valor_arriendo,
+      valor_arriendo_letras:
+        valorPropiedad > 0 ? numerosEnLetras(valorPropiedad) : prev.valor_arriendo_letras,
+    }))
+
+    try {
+      const resContratos = await fetch(`/api/contratos?propiedad_id=${propiedadId}&estado=activo`)
+      if (resContratos.ok) {
+        const contratos: ContratoActivo[] = await resContratos.json()
+        const canon = Number(contratos?.[0]?.canon_mensual || 0)
+        if (canon > 0) {
+          setCanonContrato(canon)
+          setFormData((prev) => ({
+            ...prev,
+            valor_arriendo: String(canon),
+            valor_arriendo_letras: numerosEnLetras(canon),
+          }))
+        }
+      }
+    } catch {
+      setCanonContrato(null)
+    }
   }
 
   const handleSave = async () => {
@@ -140,6 +211,10 @@ export default function EditarReciboPage() {
     )
     if (!periodo.ok) {
       setError(periodo.error)
+      return
+    }
+    if (montoDifiereContrato && !aceptaMontoDiferente) {
+      setError("El valor difiere del canon activo del contrato. Debes confirmar el nuevo monto para guardar.")
       return
     }
 
@@ -272,7 +347,7 @@ export default function EditarReciboPage() {
               <label className="block text-sm font-medium mb-1">Propiedad *</label>
               <select
                 value={formData.propiedad_id}
-                onChange={(e) => handleChange("propiedad_id", e.target.value)}
+                onChange={(e) => void handlePropiedadChange(e.target.value)}
                 className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
               >
                 <option value="">Selecciona una propiedad</option>
@@ -346,6 +421,31 @@ export default function EditarReciboPage() {
                 />
               </div>
             </div>
+            {formData.tipo_pago === "arriendo" && canonContrato !== null && (
+              <div className={`rounded-md border p-3 text-sm ${montoDifiereContrato ? "border-amber-400 bg-amber-50" : "border-green-300 bg-green-50"}`}>
+                <p className="font-medium">
+                  Canon activo del contrato:{" "}
+                  <strong>
+                    {new Intl.NumberFormat("es-CO", { style: "currency", currency: "COP", maximumFractionDigits: 0 }).format(canonContrato)}
+                  </strong>
+                </p>
+                {montoDifiereContrato ? (
+                  <label className="mt-2 flex items-start gap-2">
+                    <input
+                      type="checkbox"
+                      checked={aceptaMontoDiferente}
+                      onChange={(e) => setAceptaMontoDiferente(e.target.checked)}
+                      className="mt-0.5"
+                    />
+                    <span>
+                      Confirmo que deseo guardar este recibo con un valor diferente al contrato.
+                    </span>
+                  </label>
+                ) : (
+                  <p className="mt-1 text-green-700">El valor coincide con el contrato.</p>
+                )}
+              </div>
+            )}
 
             {/* Período (obligatorio solo para arriendo) */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -409,6 +509,30 @@ export default function EditarReciboPage() {
                   value={formData.fecha_recibo}
                   onChange={(e) => handleChange("fecha_recibo", e.target.value)}
                 />
+              </div>
+            </div>
+
+            {/* Campos de control del recibo (edición completa) */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium mb-1">Número de Recibo</label>
+                <Input
+                  value={formData.numero_recibo}
+                  onChange={(e) => handleChange("numero_recibo", e.target.value)}
+                  placeholder="Ej: REC-000123"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Estado</label>
+                <select
+                  value={formData.estado}
+                  onChange={(e) => handleChange("estado", e.target.value)}
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                >
+                  <option value="borrador">Borrador</option>
+                  <option value="emitido">Emitido</option>
+                  <option value="cancelado">Cancelado</option>
+                </select>
               </div>
             </div>
 

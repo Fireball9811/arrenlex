@@ -28,6 +28,7 @@ interface Arrendatario {
 interface Contrato {
   id: string
   arrendatario_id: string
+  canon_mensual?: number
   arrendatario?: Arrendatario
   estado: string
 }
@@ -41,6 +42,8 @@ export default function NuevoReciboPagoContent() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [canonContrato, setCanonContrato] = useState<number | null>(null)
+  const [aceptaMontoDiferente, setAceptaMontoDiferente] = useState(false)
 
   const [propiedades, setPropiedades] = useState<Propiedad[]>([])
 
@@ -86,6 +89,14 @@ export default function NuevoReciboPagoContent() {
     referencia_pago: "",
     nota: "",
   })
+
+  const valorArriendoNum = Number(formData.valor_arriendo || 0)
+  const montoDifiereContrato =
+    formData.tipo_pago === "arriendo" &&
+    canonContrato !== null &&
+    canonContrato > 0 &&
+    valorArriendoNum > 0 &&
+    valorArriendoNum !== canonContrato
 
   useEffect(() => {
     if (!isAuthorized || !user) return
@@ -143,14 +154,22 @@ export default function NuevoReciboPagoContent() {
             try {
               const resContratos = await fetch(`/api/contratos?propiedad_id=${propiedadIdParam}&estado=activo`)
               if (resContratos.ok) {
-                const contratos = await resContratos.json()
+                const contratos: Contrato[] = await resContratos.json()
                 if (contratos.length > 0 && contratos[0].arrendatario) {
+                  const canon = Number(contratos[0].canon_mensual || 0)
                   const arrendatario = contratos[0].arrendatario
                   setFormData((prev) => ({
                     ...prev,
                     arrendador_nombre: prev.arrendador_nombre || arrendatario.nombre || "",
                     arrendador_cedula: prev.arrendador_cedula || arrendatario.cedula || "",
+                    ...(canon > 0
+                      ? {
+                          valor_arriendo: String(canon),
+                          valor_arriendo_letras: numerosEnLetras(canon),
+                        }
+                      : {}),
                   }))
+                  setCanonContrato(canon > 0 ? canon : null)
                 }
               }
             } catch (e) {
@@ -183,16 +202,69 @@ export default function NuevoReciboPagoContent() {
       ...prev,
       [field]: value,
     }))
+    if (field === "valor_arriendo") {
+      setAceptaMontoDiferente(false)
+    }
   }
 
   const handlePropiedadChange = async (propiedadId: string) => {
     const tipoActual = formData.tipo_pago
+    setCanonContrato(null)
+    setAceptaMontoDiferente(false)
+
+    if (!propiedadId) {
+      setFormData((prev) => ({
+        ...prev,
+        propiedad_id: "",
+        fecha_inicio_periodo: "",
+        fecha_fin_periodo: "",
+      }))
+      return
+    }
+
+    const prop = propiedades.find((p) => p.id === propiedadId)
+    const valorPropiedad = Number(prop?.valor_arriendo || 0)
+
     setFormData((prev) => ({
       ...prev,
       propiedad_id: propiedadId,
       fecha_inicio_periodo: "",
       fecha_fin_periodo: "",
+      valor_arriendo: valorPropiedad > 0 ? String(valorPropiedad) : prev.valor_arriendo,
+      valor_arriendo_letras:
+        valorPropiedad > 0 ? numerosEnLetras(valorPropiedad) : prev.valor_arriendo_letras,
     }))
+
+    try {
+      const resContratos = await fetch(`/api/contratos?propiedad_id=${propiedadId}&estado=activo`)
+      if (resContratos.ok) {
+        const contratos: Contrato[] = await resContratos.json()
+        if (contratos.length > 0) {
+          const contrato = contratos[0]
+          const canon = Number(contrato.canon_mensual || 0)
+
+          if (canon > 0) {
+            setCanonContrato(canon)
+            setFormData((prev) => ({
+              ...prev,
+              valor_arriendo: String(canon),
+              valor_arriendo_letras: numerosEnLetras(canon),
+            }))
+          }
+
+          if (contrato.arrendatario) {
+            setFormData((prev) => ({
+              ...prev,
+              arrendador_nombre: prev.arrendador_nombre || contrato.arrendatario?.nombre || "",
+              arrendador_cedula: prev.arrendador_cedula || contrato.arrendatario?.cedula || "",
+            }))
+          }
+        }
+      }
+    } catch {
+      // Silencioso
+    }
+
     if (propiedadId) {
       await cargarUltimoRecibo(propiedadId, tipoActual)
     }
@@ -208,6 +280,10 @@ export default function NuevoReciboPagoContent() {
       (!formData.fecha_inicio_periodo || !formData.fecha_fin_periodo)
     ) {
       setError("Para canon de arriendo indica la fecha de inicio y fin del período.")
+      return
+    }
+    if (montoDifiereContrato && !aceptaMontoDiferente) {
+      setError("El valor difiere del canon activo del contrato. Debes confirmar el nuevo monto para continuar.")
       return
     }
 
@@ -444,6 +520,31 @@ export default function NuevoReciboPagoContent() {
                 />
               </div>
             </div>
+            {formData.tipo_pago === "arriendo" && canonContrato !== null && (
+              <div className={`rounded-md border p-3 text-sm ${montoDifiereContrato ? "border-amber-400 bg-amber-50" : "border-green-300 bg-green-50"}`}>
+                <p className="font-medium">
+                  Canon activo del contrato:{" "}
+                  <strong>
+                    {new Intl.NumberFormat("es-CO", { style: "currency", currency: "COP", maximumFractionDigits: 0 }).format(canonContrato)}
+                  </strong>
+                </p>
+                {montoDifiereContrato ? (
+                  <label className="mt-2 flex items-start gap-2">
+                    <input
+                      type="checkbox"
+                      checked={aceptaMontoDiferente}
+                      onChange={(e) => setAceptaMontoDiferente(e.target.checked)}
+                      className="mt-0.5"
+                    />
+                    <span>
+                      Confirmo que deseo usar un valor diferente al contrato para este recibo.
+                    </span>
+                  </label>
+                ) : (
+                  <p className="mt-1 text-green-700">El valor coincide con el contrato.</p>
+                )}
+              </div>
+            )}
 
             {/* Período (obligatorio solo para arriendo) */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

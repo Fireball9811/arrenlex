@@ -75,6 +75,22 @@ export async function GET(request: Request, context: RouteContext) {
     const lineHeight = 6
     const fontSize = 10
 
+    const ensureSpace = (requiredHeight: number) => {
+      if (yPosition + requiredHeight > pageHeight - margin) {
+        doc.addPage()
+        yPosition = margin
+      }
+    }
+
+    const writeWrappedLine = (text: string) => {
+      const wrapped = doc.splitTextToSize(text, maxWidth) as string[]
+      for (const line of wrapped) {
+        ensureSpace(lineHeight)
+        doc.text(line, margin, yPosition)
+        yPosition += lineHeight
+      }
+    }
+
     doc.setFontSize(fontSize)
     doc.setFont("helvetica", "normal")
 
@@ -108,6 +124,7 @@ export async function GET(request: Request, context: RouteContext) {
 
       // Saltar líneas vacías (pero con un pequeño espacio)
       if (!linea) {
+        ensureSpace(3)
         yPosition += 3
         continue
       }
@@ -119,46 +136,21 @@ export async function GET(request: Request, context: RouteContext) {
 
       if (esCláusula) {
         // Espacio antes de cada cláusula
+        ensureSpace(5)
         yPosition += 5
         doc.setFont("helvetica", "bold")
         doc.setFontSize(fontSize + 1)
       }
 
-      // Dividir líneas largas
-      const palabras = linea.split(' ')
-      let lineaActual = ''
-
-      for (const palabra of palabras) {
-        const lineaTemporal = lineaActual ? lineaActual + ' ' + palabra : palabra
-        const lineWidth = doc.getTextWidth(lineaTemporal)
-
-        if (lineWidth > maxWidth && lineaActual) {
-          // Escribir la línea actual
-          doc.text(lineaActual, margin, yPosition)
-          yPosition += lineHeight
-          lineaActual = palabra
-        } else {
-          lineaActual = lineaTemporal
-        }
-      }
-
-      // Escribir lo que queda
-      if (lineaActual) {
-        doc.text(lineaActual, margin, yPosition)
-        yPosition += lineHeight
-      }
+      // División robusta para evitar desbordes horizontales y cortes manuales inconsistentes
+      writeWrappedLine(linea)
 
       // Restaurar fuente normal después de cláusula
       if (esCláusula) {
         doc.setFont("helvetica", "normal")
         doc.setFontSize(fontSize)
+        ensureSpace(3)
         yPosition += 3
-      }
-
-      // Nueva página si es necesario
-      if (yPosition > pageHeight - margin) {
-        doc.addPage()
-        yPosition = margin
       }
     }
 
