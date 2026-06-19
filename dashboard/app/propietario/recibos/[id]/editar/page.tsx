@@ -150,10 +150,10 @@ export default function EditarReciboPage() {
   }, [user, router, reciboId])
 
   const handleChange = (field: string, value: string | number) => {
-    setFormData({
-      ...formData,
+    setFormData((prev) => ({
+      ...prev,
       [field]: value,
-    })
+    }))
   }
 
   const handlePropiedadChange = async (propiedadId: string) => {
