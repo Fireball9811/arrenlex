@@ -43,7 +43,6 @@ export default function NuevoReciboPagoContent() {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [canonContrato, setCanonContrato] = useState<number | null>(null)
-  const [aceptaMontoDiferente, setAceptaMontoDiferente] = useState(false)
 
   const [propiedades, setPropiedades] = useState<Propiedad[]>([])
 
@@ -202,15 +201,11 @@ export default function NuevoReciboPagoContent() {
       ...prev,
       [field]: value,
     }))
-    if (field === "valor_arriendo") {
-      setAceptaMontoDiferente(false)
-    }
   }
 
   const handlePropiedadChange = async (propiedadId: string) => {
     const tipoActual = formData.tipo_pago
     setCanonContrato(null)
-    setAceptaMontoDiferente(false)
 
     if (!propiedadId) {
       setFormData((prev) => ({
@@ -282,11 +277,6 @@ export default function NuevoReciboPagoContent() {
       setError("Para canon de arriendo indica la fecha de inicio y fin del período.")
       return
     }
-    if (montoDifiereContrato && !aceptaMontoDiferente) {
-      setError("El valor difiere del canon activo del contrato. Debes confirmar el nuevo monto para continuar.")
-      return
-    }
-
     setSaving(true)
     try {
       const res = await fetch("/api/recibos-pago", {
@@ -520,30 +510,11 @@ export default function NuevoReciboPagoContent() {
                 />
               </div>
             </div>
-            {formData.tipo_pago === "arriendo" && canonContrato !== null && (
-              <div className={`rounded-md border p-3 text-sm ${montoDifiereContrato ? "border-amber-400 bg-amber-50" : "border-green-300 bg-green-50"}`}>
-                <p className="font-medium">
-                  Canon activo del contrato:{" "}
-                  <strong>
-                    {new Intl.NumberFormat("es-CO", { style: "currency", currency: "COP", maximumFractionDigits: 0 }).format(canonContrato)}
-                  </strong>
-                </p>
-                {montoDifiereContrato ? (
-                  <label className="mt-2 flex items-start gap-2">
-                    <input
-                      type="checkbox"
-                      checked={aceptaMontoDiferente}
-                      onChange={(e) => setAceptaMontoDiferente(e.target.checked)}
-                      className="mt-0.5"
-                    />
-                    <span>
-                      Confirmo que deseo usar un valor diferente al contrato para este recibo.
-                    </span>
-                  </label>
-                ) : (
-                  <p className="mt-1 text-green-700">El valor coincide con el contrato.</p>
-                )}
-              </div>
+            {formData.tipo_pago === "arriendo" && canonContrato !== null && montoDifiereContrato && (
+              <p className="text-sm text-red-600">
+                El valor ingresado es diferente al canon de arrendamiento del contrato (
+                {new Intl.NumberFormat("es-CO", { style: "currency", currency: "COP", maximumFractionDigits: 0 }).format(canonContrato)}).
+              </p>
             )}
 
             {/* Período (obligatorio solo para arriendo) */}
