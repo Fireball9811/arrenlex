@@ -11,7 +11,7 @@ import {
  * GET - Arrendatarios sin contrato activo en el alcance del usuario.
  * Admin: global. Propietario: solo los vinculados a sus contratos/propiedades.
  */
-export async function GET() {
+export async function GET(request: Request) {
   const supabase = await createClient()
   const {
     data: { user },
@@ -26,6 +26,39 @@ export async function GET() {
   if (denied) return denied
 
   const admin = createAdminClient()
+  const propiedadId = new URL(request.url).searchParams.get("propiedad_id")
+
+  const priorizarPostulante = async <
+    T extends { id: string; email?: string | null; cedula?: string | null }
+  >(
+    lista: T[],
+    propId: string | null
+  ): Promise<T[]> => {
+    if (!propId || lista.length <= 1) return lista
+
+    const { data: intakeRows } = await admin
+      .from("arrenlex_form_intake")
+      .select("email, cedula")
+      .eq("propiedad_id", propId)
+      .order("created_at", { ascending: false })
+      .limit(1)
+
+    const intake = intakeRows?.[0]
+    if (!intake) return lista
+
+    const intakeEmail = typeof intake.email === "string" ? intake.email.trim().toLowerCase() : ""
+    const intakeCedula = typeof intake.cedula === "string" ? intake.cedula.trim() : ""
+
+    const index = lista.findIndex((a) => {
+      const email = typeof a.email === "string" ? a.email.trim().toLowerCase() : ""
+      const cedula = typeof a.cedula === "string" ? a.cedula.trim() : ""
+      return (intakeEmail && email && intakeEmail === email) || (intakeCedula && cedula && intakeCedula === cedula)
+    })
+
+    if (index <= 0) return lista
+    const candidato = lista[index]
+    return [candidato, ...lista.slice(0, index), ...lista.slice(index + 1)]
+  }
 
   try {
     if (role === "admin") {
@@ -49,7 +82,8 @@ export async function GET() {
         return NextResponse.json({ error: errorArrendatarios.message }, { status: 500 })
       }
 
-      const disponibles = (todosArrendatarios ?? []).filter((a) => !ocupados.has(a.id))
+      const disponiblesBase = (todosArrendatarios ?? []).filter((a) => !ocupados.has(a.id))
+      const disponibles = await priorizarPostulante(disponiblesBase, propiedadId)
       return NextResponse.json(disponibles)
     }
 
@@ -63,7 +97,20 @@ export async function GET() {
       return NextResponse.json([])
     }
 
-    const enScope = await arrendatariosDelPropietario(admin, user.id)
+    const [enScope, propiosDirectosRes] = await Promise.all([
+      arrendatariosDelPropietario(admin, user.id),
+      admin
+        .from("arrendatarios")
+        .select("id, email, nombre, cedula")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false }),
+    ])
+
+    const propiosDirectos = propiosDirectosRes.data ?? []
+    const mapaCandidatos = new Map<string, (typeof enScope)[number]>()
+    for (const a of [...propiosDirectos, ...enScope]) {
+      mapaCandidatos.set(a.id, a)
+    }
 
     const { data: contratosActivos, error: errorContratos } = await admin
       .from("contratos")
@@ -76,7 +123,8 @@ export async function GET() {
     }
 
     const ocupados = new Set((contratosActivos ?? []).map((c) => c.arrendatario_id))
-    const disponibles = enScope.filter((a) => !ocupados.has(a.id))
+    const disponiblesBase = [...mapaCandidatos.values()].filter((a) => !ocupados.has(a.id))
+    const disponibles = await priorizarPostulante(disponiblesBase, propiedadId)
 
     return NextResponse.json(disponibles)
   } catch (err: unknown) {

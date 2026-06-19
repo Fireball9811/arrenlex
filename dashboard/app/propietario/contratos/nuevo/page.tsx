@@ -47,9 +47,13 @@ export default function PropietarioNuevoContratoPage() {
   })
 
   useEffect(() => {
+    const arrendatariosUrl = propiedadIdParam
+      ? `/api/arrendatarios/disponibles?propiedad_id=${encodeURIComponent(propiedadIdParam)}`
+      : "/api/arrendatarios/disponibles"
+
     Promise.all([
       fetch("/api/propiedades/disponibles").then((res) => res.json()),
-      fetch("/api/arrendatarios/disponibles").then((res) => res.json()),
+      fetch(arrendatariosUrl).then((res) => res.json()),
     ])
       .then(([props, arrend]) => {
         setPropiedades(props)
